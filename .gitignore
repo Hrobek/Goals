@@ -1,0 +1,38 @@
+# Xcode
+build/
+DerivedData/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# CocoaPods (not used here, harmless if it ever is)
+Pods/
+
+# macOS
+.DS_Store
+
+# Claude Code local session config (machine-specific, not project source)
+.claude/
+
+# Google OAuth client config — not a secret for a native PKCE app, but kept local by choice.
+# To build Google Sign-In yourself: Google Cloud Console → create an iOS OAuth client → drop the
+# downloaded plist into Goals/ (see comment in Goals/Auth/GoogleAuthConfiguration.swift).
+Goals/client_*.apps.googleusercontent.com.plist
+Goals/GoogleService-Info.plist
