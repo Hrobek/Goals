@@ -7,8 +7,11 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(AuthSession.self) private var session
+    @Environment(PurchaseManager.self) private var purchaseManager
     @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.system.rawValue
     @AppStorage(AppLanguage.storageKey) private var languageRaw = AppLanguage.deviceDefault.rawValue
+
+    @State private var isShowingPaywall = false
 
     private var appearanceMode: Binding<AppearanceMode> {
         Binding(
@@ -27,6 +30,24 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    if purchaseManager.isProUnlocked {
+                        Label("settings.pro.unlocked", systemImage: "checkmark.seal.fill")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Button {
+                            isShowingPaywall = true
+                        } label: {
+                            Label("settings.pro.upgrade", systemImage: "infinity.circle.fill")
+                        }
+                        Button {
+                            Task { await purchaseManager.restorePurchases() }
+                        } label: {
+                            Text("paywall.restore")
+                        }
+                    }
+                }
+
                 Section("settings.appearance") {
                     Picker("settings.appearance", selection: appearanceMode) {
                         ForEach(AppearanceMode.allCases) { mode in
@@ -67,6 +88,9 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("settings.title")
+            .sheet(isPresented: $isShowingPaywall) {
+                PaywallView()
+            }
         }
     }
 }
@@ -74,4 +98,5 @@ struct SettingsView: View {
 #Preview {
     SettingsView()
         .environment(AuthSession())
+        .environment(PurchaseManager())
 }

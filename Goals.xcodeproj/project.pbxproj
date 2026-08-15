@@ -10,6 +10,8 @@
 		BB98ABFD302E1C4700D4BE8B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB98ABFC302E1C4700D4BE8B /* WidgetKit.framework */; };
 		BB98ABFF302E1C4700D4BE8B /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB98ABFE302E1C4700D4BE8B /* SwiftUI.framework */; };
 		BB98AC0E302E1C4800D4BE8B /* GoalsWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB98ABFA302E1C4700D4BE8B /* GoalsWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BB9AD4FA302F795100B6982F /* Goals.storekit in Resources */ = {isa = PBXBuildFile; fileRef = BB9AD4F9302F795100B6982F /* Goals.storekit */; };
+		BB9AD4FB302F795100B6982F /* Goals.storekit in Resources */ = {isa = PBXBuildFile; fileRef = BB9AD4F9302F795100B6982F /* Goals.storekit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -41,6 +43,7 @@
 		BB98ABFC302E1C4700D4BE8B /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		BB98ABFE302E1C4700D4BE8B /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		BB98AC14302E1D0800D4BE8B /* GoalsWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GoalsWidgetExtension.entitlements; sourceTree = "<group>"; };
+		BB9AD4F9302F795100B6982F /* Goals.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Goals.storekit; sourceTree = "<group>"; };
 		BBA4E13D302BB567007906E0 /* Goals.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Goals.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -107,6 +110,7 @@
 		BBA4E134302BB567007906E0 = {
 			isa = PBXGroup;
 			children = (
+				BB9AD4F9302F795100B6982F /* Goals.storekit */,
 				BB98AC14302E1D0800D4BE8B /* GoalsWidgetExtension.entitlements */,
 				BBA4E13F302BB567007906E0 /* Goals */,
 				BB98AD00302E1C4700D4BE8B /* Shared */,
@@ -220,6 +224,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB9AD4FB302F795100B6982F /* Goals.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -227,6 +232,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB9AD4FA302F795100B6982F /* Goals.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -266,7 +272,7 @@
 				CODE_SIGN_ENTITLEMENTS = GoalsWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 73M487ZPLB;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = GoalsWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = GoalsWidget;
@@ -297,7 +303,7 @@
 				CODE_SIGN_ENTITLEMENTS = GoalsWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 73M487ZPLB;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = GoalsWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = GoalsWidget;
@@ -447,7 +453,7 @@
 				CODE_SIGN_ENTITLEMENTS = Goals/Goals.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 73M487ZPLB;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = GoalsInfo.plist;
@@ -481,7 +487,7 @@
 				CODE_SIGN_ENTITLEMENTS = Goals/Goals.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 73M487ZPLB;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = GoalsInfo.plist;

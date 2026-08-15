@@ -47,5 +47,6 @@ struct MainTabView: View {
 #Preview {
     MainTabView(selection: .constant(.today), todayPath: .constant(NavigationPath()))
         .environment(AuthSession())
+        .environment(PurchaseManager())
         .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)
 }

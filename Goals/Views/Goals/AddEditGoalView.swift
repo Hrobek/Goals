@@ -50,7 +50,11 @@ struct AddEditGoalView: View {
         _hasDeadline = State(initialValue: goal?.deadline != nil)
         _deadline = State(initialValue: goal?.deadline ?? Date().addingTimeInterval(7 * 24 * 3600))
         _trackingMode = State(initialValue: goal?.trackingMode ?? .value)
-        _startValueText = State(initialValue: String(format: "%g", goal?.startValue ?? 0))
+        // The literal fallbacks are written as `0.0`/`1.0`, not `0`/`1`: an Int literal defaulting
+        // to Double through `??` still triggers Foundation's runtime format-string checker to
+        // flag "%g" as expecting "%lld" — a spurious but noisy Fault log. Writing them as Double
+        // literals from the start avoids it.
+        _startValueText = State(initialValue: String(format: "%g", goal?.startValue ?? 0.0))
         _targetValueText = State(initialValue: goal.map { String(format: "%g", $0.targetValue) } ?? "")
         _isLowerBetter = State(initialValue: goal?.isLowerBetter ?? false)
         _unitSelection = State(initialValue: UnitSelection(
@@ -78,7 +82,7 @@ struct AddEditGoalView: View {
         _widgetAction = State(initialValue: goal?.widgetAction ?? .quickAction)
         _widgetAmountText = State(initialValue: String(format: "%g", goal?.widgetQuickAmount
             ?? GoalUnit(rawValue: goal?.unitKey ?? GoalUnit.times.rawValue)?.quickAddSteps.first
-            ?? 1))
+            ?? 1.0))
     }
 
     private var parsedStartValue: Double {

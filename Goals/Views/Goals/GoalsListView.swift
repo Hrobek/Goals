@@ -10,11 +10,13 @@ struct GoalsListView: View {
     static let freeActiveGoalLimit = 3
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(PurchaseManager.self) private var purchaseManager
     @Query(sort: \Goal.createdAt, order: .reverse) private var goals: [Goal]
 
     @State private var filter: GoalStatus = .active
     @State private var isShowingAddGoal = false
     @State private var isShowingLimitAlert = false
+    @State private var isShowingPaywall = false
 
     private var activeGoalsCount: Int {
         goals.filter { $0.status == .active }.count
@@ -57,7 +59,11 @@ struct GoalsListView: View {
             .sheet(isPresented: $isShowingAddGoal) {
                 AddEditGoalView(goal: nil)
             }
+            .sheet(isPresented: $isShowingPaywall) {
+                PaywallView()
+            }
             .alert("goals.limit.title", isPresented: $isShowingLimitAlert) {
+                Button("goals.limit.upgrade") { isShowingPaywall = true }
                 Button("action.ok", role: .cancel) {}
             } message: {
                 Text("goals.limit.message")
@@ -127,7 +133,7 @@ struct GoalsListView: View {
     }
 
     private func addGoalTapped() {
-        if activeGoalsCount >= Self.freeActiveGoalLimit {
+        if !purchaseManager.isProUnlocked && activeGoalsCount >= Self.freeActiveGoalLimit {
             isShowingLimitAlert = true
         } else {
             isShowingAddGoal = true
@@ -137,5 +143,6 @@ struct GoalsListView: View {
 
 #Preview {
     GoalsListView()
+        .environment(PurchaseManager())
         .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)
 }

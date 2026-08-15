@@ -61,5 +61,6 @@ struct RootView: View {
 #Preview {
     RootView()
         .environment(AuthSession())
+        .environment(PurchaseManager())
         .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)
 }

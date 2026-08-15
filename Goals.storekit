@@ -1,0 +1,30 @@
+{
+  "identifier" : "6A50BD58-9B26-4D85-9CCD-957E618E8AD7",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "6.99",
+      "familyShareable" : false,
+      "internalID" : "057111A5-9730-4384-B24B-594970D2EB22",
+      "localizations" : [
+        {
+          "description" : "Unlock unlimited active goals.",
+          "displayName" : "Goals Pro",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "Hrobek.Goals.pro",
+      "referenceName" : "Goals Pro",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_locale" : "en_US",
+    "_storefront" : "USA"
+  },
+  "subscriptionGroups" : [],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

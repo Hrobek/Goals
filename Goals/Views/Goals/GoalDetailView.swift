@@ -11,11 +11,14 @@ struct GoalDetailView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(PurchaseManager.self) private var purchaseManager
 
     @State private var isShowingEdit = false
     @State private var isShowingCheckIn = false
     @State private var isShowingDeleteConfirmation = false
     @State private var newMilestoneTitle = ""
+    @State private var activityRange: StatsRange = .month
+    @State private var chartRange: StatsRange = .month
 
     private var sortedMilestones: [Milestone] {
         goal.sortedMilestones
@@ -34,6 +37,7 @@ struct GoalDetailView: View {
             Section("goalDetail.progress") {
                 progressRow
                 ProgressView(value: goal.progressFraction)
+                paceRow
                 if goal.trackingMode == .value {
                     quickAddChips
                 }
@@ -45,6 +49,12 @@ struct GoalDetailView: View {
                 Toggle("goalDetail.markCompleted", isOn: $goal.isCompleted)
                     .onChange(of: goal.isCompleted) { syncReminders() }
             }
+
+            if goal.trackingMode == .value {
+                progressChartSection
+            }
+
+            activitySection
 
             Section("goalDetail.schedule") {
                 LabeledContent("goalDetail.schedule", value: Recurrence.localizedSummary(for: goal))
@@ -175,6 +185,60 @@ struct GoalDetailView: View {
 
     private var logButtonTitle: LocalizedStringKey {
         goal.trackingMode == .value ? "goalDetail.logValue" : "goalDetail.checkInToday"
+    }
+
+    /// A plain-language pace readout ("aim for 4 km a day" / "you'll get there around March") —
+    /// Pro-only, and only shown at all when there's actually something to say (not for a goal
+    /// that's already done, or one with neither a deadline nor any history to project from).
+    @ViewBuilder
+    private var paceRow: some View {
+        if let insight = GoalPaceInsight.compute(for: goal) {
+            if purchaseManager.isProUnlocked {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(Color(hex: goal.colorHex))
+                    Text(insight.message)
+                        .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.vertical, 2)
+            } else {
+                ProLockedCard(title: "pace.title", message: "pace.locked", systemImage: "sparkles")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var progressChartSection: some View {
+        Section("goalDetail.chart.title") {
+            if purchaseManager.isProUnlocked {
+                Picker("stats.range", selection: $chartRange) {
+                    ForEach(StatsRange.allCases) { range in
+                        Text(range.localizedName).tag(range)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                GoalProgressChartView(goal: goal, range: chartRange)
+            } else {
+                ProLockedCard(title: "goalDetail.chart.title", message: "goalDetail.chart.locked", systemImage: "chart.line.uptrend.xyaxis")
+            }
+        }
+    }
+
+    /// The check-in calendar grid, moved here from the Statistics tab — that screen is meant for
+    /// scanning across goals, this one for a single goal in depth.
+    private var activitySection: some View {
+        Section("goalDetail.activity") {
+            Picker("stats.range", selection: $activityRange) {
+                ForEach(StatsRange.allCases) { range in
+                    Text(range.localizedName).tag(range)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            ScheduleActivityView(goal: goal, range: activityRange)
+        }
     }
 
     /// Read-only summary of the reminder — set from Edit, shown here so it doesn't disappear
@@ -311,5 +375,6 @@ private struct CheckInRow: View {
     NavigationStack {
         GoalDetailView(goal: Goal(title: "Run 100 km", targetValue: 100, currentValue: 20, unitKey: GoalUnit.km.rawValue))
     }
+    .environment(PurchaseManager())
     .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)
 }

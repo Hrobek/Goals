@@ -26,9 +26,6 @@ struct ScheduleActivityView: View {
     let range: StatsRange
 
     private let calendar = Calendar.current
-    /// Keeps week and month cells the same compact size (and the columns aligned between the two)
-    /// instead of stretching to the full row width.
-    private let gridWidth: CGFloat = 252
 
     private enum DayState {
         case done, scheduled, blocked
@@ -66,7 +63,6 @@ struct ScheduleActivityView: View {
                     .aspectRatio(1, contentMode: .fit)
             }
         }
-        .frame(maxWidth: gridWidth, alignment: .leading)
     }
 
     private var monthGrid: some View {
@@ -86,7 +82,6 @@ struct ScheduleActivityView: View {
                     .aspectRatio(1, contentMode: .fit)
             }
         }
-        .frame(maxWidth: gridWidth, alignment: .leading)
     }
 
     private var yearGrid: some View {

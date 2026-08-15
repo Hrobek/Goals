@@ -7,13 +7,17 @@ import SwiftUI
 import SwiftData
 
 struct StatsView: View {
+    @Environment(PurchaseManager.self) private var purchaseManager
     @Query(sort: \Goal.createdAt, order: .reverse) private var goals: [Goal]
-
-    @State private var range: StatsRange = .month
+    @Query(sort: \CheckIn.date) private var allCheckIns: [CheckIn]
 
     /// Archived goals are off the board — they'd only pad the stats with frozen streaks.
     private var trackedGoals: [Goal] {
         goals.filter { !$0.isArchived }
+    }
+
+    private var trackedCheckIns: [CheckIn] {
+        allCheckIns.filter { !($0.goal?.isArchived ?? false) }
     }
 
     private var completedCount: Int {
@@ -53,17 +57,25 @@ struct StatsView: View {
 
                 if !streaks.isEmpty {
                     Section("stats.streaks.title") {
-                        Picker("stats.range", selection: $range) {
-                            ForEach(StatsRange.allCases) { range in
-                                Text(range.localizedName).tag(range)
+                        ForEach(streaks, id: \.goal.id) { entry in
+                            NavigationLink {
+                                GoalDetailView(goal: entry.goal)
+                            } label: {
+                                GoalStreakRow(goal: entry.goal, streak: entry.streak)
                             }
                         }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
+                    }
+                }
 
-                        ForEach(streaks, id: \.goal.id) { entry in
-                            GoalStreakRow(goal: entry.goal, streak: entry.streak, range: range)
-                        }
+                if purchaseManager.isProUnlocked {
+                    TrendsSection(checkIns: trackedCheckIns)
+                } else {
+                    Section {
+                        ProLockedCard(
+                            title: "stats.trends.title",
+                            message: "stats.trends.locked",
+                            systemImage: "chart.xyaxis.line"
+                        )
                     }
                 }
             }
@@ -72,51 +84,49 @@ struct StatsView: View {
     }
 }
 
+/// One line per goal — icon, name, schedule and streak. The detailed calendar grid used to live
+/// inline here, but stacking a full grid per goal is what made this screen feel sprawling; it now
+/// lives on the goal's own detail screen, reachable by tapping the row.
 private struct GoalStreakRow: View {
     let goal: Goal
     let streak: Int
-    let range: StatsRange
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(Color(hex: goal.colorHex).opacity(0.2))
-                        .frame(width: 32, height: 32)
-                    if let emoji = goal.emoji {
-                        Text(emoji).font(.footnote)
-                    } else {
-                        Image(systemName: "target")
-                            .font(.footnote)
-                            .foregroundStyle(Color(hex: goal.colorHex))
-                    }
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color(hex: goal.colorHex).opacity(0.2))
+                    .frame(width: 32, height: 32)
+                if let emoji = goal.emoji {
+                    Text(emoji).font(.footnote)
+                } else {
+                    Image(systemName: "target")
+                        .font(.footnote)
+                        .foregroundStyle(Color(hex: goal.colorHex))
                 }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(goal.title)
-                        .font(.subheadline)
-                        .lineLimit(1)
-                    // The schedule is what the streak counts — days for daily goals, weeks for a quota.
-                    Text(Recurrence.localizedSummary(for: goal))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer()
-
-                HStack(spacing: 4) {
-                    Image(systemName: "flame.fill")
-                    Text("\(streak)")
-                }
-                .font(.subheadline.weight(.semibold).monospacedDigit())
-                .foregroundStyle(streak > 0 ? Color.orange : Color.secondary)
             }
 
-            ScheduleActivityView(goal: goal, range: range)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(goal.title)
+                    .font(.subheadline)
+                    .lineLimit(1)
+                // The schedule is what the streak counts — days for daily goals, weeks for a quota.
+                Text(Recurrence.localizedSummary(for: goal))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            HStack(spacing: 4) {
+                Image(systemName: "flame.fill")
+                Text("\(streak)")
+            }
+            .font(.subheadline.weight(.semibold).monospacedDigit())
+            .foregroundStyle(streak > 0 ? Color.orange : Color.secondary)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 2)
     }
 }
 
@@ -139,5 +149,6 @@ private struct StatTile: View {
 
 #Preview {
     StatsView()
+        .environment(PurchaseManager())
         .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)
 }
