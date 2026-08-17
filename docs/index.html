@@ -10,6 +10,7 @@
    Light values live on bare :root; dark redefines only what changes, once for the system setting
    and once for an explicit choice. */
 :root {
+  color-scheme: light dark;
   --ground: #ECECEE;
   --surface: #F7F7F8;
   --hairline: #DCDCDF;
@@ -35,17 +36,29 @@
 
 * { box-sizing: border-box; }
 
+/* Painted here too: below the glow the body's own background ends, and without this the page
+   falls through to the browser's default white — light text on white. */
+html {
+  background-color: var(--ground);
+}
+
 body {
   margin: 0;
-  background: var(--ground);
+  /* Colour and glow are set as separate properties on purpose. A `background` shorthand in the
+     .bloom rule below would reset this colour to transparent. */
+  background-color: var(--ground);
   color: var(--text);
   font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-text-size-adjust: 100%;
 }
 
-/* The app paints a warm ellipse behind its welcome and paywall screens; this is the flat echo. */
+/* The app paints a warm ellipse behind its welcome and paywall screens; this is the flat echo.
+   Its height is in pixels rather than a percentage: a percentage is measured against the whole
+   page, so on a long page the glow stretched all the way to the footer instead of sitting behind
+   the header. */
 .bloom {
-  background: radial-gradient(ellipse 90% 55% at 50% 0%, var(--bloom) 0%, transparent 62%);
+  background-image: radial-gradient(ellipse 90% 420px at 50% 0, var(--bloom) 0%, transparent 70%);
+  background-repeat: no-repeat;
 }
 
 .wrap { max-width: 720px; margin: 0 auto; padding: 0 24px 72px; }
