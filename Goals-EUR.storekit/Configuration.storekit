@@ -9,7 +9,7 @@
       }
     ]
   },
-  "identifier" : "6A50BD58-9B26-4D85-9CCD-957E618E8AD7",
+  "identifier" : "B41C7E92-0D65-4A83-9F2C-5E71A8D30C44",
   "nonRenewingSubscriptions" : [],
   "products" : [
     {
@@ -21,31 +21,6 @@
           "description" : "Unlock unlimited active goals, forever.",
           "displayName" : "Goals Pro Lifetime",
           "locale" : "en_US"
-        },
-        {
-          "description" : "Odemkni neomezený počet aktivních cílů. Napořád.",
-          "displayName" : "Goals Pro navždy",
-          "locale" : "cs_CZ"
-        },
-        {
-          "description" : "Schalte unbegrenzt aktive Ziele frei. Für immer.",
-          "displayName" : "Goals Pro für immer",
-          "locale" : "de_DE"
-        },
-        {
-          "description" : "Desbloquea objetivos activos ilimitados. Para siempre.",
-          "displayName" : "Goals Pro para siempre",
-          "locale" : "es_ES"
-        },
-        {
-          "description" : "Débloque un nombre illimité d’objectifs actifs. À vie.",
-          "displayName" : "Goals Pro à vie",
-          "locale" : "fr_FR"
-        },
-        {
-          "description" : "Desbloqueie objetivos ativos ilimitados. Para sempre.",
-          "displayName" : "Goals Pro vitalício",
-          "locale" : "pt_BR"
         }
       ],
       "productID" : "Hrobek.Goals.pro",
@@ -60,9 +35,9 @@
     "_billingIssuesEnabled" : false,
     "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
-    "_locale" : "en_US",
+    "_locale" : "de_DE",
     "_renewalBillingIssuesEnabled" : false,
-    "_storefront" : "USA",
+    "_storefront" : "DEU",
     "_storeKitErrors" : [],
     "_timeRate" : 0
   },
@@ -94,31 +69,6 @@
               "description" : "Unlock unlimited active goals. Billed yearly.",
               "displayName" : "Goals Pro Yearly",
               "locale" : "en_US"
-            },
-            {
-              "description" : "Odemkni neomezený počet aktivních cílů. Účtováno ročně.",
-              "displayName" : "Goals Pro na rok",
-              "locale" : "cs_CZ"
-            },
-            {
-              "description" : "Schalte unbegrenzt aktive Ziele frei. Jährliche Abrechnung.",
-              "displayName" : "Goals Pro jährlich",
-              "locale" : "de_DE"
-            },
-            {
-              "description" : "Desbloquea objetivos activos ilimitados. Facturación anual.",
-              "displayName" : "Goals Pro anual",
-              "locale" : "es_ES"
-            },
-            {
-              "description" : "Débloque un nombre illimité d’objectifs actifs. Facturé chaque année.",
-              "displayName" : "Goals Pro annuel",
-              "locale" : "fr_FR"
-            },
-            {
-              "description" : "Desbloqueie objetivos ativos ilimitados. Cobrança anual.",
-              "displayName" : "Goals Pro anual",
-              "locale" : "pt_BR"
             }
           ],
           "productID" : "Hrobek.Goals.pro.yearly",
@@ -151,31 +101,6 @@
               "description" : "Unlock unlimited active goals. Billed monthly.",
               "displayName" : "Goals Pro Monthly",
               "locale" : "en_US"
-            },
-            {
-              "description" : "Odemkni neomezený počet aktivních cílů. Účtováno měsíčně.",
-              "displayName" : "Goals Pro na měsíc",
-              "locale" : "cs_CZ"
-            },
-            {
-              "description" : "Schalte unbegrenzt aktive Ziele frei. Monatliche Abrechnung.",
-              "displayName" : "Goals Pro monatlich",
-              "locale" : "de_DE"
-            },
-            {
-              "description" : "Desbloquea objetivos activos ilimitados. Facturación mensual.",
-              "displayName" : "Goals Pro mensual",
-              "locale" : "es_ES"
-            },
-            {
-              "description" : "Débloque un nombre illimité d’objectifs actifs. Facturé chaque mois.",
-              "displayName" : "Goals Pro mensuel",
-              "locale" : "fr_FR"
-            },
-            {
-              "description" : "Desbloqueie objetivos ativos ilimitados. Cobrança mensal.",
-              "displayName" : "Goals Pro mensal",
-              "locale" : "pt_BR"
             }
           ],
           "productID" : "Hrobek.Goals.pro.monthly",

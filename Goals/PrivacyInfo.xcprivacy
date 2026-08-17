@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Nothing here is used to follow anyone across other companies' apps or websites, so there is
+	     no tracking and no tracking domains. The analytics endpoint is the app's own reporting, not
+	     an ad network. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<!-- What actually leaves the device, and only this: see `Shared/Analytics.swift`, where every
+	     signal goes through one function. Nothing the user typed — goal titles, notes, custom
+	     categories and units, feedback text — is ever part of a signal. -->
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array>
+		<dict>
+			<!-- Event names and their parameters: which screen opened the paywall, which plan was
+			     bought, whether a goal had a deadline. -->
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeProductInteraction</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+			</array>
+		</dict>
+		<dict>
+			<!-- `clientUser`: a random UUID made at first launch and kept in the App Group, so
+			     returning users can be counted. Not derived from the signed-in account, so it is
+			     not linked to identity — a reinstall is a new person as far as the dashboard is
+			     concerned. -->
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeDeviceID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+			</array>
+		</dict>
+	</array>
+
+	<!-- Required reason APIs. Each reason below is one Apple publishes for that category; a code
+	     that doesn't match what the binary really does is what gets an upload bounced. -->
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<!-- CA92.1 — the app's own domain: the signed-in account (`AuthSession`), the
+				     appearance and language pickers, and the timers behind the rating and Pro
+				     prompts. -->
+				<string>CA92.1</string>
+				<!-- 1C8F.1 — the App Group the app shares with its widget: language, Pro
+				     entitlement, widget paging, the analytics opt-out and install ID. -->
+				<string>1C8F.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryActiveKeyboards</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<!-- 54BD.1 — presenting the right keyboard for a text field. The emoji picker
+				     (`EmojiPickerSheet`) reads `activeInputModes` to hand its field the emoji
+				     keyboard, because there is no `UIKeyboardType` for it. The result changes what
+				     the user sees and never leaves the device, which is what this reason allows. -->
+				<string>54BD.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

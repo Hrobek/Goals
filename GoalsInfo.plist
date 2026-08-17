@@ -2,6 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Export compliance, answered once here so App Store Connect stops asking on every upload.
+	     False is the honest answer: the only cryptography in the app is SHA-256 hashing (the stable
+	     Apple ID, the local password store, the PKCE challenge), the Keychain, and HTTPS — all of it
+	     Apple's own or standard, none of it the proprietary kind the question is about. Revisit if
+	     the app ever encrypts data itself. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

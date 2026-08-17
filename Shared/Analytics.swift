@@ -27,6 +27,8 @@ enum AnalyticsParameter: String {
     case hasDeadline = "Goal.hasDeadline"
     case source = "Signal.source"
     case feedbackKind = "Feedback.kind"
+    /// Which Pro plan a purchase was for — monthly, yearly or lifetime.
+    case plan = "Purchase.plan"
 }
 
 /// Anonymous product analytics, sent straight to TelemetryDeck's ingest API.

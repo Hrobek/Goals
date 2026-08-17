@@ -10,6 +10,7 @@ import WidgetKit
 
 struct RootView: View {
     @Environment(AuthSession.self) private var session
+    @Environment(PurchaseManager.self) private var purchaseManager
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.requestReview) private var requestReview
@@ -22,8 +23,10 @@ struct RootView: View {
     /// Owned here so a widget tap can push a goal onto the Today stack.
     @State private var todayPath = NavigationPath()
     /// Raised by the locked Pro widgets, which link here rather than dropping you on a screen that
-    /// doesn't explain what they were showing.
+    /// doesn't explain what they were showing — and by the occasional promo.
     @State private var isShowingPaywall = false
+    /// Which of the two put it up, so the funnel can tell them apart.
+    @State private var paywallSource: PaywallSource = .widget
 
     /// Shown once, after the first sign-in on this device. Per device rather than per account on
     /// purpose: nothing syncs, so signing in here is a fresh start however old the account is.
@@ -48,6 +51,10 @@ struct RootView: View {
         // One tint for everything the app doesn't draw itself — switches, date pickers, the text
         // cursor, the menus. Set once here so no system control is left on the stock blue.
         .tint(Theme.accent)
+        // …and the same choice again, one layer down: see `AppearanceMode.applyToWindows`.
+        .onChange(of: appearanceModeRaw, initial: true) { _, raw in
+            AppearanceMode.applyToWindows(AppearanceMode(rawValue: raw) ?? .default)
+        }
         // Widgets read the language from the App Group, so the choice has to be pushed across and
         // the home screen redrawn — otherwise the app switches to Czech and its widgets don't.
         .onChange(of: languageRaw, initial: true) { _, _ in
@@ -71,7 +78,12 @@ struct RootView: View {
             case .active:
                 AppReviewPrompt.recordFirstLaunchIfNeeded()
                 Task { await NotificationScheduler.syncAll(context: modelContext) }
-                Task { await requestReviewIfEarned() }
+                // One after the other: whichever of the two goes first, the second one sees it on
+                // screen and stands down rather than stacking a second sheet on top.
+                Task {
+                    await requestReviewIfEarned()
+                    await showProPromoIfEarned()
+                }
             case .background:
                 // Whatever changed in the app, the home screen should show it.
                 WidgetCenter.shared.reloadAllTimelines()
@@ -88,14 +100,34 @@ struct RootView: View {
                 todayPath = NavigationPath()
                 todayPath.append(id)
             case "pro":
+                paywallSource = .widget
                 isShowingPaywall = true
             default:
                 break
             }
         }
         .sheet(isPresented: $isShowingPaywall) {
-            PaywallView(source: .widget)
+            PaywallView(source: paywallSource)
         }
+    }
+
+    /// The promo waits for the same quiet moment the rating prompt does — nothing else on screen,
+    /// the launch settled — and `ProPromoPrompt` decides whether this is one of the rare turns it
+    /// gets at all.
+    private func showProPromoIfEarned() async {
+        guard session.isAuthenticated, !isShowingFirstRunWelcome, !isShowingPaywall else { return }
+
+        let checkInCount = (try? modelContext.fetchCount(FetchDescriptor<CheckIn>())) ?? 0
+        guard ProPromoPrompt.shouldShow(isProUnlocked: purchaseManager.isProUnlocked, checkInCount: checkInCount) else { return }
+
+        try? await Task.sleep(for: .seconds(2))
+        guard scenePhase == .active, session.isAuthenticated, !isShowingFirstRunWelcome, !isShowingPaywall else { return }
+        // Entitlements load asynchronously, so the check is worth repeating once they have.
+        guard !purchaseManager.isProUnlocked else { return }
+
+        ProPromoPrompt.recordShown()
+        paywallSource = .promo
+        isShowingPaywall = true
     }
 
     /// The rating prompt only makes sense on top of the app itself, so it waits out the welcome

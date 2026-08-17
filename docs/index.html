@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Goals — podpora</title>
+<meta name="description" content="Podpora pro aplikaci Goals: kontakt, nejčastější dotazy a zásady ochrany soukromí.">
+<style>
+/* The palette is lifted from the app's own Theme.swift, so the site and the app read as one thing.
+   Light values live on bare :root; dark redefines only what changes, once for the system setting
+   and once for an explicit choice. */
+:root {
+  --ground: #ECECEE;
+  --surface: #F7F7F8;
+  --hairline: #DCDCDF;
+  --text: #1A1A1C;
+  --text-faint: #6E6E73;
+  --accent: #C03225;
+  --accent-well: #FFE9E7;
+  --bloom: transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #101011;
+    --surface: #1A1A1C;
+    --hairline: #2C2C2F;
+    --text: #F2F2F3;
+    --text-faint: #9A9A9E;
+    --accent: #FF7F72;
+    --accent-well: #3A0F0A;
+    --bloom: #2A1512;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--text);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* The app paints a warm ellipse behind its welcome and paywall screens; this is the flat echo. */
+.bloom {
+  background: radial-gradient(ellipse 90% 55% at 50% 0%, var(--bloom) 0%, transparent 62%);
+}
+
+.wrap { max-width: 720px; margin: 0 auto; padding: 0 24px 72px; }
+
+header { padding: 56px 0 40px; text-align: center; }
+
+.mark {
+  width: 64px; height: 64px;
+  margin: 0 auto 20px;
+  display: block;
+}
+
+h1 { font-size: 30px; line-height: 1.2; margin: 0 0 10px; letter-spacing: -0.02em; }
+h2 { font-size: 20px; margin: 40px 0 12px; letter-spacing: -0.01em; }
+h3 { font-size: 16px; margin: 26px 0 8px; }
+
+.lede { color: var(--text-faint); margin: 0; font-size: 17px; }
+.stamp { color: var(--text-faint); font-size: 14px; margin-top: 8px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  padding: 22px 24px;
+  margin: 20px 0;
+}
+
+a { color: var(--accent); }
+
+.mail {
+  display: inline-block;
+  font-size: 18px;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 12px 20px;
+  border-radius: 12px;
+  background: var(--accent-well);
+  border: 1px solid var(--hairline);
+  margin-top: 4px;
+}
+
+ul { padding-left: 22px; }
+li { margin: 7px 0; }
+
+table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 15px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+th { color: var(--text-faint); font-weight: 600; }
+
+/* Wide tables scroll inside their own box rather than pushing the page sideways. */
+.scroll { overflow-x: auto; }
+
+footer {
+  margin-top: 56px;
+  padding-top: 24px;
+  border-top: 1px solid var(--hairline);
+  color: var(--text-faint);
+  font-size: 14px;
+  text-align: center;
+}
+
+footer a { color: var(--text-faint); }
+
+.nav { text-align: center; margin-top: 28px; font-size: 15px; }
+</style>
+</head>
+<body class="bloom">
+<div class="wrap">
+
+<header>
+  <!-- The app's own mark: a sight with a tick through it, same as GoalsMark.swift draws. -->
+  <svg class="mark" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+    <circle cx="50" cy="50" r="34" stroke="var(--text-faint)" stroke-width="7"/>
+    <circle cx="50" cy="50" r="13" stroke="var(--text-faint)" stroke-width="7"/>
+    <path d="M32 52 L45 65 L74 30" stroke="var(--accent)" stroke-width="9"
+          stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <h1>Goals — podpora</h1>
+  <p class="lede">Sledování osobních cílů. Všechno zůstává v telefonu.</p>
+</header>
+
+<div class="card">
+  <h2 style="margin-top:0">Napište mi</h2>
+  <p>Na chybu, nápad nebo dotaz odpovídám osobně — appku dělá jeden člověk, takže to může chvíli trvat, ale odpovím.</p>
+  <p><a class="mail" href="mailto:PODPORA@PRIKLAD.CZ">PODPORA@PRIKLAD.CZ</a></p>
+  <p class="stamp">Nejrychlejší cesta vede přímo z aplikace: <strong>Nastavení → Zpětná vazba</strong>. Připojí se tam rovnou informace o zařízení a verzi, takže nemusíte nic opisovat, a můžete přiložit snímek obrazovky nebo video.</p>
+</div>
+
+<h2>Časté dotazy</h2>
+
+<h3>Kde jsou moje data?</h3>
+<p>V telefonu, a nikde jinde. Goals nemá server ani cloudový sync — cíle, milníky, check-iny i poznámky leží jen na vašem zařízení. To má jeden důsledek, který je dobré znát: <strong>když aplikaci smažete, data zmizí s ní</strong>, a nepřenesou se ani na nový telefon.</p>
+
+<h3>Přihlašuju se — kam ty údaje jdou?</h3>
+<p>Nikam. Přihlášení slouží jen jako identita uvnitř aplikace, ne k synchronizaci. Účet i heslo zůstávají v telefonu (heslo jen jako otisk v systémové Klíčence, nikdy čitelně).</p>
+
+<h3>Co je Pro a co v něm je?</h3>
+<p>Zdarma můžete mít tři aktivní cíle současně; archivované a splněné se do limitu nepočítají. Pro odemyká neomezený počet cílů, pokročilé statistiky a widgety s aktivitou a grafem postupu. Dá se koupit měsíčně, ročně, nebo jednorázově napořád.</p>
+
+<h3>Koupil jsem Pro a po přeinstalování je pryč</h3>
+<p>V aplikaci jděte do <strong>Nastavení → Obnovit nákupy</strong>. Nákup je vázaný na vaše Apple ID, takže se vrátí. Pokud se nevrátí, napište mi.</p>
+
+<h3>Nechodí mi připomínky</h3>
+<p>Goals používá systémová oznámení, žádný vlastní přepínač nemá. Zkontrolujte <strong>Nastavení iOS → Goals → Oznámení</strong>. Když jsou tam povolená a přesto nechodí, dejte vědět.</p>
+
+<h3>Widget ukazuje jiný jazyk než aplikace</h3>
+<p>Názvy widgetů v systémové galerii překládá iOS podle jazyka telefonu — do přepínače jazyka v aplikaci nevidí. Obsah samotného widgetu už jazyk z aplikace přebírá. Tohle bohužel nejde obejít.</p>
+
+<h3>Jak vypnu odesílání statistik?</h3>
+<p><strong>Nastavení → Soukromí → Sdílet anonymní statistiky.</strong> Podrobně, co se posílá a co ne, popisují <a href="privacy.html">zásady ochrany soukromí</a>.</p>
+
+<div class="nav">
+  <a href="privacy.html">Zásady ochrany soukromí →</a>
+</div>
+
+<footer>
+  Goals · vyvíjí Martin Hrbek<br>
+  <a href="privacy.html">Ochrana soukromí</a>
+</footer>
+
+</div>
+</body>
+</html>

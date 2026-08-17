@@ -13,6 +13,8 @@ enum PaywallSource: String {
     case settings
     case lockedFeature = "locked_feature"
     case widget
+    /// The one nobody asked for: the periodic nudge a free user gets every couple of weeks.
+    case promo
 }
 
 struct PaywallView: View {
@@ -22,6 +24,8 @@ struct PaywallView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var isPurchasing = false
+    /// Yearly is the one the paywall argues for, so it starts selected and wears the savings badge.
+    @State private var selectedPlan: ProPlan = .yearly
 
     /// What Pro actually buys. Unlimited goals is the headline's own promise, so the list picks up
     /// where the subtitle leaves off — each row reusing the copy the locked feature already shows.
@@ -38,6 +42,7 @@ struct PaywallView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 26) {
                         headline
+                        planPicker
                         benefitList
                     }
                     .padding(.horizontal, 22)
@@ -48,17 +53,8 @@ struct PaywallView: View {
 
                 footer
             }
-            // A red bloom at the top, thinning into the ground — the one place in the app that
-            // gets to be a little theatrical.
-            .background {
-                LinearGradient(
-                    colors: [Theme.accentWell, Theme.ground],
-                    startPoint: .top,
-                    endPoint: .center
-                )
-                .ignoresSafeArea()
-            }
-            .screenGround()
+            // The one screen in the app allowed to be a little theatrical.
+            .background { BloomBackground.paywall }
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
@@ -75,7 +71,13 @@ struct PaywallView: View {
             }
             .task {
                 Analytics.send(.paywallOpened, [.source: source.rawValue])
-                await purchaseManager.loadProduct()
+                await purchaseManager.loadProducts()
+                // Yearly is the default, but never leave the selection pointing at a plan the
+                // store didn't hand back.
+                if purchaseManager.product(for: selectedPlan) == nil,
+                   let firstAvailable = ProPlan.displayOrder.first(where: { purchaseManager.product(for: $0) != nil }) {
+                    selectedPlan = firstAvailable
+                }
             }
         }
     }
@@ -125,6 +127,97 @@ struct PaywallView: View {
         }
     }
 
+    // MARK: - Plans
+
+    @ViewBuilder
+    private var planPicker: some View {
+        let available = ProPlan.displayOrder.compactMap { plan in
+            purchaseManager.product(for: plan).map { (plan: plan, product: $0) }
+        }
+        if !available.isEmpty {
+            VStack(spacing: 8) {
+                ForEach(available, id: \.plan) { entry in
+                    planRow(entry.plan, product: entry.product)
+                }
+            }
+        }
+    }
+
+    private func planRow(_ plan: ProPlan, product: Product) -> some View {
+        let isSelected = selectedPlan == plan
+
+        return Button {
+            selectedPlan = plan
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
+                    .font(.system(size: 19))
+                    .foregroundStyle(isSelected ? Theme.accent : Theme.textGhost)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        Text(LocalizedStringKey(plan.titleKey))
+                            .font(Theme.Typo.rowTitle)
+                            .foregroundStyle(Theme.text)
+                        if plan == .yearly, let savings = purchaseManager.yearlySavingsPercent {
+                            savingsBadge(savings)
+                        }
+                    }
+                    if let caption = caption(for: plan, product: product) {
+                        caption
+                            .font(Theme.Typo.caption)
+                            .foregroundStyle(Theme.textFaint)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(product.displayPrice)
+                        .font(Theme.Typo.rowEmphasis)
+                        .foregroundStyle(Theme.text)
+                    if let periodKey = plan.periodKey {
+                        Text(LocalizedStringKey(periodKey))
+                            .font(Theme.Typo.footnote)
+                            .foregroundStyle(Theme.textFaint)
+                    }
+                }
+            }
+            .padding(14)
+            .background(isSelected ? Theme.accentWell : Theme.surface, in: .rect(cornerRadius: Theme.Radius.card))
+            .overlay {
+                RoundedRectangle(cornerRadius: Theme.Radius.card)
+                    .strokeBorder(isSelected ? Theme.accentWellBorder : Theme.hairline, lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    private func savingsBadge(_ percent: Int) -> some View {
+        Text("paywall.save \(percent)")
+            .font(Theme.Typo.footnote.weight(.medium))
+            .foregroundStyle(Theme.onAccent)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .background(Theme.accent, in: .rect(cornerRadius: Theme.Radius.pill))
+    }
+
+    /// The line under a plan's name: what a year of it works out to per month, or — for the
+    /// non-consumable — that there's nothing to renew.
+    private func caption(for plan: ProPlan, product: Product) -> Text? {
+        switch plan {
+        case .yearly:
+            let perMonth = (product.price / 12).formatted(product.priceFormatStyle)
+            return Text("paywall.plan.perMonth \(perMonth)")
+        case .lifetime:
+            return Text("paywall.plan.lifetime.caption")
+        case .monthly:
+            return nil
+        }
+    }
+
     private var footer: some View {
         VStack(spacing: 12) {
             purchaseControl
@@ -138,6 +231,14 @@ struct PaywallView: View {
             }
             .buttonStyle(.plain)
             .disabled(isPurchasing)
+
+            if selectedPlan != .lifetime, purchaseManager.product(for: selectedPlan) != nil {
+                Text("paywall.legal")
+                    .font(Theme.Typo.footnote)
+                    .foregroundStyle(Theme.textFaint)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             if let message = purchaseManager.lastErrorMessage {
                 Text(message)
@@ -154,23 +255,23 @@ struct PaywallView: View {
 
     @ViewBuilder
     private var purchaseControl: some View {
-        if let product = purchaseManager.product {
+        if purchaseManager.product(for: selectedPlan) != nil {
             Button {
                 Task {
                     isPurchasing = true
-                    await purchaseManager.purchase()
+                    await purchaseManager.purchase(selectedPlan)
                     isPurchasing = false
                 }
             } label: {
                 if isPurchasing {
                     ProgressView().tint(Theme.onAccent)
                 } else {
-                    Text("paywall.purchase \(product.displayPrice)")
+                    Text("paywall.continue")
                 }
             }
             .buttonStyle(AccentButtonStyle(height: 54))
             .disabled(isPurchasing)
-        } else if purchaseManager.isLoadingProduct {
+        } else if purchaseManager.isLoadingProducts {
             ProgressView()
                 .tint(Theme.textMuted)
                 .frame(height: 54)

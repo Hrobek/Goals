@@ -1,0 +1,121 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "D27F5B10-8C34-4E19-B6A0-3F5C81E2947A",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "999.00",
+      "familyShareable" : false,
+      "internalID" : "057111A5-9730-4384-B24B-594970D2EB22",
+      "localizations" : [
+        {
+          "description" : "Unlock unlimited active goals, forever.",
+          "displayName" : "Goals Pro Lifetime",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "Hrobek.Goals.pro",
+      "promotionalImageID" : "57B4E245",
+      "referenceName" : "Goals Pro Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_locale" : "cs_CZ",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "CZE",
+    "_storeKitErrors" : [],
+    "_timeRate" : 0
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "8C1D2F73-4A0E-4C1B-9E52-1B6A7C0D5E11",
+      "localizations" : [],
+      "name" : "Goals Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "billingPlans" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "commitmentDisplayPrice" : "699.00",
+              "displayPrice" : "699.00",
+              "internalID" : "4F231DF7",
+              "isEnabled" : true
+            }
+          ],
+          "codeOffers" : [],
+          "displayPrice" : "699.00",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "3F2A9B41-7D6C-42E8-8B10-2C4D9E7F1A22",
+          "introductoryOffers" : [],
+          "localizations" : [
+            {
+              "description" : "Unlock unlimited active goals. Billed yearly.",
+              "displayName" : "Goals Pro Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "Hrobek.Goals.pro.yearly",
+          "promotionalImageID" : "57B4E245",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Goals Pro Yearly",
+          "subscriptionGroupID" : "8C1D2F73-4A0E-4C1B-9E52-1B6A7C0D5E11",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : []
+        },
+        {
+          "adHocOffers" : [],
+          "billingPlans" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "commitmentDisplayPrice" : "99.00",
+              "displayPrice" : "99.00",
+              "internalID" : "DAB1F11E",
+              "isEnabled" : true
+            }
+          ],
+          "codeOffers" : [],
+          "displayPrice" : "99.00",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "5B8E3C60-1F4A-4D97-A3C5-6E0B2D8F3A33",
+          "introductoryOffers" : [],
+          "localizations" : [
+            {
+              "description" : "Unlock unlimited active goals. Billed monthly.",
+              "displayName" : "Goals Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "Hrobek.Goals.pro.monthly",
+          "promotionalImageID" : "57B4E245",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Goals Pro Monthly",
+          "subscriptionGroupID" : "8C1D2F73-4A0E-4C1B-9E52-1B6A7C0D5E11",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : []
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 5,
+    "minor" : 0
+  }
+}

@@ -47,8 +47,8 @@ struct GoalsMark: View {
 
     /// Mono has no red tick to carry the mark, so the strokes thicken slightly to keep the same
     /// visual weight next to SF Symbols.
-    private var sightWidth: CGFloat { (tone == .duotone ? 10 : 12) * scale }
-    private var checkWidth: CGFloat { (tone == .duotone ? 12 : 14) * scale }
+    private var sightWidth: CGFloat { (tone == .duotone ? 10 : 14) * scale }
+    private var checkWidth: CGFloat { (tone == .duotone ? 12 : 16) * scale }
 
     var body: some View {
         ZStack {

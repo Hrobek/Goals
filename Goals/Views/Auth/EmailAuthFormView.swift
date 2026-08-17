@@ -59,13 +59,29 @@ struct EmailAuthFormView: View {
                         .keyboardType(.emailAddress)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
-                    SecureField("auth.field.password", text: $password)
-                        .textContentType(mode == .register ? .newPassword : .password)
+                    // Not SwiftUI's `SecureField` — see `ThemedSecureField` for the two things it
+                    // gets wrong here (the white last bullet, and the confirmation row showing the
+                    // password in the clear).
+                    ThemedSecureField(
+                        placeholder: String(localized: "auth.field.password", defaultValue: "Password", bundle: AppLanguage.currentBundle),
+                        text: $password,
+                        textContentType: mode == .register ? .newPassword : .password,
+                        onSubmit: { if isValid { submit() } }
+                    )
                     if mode == .register {
-                        SecureField("auth.field.confirmPassword", text: $confirmPassword)
-                            .textContentType(.newPassword)
+                        ThemedSecureField(
+                            placeholder: String(localized: "auth.field.confirmPassword", defaultValue: "Confirm Password", bundle: AppLanguage.currentBundle),
+                            text: $confirmPassword,
+                            textContentType: nil,
+                            onSubmit: { if isValid { submit() } }
+                        )
                     }
                 }
+                // Switching mode adds and removes rows, and SwiftUI happily recycles the text field
+                // underneath a row that stayed put — which is how the confirmation field ends up
+                // reusing a plain one and showing the password in the clear. A per-mode identity
+                // rebuilds the section instead of rearranging it.
+                .id(mode)
 
                 if passwordsMismatch {
                     Text("auth.error.passwordMismatch")
@@ -80,6 +96,16 @@ struct EmailAuthFormView: View {
                 }
             }
             .themedList()
+            // Signing in and registering are two different forms that happen to share a screen —
+            // switching between them starts the other one empty rather than carrying half-typed
+            // credentials (and a stale error) across.
+            .onChange(of: mode) { _, _ in
+                displayName = ""
+                email = ""
+                password = ""
+                confirmPassword = ""
+                errorMessage = nil
+            }
             .navigationTitle(mode.localizedName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -541,6 +541,10 @@ struct AccentOutlineButtonStyle: ButtonStyle {
         configuration.label
             .font(Theme.Typo.buttonSmall)
             .foregroundStyle(Theme.accentText)
+            .lineLimit(1)
+            // Padding the label first means a `.fixedSize()` button — one that hugs its title
+            // instead of filling the row — still keeps its text off the outline.
+            .padding(.horizontal, 18)
             .frame(maxWidth: .infinity)
             .frame(height: height)
             .overlay {
@@ -588,6 +592,96 @@ struct IconButton: View {
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Bloom
+
+/// The red bloom behind the app's two pitch screens — sign-in and the paywall. On dark it's an
+/// ellipse centred just above the top edge, fading into the ground well before the halfway mark;
+/// the tint is a long way off the accent, closer to a warm ember than to red. On light the design
+/// swaps it for a plain top-down wash, so that's what this does too.
+struct BloomBackground: View {
+    /// The ember at the centre of the bloom on dark.
+    let darkTint: Color
+    /// Where the centre sits, as a fraction of the height.
+    let centerY: CGFloat
+    /// The ellipse's radii, as fractions of the width and the height.
+    let radiusX: CGFloat
+    let radiusY: CGFloat
+    /// How far along the radius the tint has all but gone. The ramp keeps going past this, thinner
+    /// and thinner, rather than stopping — a gradient that ends leaves an edge, and an edge on a
+    /// round gradient is exactly what reads as "a circle".
+    let fadeStop: CGFloat
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// A raised-cosine falloff, sampled into stops. A straight two-stop ramp changes slope at both
+    /// ends, and on a near-black ground those two kinks are visible as rings; this curve leaves at
+    /// zero slope and arrives at zero slope, so there's nothing for the eye to catch.
+    private var bloomStops: [Gradient.Stop] {
+        let samples = 24
+        return (0...samples).map { step in
+            let t = Double(step) / Double(samples)
+            let alpha = (cos(.pi * min(t / fadeStop, 1)) + 1) / 2
+            return Gradient.Stop(color: darkTint.opacity(alpha), location: t)
+        }
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let height = geometry.size.height
+            let horizontal = width * radiusX
+            let vertical = height * radiusY
+
+            ZStack {
+                Theme.ground
+                if colorScheme == .dark {
+                    // SwiftUI's radial gradients are circles, so the ellipse is a circle of the
+                    // horizontal radius squashed to the vertical one. The tint is painted as
+                    // fading opacity over the ground rather than as a colour ramp towards it —
+                    // interpolating between two colours this dark is where the banding came from.
+                    RadialGradient(
+                        gradient: Gradient(stops: bloomStops),
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: horizontal
+                    )
+                    .frame(width: horizontal * 2, height: horizontal * 2)
+                    .scaleEffect(x: 1, y: vertical / horizontal)
+                    .position(x: width / 2, y: height * centerY)
+                } else {
+                    LinearGradient(
+                        gradient: Gradient(stops: [
+                            .init(color: Ramp.red050, location: 0),
+                            .init(color: Theme.ground, location: 0.45)
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
+extension BloomBackground {
+    /// Sign-in: wide and shallow, centred almost on the top edge.
+    static var welcome: BloomBackground {
+        BloomBackground(
+            darkTint: Color(hex: "#2A1512"),
+            centerY: 0.06, radiusX: 0.90, radiusY: 0.55, fadeStop: 0.62
+        )
+    }
+
+    /// The paywall: a little tighter and a little warmer — it's the one screen allowed to sell.
+    static var paywall: BloomBackground {
+        BloomBackground(
+            darkTint: Color(hex: "#3A0F0A"),
+            centerY: 0.10, radiusX: 0.80, radiusY: 0.48, fadeStop: 0.60
+        )
     }
 }
 

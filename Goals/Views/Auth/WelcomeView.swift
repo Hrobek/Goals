@@ -69,19 +69,7 @@ struct WelcomeView: View {
         .padding(.horizontal, 24)
         .padding(.bottom, 40)
         .frame(maxWidth: .infinity, alignment: .leading)
-        // A faint red bloom behind the mark, thinning into the ground.
-        .background {
-            ZStack {
-                Theme.ground
-                RadialGradient(
-                    colors: [Theme.accentWell, .clear],
-                    center: .init(x: 0.5, y: 0.08),
-                    startRadius: 0,
-                    endRadius: 420
-                )
-            }
-            .ignoresSafeArea()
-        }
+        .background { BloomBackground.welcome }
         .sheet(isPresented: $isShowingEmailForm) {
             EmailAuthFormView()
         }

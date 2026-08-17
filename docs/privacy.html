@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Goals — zásady ochrany soukromí</title>
+<meta name="description" content="Co aplikace Goals sbírá, co neposílá nikam a jak to vypnout.">
+<style>
+/* The palette is lifted from the app's own Theme.swift, so the site and the app read as one thing.
+   Light values live on bare :root; dark redefines only what changes, once for the system setting
+   and once for an explicit choice. */
+:root {
+  --ground: #ECECEE;
+  --surface: #F7F7F8;
+  --hairline: #DCDCDF;
+  --text: #1A1A1C;
+  --text-faint: #6E6E73;
+  --accent: #C03225;
+  --accent-well: #FFE9E7;
+  --bloom: transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #101011;
+    --surface: #1A1A1C;
+    --hairline: #2C2C2F;
+    --text: #F2F2F3;
+    --text-faint: #9A9A9E;
+    --accent: #FF7F72;
+    --accent-well: #3A0F0A;
+    --bloom: #2A1512;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--text);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* The app paints a warm ellipse behind its welcome and paywall screens; this is the flat echo. */
+.bloom {
+  background: radial-gradient(ellipse 90% 55% at 50% 0%, var(--bloom) 0%, transparent 62%);
+}
+
+.wrap { max-width: 720px; margin: 0 auto; padding: 0 24px 72px; }
+
+header { padding: 56px 0 40px; text-align: center; }
+
+.mark {
+  width: 64px; height: 64px;
+  margin: 0 auto 20px;
+  display: block;
+}
+
+h1 { font-size: 30px; line-height: 1.2; margin: 0 0 10px; letter-spacing: -0.02em; }
+h2 { font-size: 20px; margin: 40px 0 12px; letter-spacing: -0.01em; }
+h3 { font-size: 16px; margin: 26px 0 8px; }
+
+.lede { color: var(--text-faint); margin: 0; font-size: 17px; }
+.stamp { color: var(--text-faint); font-size: 14px; margin-top: 8px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  padding: 22px 24px;
+  margin: 20px 0;
+}
+
+a { color: var(--accent); }
+
+.mail {
+  display: inline-block;
+  font-size: 18px;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 12px 20px;
+  border-radius: 12px;
+  background: var(--accent-well);
+  border: 1px solid var(--hairline);
+  margin-top: 4px;
+}
+
+ul { padding-left: 22px; }
+li { margin: 7px 0; }
+
+table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 15px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+th { color: var(--text-faint); font-weight: 600; }
+
+/* Wide tables scroll inside their own box rather than pushing the page sideways. */
+.scroll { overflow-x: auto; }
+
+footer {
+  margin-top: 56px;
+  padding-top: 24px;
+  border-top: 1px solid var(--hairline);
+  color: var(--text-faint);
+  font-size: 14px;
+  text-align: center;
+}
+
+footer a { color: var(--text-faint); }
+
+.nav { text-align: center; margin-top: 28px; font-size: 15px; }
+</style>
+</head>
+<body class="bloom">
+<div class="wrap">
+
+<header>
+  <h1>Zásady ochrany soukromí</h1>
+  <p class="lede">Aplikace Goals pro iOS</p>
+  <p class="stamp">Platné od 18. 8. 2026</p>
+</header>
+
+<div class="card">
+  <h2 style="margin-top:0">Krátce</h2>
+  <p>Goals nemá server. Cíle, milníky, check-iny, poznámky, vlastní kategorie i jednotky zůstávají ve vašem telefonu a nikam se neodesílají — ani mně, ani nikomu jinému.</p>
+  <p style="margin-bottom:0">Ven odchází jediná věc: <strong>anonymní statistika používání</strong>, ze které nejde poznat, kdo jste ani co si do aplikace píšete. Vypnout ji jde v Nastavení.</p>
+</div>
+
+<h2>Kdo za aplikaci odpovídá</h2>
+<p>Aplikaci vyvíjí Martin Hrbek jako fyzická osoba. Ve smyslu GDPR je správcem osobních údajů zpracovávaných níže popsaným způsobem. Kontakt: <a href="mailto:PODPORA@PRIKLAD.CZ">PODPORA@PRIKLAD.CZ</a>.</p>
+
+<h2>Co zůstává jen ve vašem telefonu</h2>
+<p>Tohle aplikace ukládá lokálně a nikam neodesílá:</p>
+<ul>
+  <li>Cíle a jejich nastavení — název, kategorie, termín, priorita, cílová hodnota, rozvrh</li>
+  <li>Milníky, check-iny a poznámky k nim</li>
+  <li>Vlastní kategorie a vlastní jednotky, které si vytvoříte</li>
+  <li>Přihlašovací identita — jméno a e-mail z Apple, Google nebo z registrace v aplikaci</li>
+  <li>Nastavení vzhledu, jazyka a připomínek</li>
+</ul>
+<p>Data leží v úložišti aplikace a ve sdílené složce, ze které je čtou widgety na ploše. Heslo, pokud se registrujete e-mailem, se neukládá čitelně — jen jako kryptografický otisk v systémové Klíčence.</p>
+<p><strong>Aplikace nemá cloudový sync.</strong> Když ji smažete, data zmizí s ní.</p>
+
+<h2>Přihlášení</h2>
+<p>Přihlásit se jde přes Apple, přes Google, nebo e-mailem a heslem. Přihlášení slouží jen jako identita uvnitř aplikace — nesynchronizuje nic a nezakládá vám u mě žádný účet, protože žádný server neexistuje.</p>
+<p>U <strong>Přihlášení přes Apple</strong> a <strong>Google</strong> proběhne komunikace mezi vaším telefonem a Applem, resp. Googlem; z jejich odpovědi si aplikace nechá jen jméno a e-mail, a to lokálně. Na to zpracování se vztahují zásady těchto společností.</p>
+
+<h2>Anonymní statistika používání</h2>
+<p>Abych viděl, co v aplikaci lidem funguje a kde se zasekávají, odesílá Goals anonymní údaje o používání. Zpracovává je služba <strong>TelemetryDeck</strong> se servery v Evropské unii.</p>
+
+<h3>Co se odesílá</h3>
+<div class="scroll">
+<table>
+  <tr><th>Údaj</th><th>Příklad</th></tr>
+  <tr><td>Název události</td><td>„založen cíl", „zaznamenán postup", „otevřen ceník", „dokončen nákup"</td></tr>
+  <tr><td>Doprovodné údaje k události</td><td>typ sledování cíle, priorita, zda má termín, který plán Pro se kupoval, ze které obrazovky se otevřel ceník</td></tr>
+  <tr><td>Náhodný identifikátor instalace</td><td>náhodně vygenerované číslo při prvním spuštění — slouží k odlišení opakovaných návštěv, není odvozené od vašeho účtu ani od telefonu</td></tr>
+  <tr><td>Technické údaje o běhu</td><td>identifikátor relace, verze systému a aplikace</td></tr>
+</table>
+</div>
+
+<h3>Co se neodesílá nikdy</h3>
+<p>Nic, co jste napsali: <strong>názvy cílů, poznámky, vlastní kategorie a jednotky, text zpětné vazby, jméno ani e-mail</strong>. Neodesílá se ani reklamní identifikátor. Aplikace nepoužívá žádnou reklamní síť a data nikomu neprodává ani nepředává k marketingu.</p>
+<p>Seznam odesílaných údajů je v kódu aplikace uzavřený výčet — hlídá ho tedy překladač, ne jen dobrý úmysl.</p>
+
+<h3>Jak to vypnout</h3>
+<p>V aplikaci: <strong>Nastavení → Soukromí → Sdílet anonymní statistiky</strong>. Po vypnutí neodejde žádný signál — z aplikace ani z widgetů.</p>
+<p class="stamp">Statistika je po instalaci <strong>zapnutá</strong>. Právním základem je oprávněný zájem na zlepšování aplikace (čl. 6 odst. 1 písm. f) GDPR); údaje jsou anonymní a neslouží k profilování ani ke sledování napříč jinými aplikacemi či weby.</p>
+
+<h2>Hlášení pádů</h2>
+<p>Pokud máte v systému zapnuté sdílení diagnostiky s vývojáři (<em>Nastavení iOS → Soukromí a zabezpečení → Analýza a vylepšení</em>), dostávám od Applu anonymizovaná hlášení o pádech aplikace. Sbírá je Apple, ne já, a řídí se jeho pravidly. V systémovém nastavení to jde kdykoli vypnout.</p>
+
+<h2>Nákupy</h2>
+<p>Pro se kupuje přes App Store. Celou platbu vyřizuje Apple — <strong>aplikace se k číslu karty ani k platebním údajům vůbec nedostane</strong>. Ví jen to, zda vám Pro náleží, nebo ne.</p>
+
+<h2>Zpětná vazba e-mailem</h2>
+<p>Když v aplikaci pošlete zpětnou vazbu, otevře se váš poštovní program s připraveným konceptem — <strong>odeslat ho musíte sami</strong> a předtím vidíte celý jeho obsah. Do textu se automaticky doplní model zařízení, verze systému a verze aplikace, aby se problém dal dohledat. Přílohy přidáváte jen vy sami.</p>
+<p>Zprávu pak mám ve své poštovní schránce a používám ji výhradně k vyřízení vašeho podnětu.</p>
+
+<h2>Připomínky a widgety</h2>
+<p>Připomínky jsou čistě lokální — plánuje je váš telefon, žádné oznámení nechodí ze serveru. Widgety čtou data ze sdílené složky téže aplikace; nikam nic neodesílají, kromě téže anonymní statistiky popsané výše (a jen když je zapnutá).</p>
+
+<h2>Děti</h2>
+<p>Aplikace není cílená na děti do 13 let a vědomě od nich nesbírá žádné údaje.</p>
+
+<h2>Vaše práva</h2>
+<p>Protože drtivá většina dat leží jen ve vašem telefonu, máte je plně pod kontrolou: smazat je můžete přímo v aplikaci, nebo odinstalováním.</p>
+<p>U anonymní statistiky nedokážu údaje přiřadit ke konkrétní osobě — neobsahují nic, čím byste šli identifikovat — takže je nelze jednotlivě vyhledat ani smazat na žádost. Odesílání ale kdykoli zastavíte přepínačem v Nastavení. Podle GDPR máte právo na přístup, opravu, výmaz, omezení zpracování a vznesení námitky; uplatnit je můžete na kontaktní adrese výše. Máte také právo podat stížnost u Úřadu pro ochranu osobních údajů.</p>
+
+<h2>Změny</h2>
+<p>Když se zpracování údajů změní, aktualizuju tuto stránku a posunu datum platnosti nahoře. Podstatné změny zmíním i v popisu aktualizace v App Store.</p>
+
+<div class="nav">
+  <a href="index.html">← Zpět na podporu</a>
+</div>
+
+<footer>
+  Goals · vyvíjí Martin Hrbek
+</footer>
+
+</div>
+</body>
+</html>
