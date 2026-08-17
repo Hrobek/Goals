@@ -13,6 +13,10 @@ struct GoalsListView: View {
     @Environment(PurchaseManager.self) private var purchaseManager
     @Query(sort: \Goal.createdAt, order: .reverse) private var goals: [Goal]
 
+    /// Pushing is driven by the path rather than by a `NavigationLink` inside each row: a link in a
+    /// List row brings a disclosure chevron the design doesn't have, and hiding it behind the card
+    /// leaves two overlapping tap targets that can push the wrong goal.
+    @State private var path: [UUID] = []
     @State private var filter: GoalStatus = .active
     @State private var isShowingAddGoal = false
     @State private var isShowingLimitAlert = false
@@ -27,33 +31,28 @@ struct GoalsListView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             VStack(alignment: .leading, spacing: 0) {
-                Picker("goals.filter", selection: $filter) {
-                    ForEach(GoalStatus.allCases) { status in
-                        Text(status.localizedName).tag(status)
-                    }
+                ScreenTitle("goals.title") {
+                    IconButton(systemImage: "plus") { addGoalTapped() }
+                        .accessibilityLabel(Text("a11y.addGoal"))
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .padding(.horizontal)
-                .padding(.top, 4)
+
+                SegmentStrip(
+                    options: GoalStatus.allCases,
+                    selection: $filter,
+                    title: { $0.localizedName }
+                )
+                .padding(.horizontal, Theme.Space.screen)
+                .padding(.top, 18)
 
                 goalsContent
             }
-            .navigationTitle("goals.title")
+            .screenGround()
+            .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: UUID.self) { id in
                 if let goal = goals.first(where: { $0.id == id }) {
                     GoalDetailView(goal: goal)
-                }
-            }
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        addGoalTapped()
-                    } label: {
-                        Image(systemName: "plus")
-                    }
                 }
             }
             .sheet(isPresented: $isShowingAddGoal) {
@@ -62,6 +61,7 @@ struct GoalsListView: View {
             .sheet(isPresented: $isShowingPaywall) {
                 PaywallView(source: .limitAlert)
             }
+            .sensoryFeedback(.warning, trigger: isShowingLimitAlert) { _, isShowing in isShowing }
             .alert("goals.limit.title", isPresented: $isShowingLimitAlert) {
                 Button("goals.limit.upgrade") { isShowingPaywall = true }
                 Button("action.ok", role: .cancel) {}
@@ -74,19 +74,39 @@ struct GoalsListView: View {
     @ViewBuilder
     private var goalsContent: some View {
         if visibleGoals.isEmpty {
-            ContentUnavailableView {
-                Label(emptyTitle, systemImage: emptySymbol)
-            } description: {
-                if filter == .active {
-                    Text("goals.empty.description")
+            VStack {
+                Spacer(minLength: 40)
+                EmptyStateView(
+                    systemImage: emptySymbol,
+                    title: emptyTitle,
+                    message: filter == .active ? "goals.empty.description" : nil
+                ) {
+                    if filter == .active {
+                        Button { addGoalTapped() } label: {
+                            Label("a11y.addGoal", systemImage: "plus")
+                        }
+                        .buttonStyle(AccentOutlineButtonStyle(height: 42))
+                        .fixedSize()
+                    }
                 }
+                Spacer()
             }
+            .frame(maxWidth: .infinity)
+            .tabBarClearance()
         } else {
+            // Still a `List` under the card styling: swiping a goal away to archive or delete it
+            // is the screen's other half, and only a List brings that with it.
             List {
                 ForEach(visibleGoals) { goal in
-                    NavigationLink(value: goal.id) {
+                    Button {
+                        path.append(goal.id)
+                    } label: {
                         GoalRow(goal: goal)
                     }
+                    .buttonStyle(.plain)
+                    .listRowInsets(EdgeInsets(top: 5, leading: Theme.Space.screen, bottom: 5, trailing: Theme.Space.screen))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
                             modelContext.delete(goal)
@@ -103,10 +123,15 @@ struct GoalsListView: View {
                                 systemImage: goal.isArchived ? "tray.and.arrow.up" : "archivebox"
                             )
                         }
-                        .tint(.orange)
+                        .tint(Theme.control)
                     }
                 }
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .scrollIndicators(.hidden)
+            .contentMargins(.top, 18, for: .scrollContent)
+            .tabBarClearance()
         }
     }
 
@@ -118,9 +143,10 @@ struct GoalsListView: View {
         }
     }
 
-    private var emptySymbol: String {
+    /// `nil` for the active tab, which draws the app's own mark instead of a symbol.
+    private var emptySymbol: String? {
         switch filter {
-        case .active: "target"
+        case .active: nil
         case .completed: "checkmark.circle"
         case .archived: "archivebox"
         }

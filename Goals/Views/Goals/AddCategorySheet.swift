@@ -23,6 +23,7 @@ struct AddCategorySheet: View {
             Form {
                 TextField("category.field.name", text: $name)
             }
+            .themedList()
             .navigationTitle("category.new.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

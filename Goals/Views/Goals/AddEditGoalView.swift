@@ -25,6 +25,9 @@ struct AddEditGoalView: View {
     @State private var milestoneDrafts: [MilestoneDraft]
     @State private var newMilestoneTitle = ""
     @State private var emoji: String?
+    /// Kept even though the scheme is mono and nothing paints with it any more: the model still
+    /// carries a colour per goal, and dropping it here would rewrite every edited goal's stored
+    /// value. It rides through untouched.
     @State private var colorHex: String
     @State private var recurrenceType: RecurrenceType
     @State private var recurrenceWeekdays: Set<Int>
@@ -108,150 +111,35 @@ struct AddEditGoalView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    HStack(spacing: 16) {
-                        Button {
-                            isShowingEmojiPicker = true
-                        } label: {
-                            ZStack {
-                                Circle()
-                                    .fill(Color(hex: colorHex).opacity(0.2))
-                                    .frame(width: 56, height: 56)
-                                if let emoji {
-                                    Text(emoji).font(.title)
-                                } else {
-                                    Image(systemName: "target")
-                                        .foregroundStyle(Color(hex: colorHex))
-                                }
-                            }
-                        }
-                        .buttonStyle(.plain)
-
-                        TextField("goal.field.title", text: $title)
-                    }
-
-                    HStack(spacing: 10) {
-                        ForEach(ColorPalette.hexValues, id: \.self) { hex in
-                            Circle()
-                                .fill(Color(hex: hex))
-                                .frame(width: 26, height: 26)
-                                .overlay {
-                                    if hex == colorHex {
-                                        Circle().stroke(Color.primary, lineWidth: 2)
-                                    }
-                                }
-                                .onTapGesture { colorHex = hex }
-                        }
-                    }
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.section) {
+                    identityRow
+                    basicsSection
+                    trackingSection
+                    recurrenceSection
+                    reminderSection
+                    widgetSection
                 }
-
-                Section {
-                    disclosureRow(title: "goal.field.category", value: category?.name) {
-                        isShowingCategoryPicker = true
-                    }
-                    Picker("goal.field.priority", selection: $priority) {
-                        ForEach(GoalPriority.allCases) { priority in
-                            Text(priority.localizedName).tag(priority)
-                        }
-                    }
-                }
-
-                Section {
-                    Toggle("goal.field.hasDeadline", isOn: $hasDeadline.animation())
-                    if hasDeadline {
-                        DatePicker("goal.field.deadline", selection: $deadline, displayedComponents: .date)
-                    }
-                }
-
-                Section("goal.field.trackingMode") {
-                    Picker("goal.field.trackingMode", selection: $trackingMode.animation()) {
-                        ForEach(GoalTrackingMode.allCases) { mode in
-                            Text(mode.localizedName).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                }
-
-                switch trackingMode {
-                case .value:
-                    Section {
-                        Toggle("goal.field.lowerIsBetter", isOn: $isLowerBetter)
-                        TextField("goal.field.startValue", text: $startValueText)
-                            .keyboardType(.decimalPad)
-                        TextField("goal.field.targetValue", text: $targetValueText)
-                            .keyboardType(.decimalPad)
-                        disclosureRow(title: "goal.field.unit", value: unitSelection.displayText) {
-                            isShowingUnitPicker = true
-                        }
-                    } footer: {
-                        if !targetValueText.isEmpty, !isRangeValid {
-                            Text(isLowerBetter ? "goal.field.range.lower" : "goal.field.range.higher")
-                                .foregroundStyle(.red)
-                        }
-                    }
-                case .milestones:
-                    Section("goalDetail.milestones") {
-                        ForEach($milestoneDrafts) { $draft in
-                            TextField("goalDetail.newMilestone", text: $draft.title)
-                        }
-                        .onDelete { milestoneDrafts.remove(atOffsets: $0) }
-                        .onMove { milestoneDrafts.move(fromOffsets: $0, toOffset: $1) }
-
-                        HStack {
-                            TextField("goalDetail.newMilestone", text: $newMilestoneTitle)
-                            Button {
-                                addMilestoneDraft()
-                            } label: {
-                                Image(systemName: "plus.circle.fill")
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(newMilestoneTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        }
-                    }
-                }
-
-                Section("goal.field.recurrence") {
-                    Picker("goal.field.recurrence", selection: $recurrenceType.animation()) {
-                        ForEach(RecurrenceType.allCases) { type in
-                            Text(type.localizedName).tag(type)
-                        }
-                    }
-
-                    switch recurrenceType {
-                    case .daily:
-                        EmptyView()
-                    case .specificWeekdays:
-                        weekdayChips
-                    case .timesPerWeek:
-                        Stepper(
-                            "recurrence.timesPerWeek.count \(recurrenceCount)",
-                            value: $recurrenceCount, in: 1...7
-                        )
-                    case .specificDaysOfMonth:
-                        daysOfMonthGrid
-                    case .timesPerMonth:
-                        Stepper(
-                            "recurrence.timesPerMonth.count \(recurrenceCount)",
-                            value: $recurrenceCount, in: 1...31
-                        )
-                    }
-                }
-
-                reminderSection
-                widgetSection
+                .padding(.horizontal, Theme.Space.screen)
+                .padding(.top, 8)
+                .padding(.bottom, 40)
             }
+            .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .screenGround()
             .navigationTitle(goal == nil
                 ? String(localized: "goal.new.title", bundle: AppLanguage.currentBundle)
                 : String(localized: "goal.edit.title", bundle: AppLanguage.currentBundle))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Theme.ground, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("action.cancel") { dismiss() }
+                        .foregroundStyle(Theme.textMuted)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("action.save") { save() }
+                        .foregroundStyle(isValid ? Theme.accentText : Theme.textGhost)
                         .disabled(!isValid)
                 }
             }
@@ -290,92 +178,283 @@ struct AddEditGoalView: View {
         }
     }
 
-    private func disclosureRow(
-        title: LocalizedStringKey,
-        value: String?,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack {
-                Text(title)
-                    .foregroundStyle(.primary)
-                Spacer()
-                Text(value ?? "—")
-                    .foregroundStyle(.secondary)
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-    }
+    // MARK: - Identity
 
-    @ViewBuilder
-    private var reminderSection: some View {
-        Section {
-            Toggle("reminder.enabled", isOn: $isReminderOn.animation())
-
-            if isReminderOn {
-                Picker("reminder.frequency", selection: $reminderFrequency.animation()) {
-                    ForEach(ReminderFrequency.allCases) { frequency in
-                        Text(frequency.localizedName).tag(frequency)
+    /// The two things that make a goal recognisable: its emoji and its name. The dashed ring says
+    /// the emoji is a thing you pick, not decoration the app chose.
+    private var identityRow: some View {
+        HStack(spacing: 14) {
+            Button {
+                isShowingEmojiPicker = true
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(Theme.control)
+                        .overlay {
+                            Circle().strokeBorder(
+                                Theme.textFaint,
+                                style: StrokeStyle(lineWidth: 1, dash: [4, 3])
+                            )
+                        }
+                    if let emoji {
+                        Text(emoji).font(.system(size: 26))
+                    } else {
+                        Image(systemName: "face.smiling")
+                            .font(.system(size: 22))
+                            .foregroundStyle(Theme.textMuted)
                     }
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-
-                DatePicker("reminder.time", selection: $reminderTime, displayedComponents: .hourAndMinute)
-
-                if reminderFrequency == .weekly {
-                    weekdayChips(selection: $reminderWeekdays)
-                }
+                .frame(width: 56, height: 56)
             }
-        } header: {
-            Text("reminder.title")
-        } footer: {
-            if isReminderOn, reminderFrequency == .weekly, reminderWeekdays.isEmpty {
-                Text("reminder.pickDays")
-                    .foregroundStyle(.red)
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("goal.field.emoji"))
+
+            VStack(alignment: .leading, spacing: 9) {
+                TextField("goal.field.title", text: $title)
+                    .font(.system(size: 19, weight: .medium))
+                    .foregroundStyle(Theme.text)
+                Rectangle()
+                    .fill(Theme.textGhost)
+                    .frame(height: 1)
+            }
+        }
+    }
+
+    // MARK: - Sections
+
+    private var basicsSection: some View {
+        CardGroup {
+            DisclosureRow(label: "goal.field.category", value: category?.name) {
+                isShowingCategoryPicker = true
+            }
+            RowDivider()
+            MenuRow(
+                label: "goal.field.priority",
+                options: GoalPriority.allCases,
+                selection: $priority,
+                title: { $0.localizedName }
+            )
+            RowDivider()
+            SwitchRow(label: "goal.field.hasDeadline", isOn: $hasDeadline.animation())
+            if hasDeadline {
+                RowDivider()
+                HStack {
+                    Text("goal.field.deadline")
+                        .font(Theme.Typo.row)
+                        .foregroundStyle(Theme.textMuted)
+                    Spacer(minLength: 10)
+                    DatePicker("goal.field.deadline", selection: $deadline, displayedComponents: .date)
+                        .labelsHidden()
+                }
+                .padding(.vertical, 9)
             }
         }
     }
 
     @ViewBuilder
-    private var widgetSection: some View {
-        Section {
-            Picker("widget.action", selection: $widgetAction.animation()) {
-                ForEach(WidgetAction.allCases) { action in
-                    Text(action.localizedName).tag(action)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+    private var trackingSection: some View {
+        LabeledSection("goal.field.trackingMode") {
+            VStack(alignment: .leading, spacing: Theme.Space.card) {
+                SegmentStrip(
+                    options: GoalTrackingMode.allCases,
+                    selection: $trackingMode.animation(),
+                    title: { $0.localizedName }
+                )
 
-            if widgetAction == .quickAction, trackingMode == .value {
-                HStack {
-                    Text("widget.amount")
-                    Spacer()
-                    TextField("widget.amount", text: $widgetAmountText)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(maxWidth: 90)
-                    Text(unitSelection.displayText)
-                        .foregroundStyle(.secondary)
+                switch trackingMode {
+                case .value:
+                    CardGroup {
+                        SwitchRow(label: "goal.field.lowerIsBetter", isOn: $isLowerBetter)
+                        RowDivider()
+                        TextFieldRow(label: "goal.field.startValue", text: $startValueText, keyboard: .decimalPad)
+                        RowDivider()
+                        TextFieldRow(label: "goal.field.targetValue", text: $targetValueText, keyboard: .decimalPad)
+                        RowDivider()
+                        DisclosureRow(label: "goal.field.unit", value: unitSelection.displayText) {
+                            isShowingUnitPicker = true
+                        }
+                    }
+                    if !targetValueText.isEmpty, !isRangeValid {
+                        Text(isLowerBetter ? "goal.field.range.lower" : "goal.field.range.higher")
+                            .font(Theme.Typo.footnote)
+                            .foregroundStyle(Theme.accentText)
+                            .padding(.horizontal, 4)
+                    }
+                case .milestones:
+                    milestonesCard
                 }
-            }
-        } header: {
-            Text("widget.title")
-        } footer: {
-            if widgetAction == .quickAction, trackingMode == .milestones {
-                Text("widget.milestoneHint")
             }
         }
     }
 
-    private var weekdayChips: some View {
-        weekdayChips(selection: $recurrenceWeekdays)
+    private var milestonesCard: some View {
+        CardGroup {
+            ForEach($milestoneDrafts) { $draft in
+                HStack(spacing: 11) {
+                    Image(systemName: draft.isCompleted ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 18))
+                        .foregroundStyle(draft.isCompleted ? Theme.accent : Theme.textGhost)
+                        .accessibilityHidden(true)
+                    TextField("goalDetail.newMilestone", text: $draft.title)
+                        .font(Theme.Typo.row)
+                        .foregroundStyle(Theme.text)
+                    Button {
+                        milestoneDrafts.removeAll { $0.id == draft.id }
+                    } label: {
+                        Image(systemName: "minus.circle")
+                            .font(.system(size: 17))
+                            .foregroundStyle(Theme.textGhost)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("action.delete"))
+                }
+                .padding(.vertical, 11)
+                RowDivider()
+            }
+
+            HStack(spacing: 11) {
+                Image(systemName: "plus.circle")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Theme.accent)
+                    .accessibilityHidden(true)
+                TextField("goalDetail.newMilestone", text: $newMilestoneTitle)
+                    .font(Theme.Typo.row)
+                    .foregroundStyle(Theme.text)
+                    .submitLabel(.done)
+                    .onSubmit { addMilestoneDraft() }
+                Button {
+                    addMilestoneDraft()
+                } label: {
+                    Text("action.save")
+                        .font(Theme.Typo.captionEmphasis)
+                        .foregroundStyle(Theme.accentText)
+                }
+                .buttonStyle(.plain)
+                .disabled(newMilestoneTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .opacity(newMilestoneTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0 : 1)
+                .accessibilityLabel(Text("a11y.addMilestone"))
+            }
+            .padding(.vertical, 11)
+        }
     }
+
+    private var recurrenceSection: some View {
+        LabeledSection("goal.field.recurrence") {
+            CardGroup {
+                MenuRow(
+                    label: "goal.field.recurrence",
+                    options: RecurrenceType.allCases,
+                    selection: $recurrenceType.animation(),
+                    title: { $0.localizedName }
+                )
+
+                switch recurrenceType {
+                case .daily:
+                    EmptyView()
+                case .specificWeekdays:
+                    RowDivider()
+                    weekdayChips(selection: $recurrenceWeekdays)
+                        .padding(.vertical, 14)
+                case .timesPerWeek:
+                    RowDivider()
+                    Stepper(value: $recurrenceCount, in: 1...7) {
+                        Text("recurrence.timesPerWeek.count \(recurrenceCount)")
+                            .font(Theme.Typo.row)
+                            .foregroundStyle(Theme.text)
+                    }
+                    .padding(.vertical, 9)
+                case .specificDaysOfMonth:
+                    RowDivider()
+                    daysOfMonthGrid
+                        .padding(.vertical, 14)
+                case .timesPerMonth:
+                    RowDivider()
+                    Stepper(value: $recurrenceCount, in: 1...31) {
+                        Text("recurrence.timesPerMonth.count \(recurrenceCount)")
+                            .font(Theme.Typo.row)
+                            .foregroundStyle(Theme.text)
+                    }
+                    .padding(.vertical, 9)
+                }
+            }
+        }
+    }
+
+    private var reminderSection: some View {
+        LabeledSection("reminder.title") {
+            VStack(alignment: .leading, spacing: 8) {
+                CardGroup {
+                    SwitchRow(label: "reminder.enabled", isOn: $isReminderOn.animation())
+
+                    if isReminderOn {
+                        RowDivider()
+                        MenuRow(
+                            label: "reminder.frequency",
+                            options: ReminderFrequency.allCases,
+                            selection: $reminderFrequency.animation(),
+                            title: { $0.localizedName }
+                        )
+                        RowDivider()
+                        HStack {
+                            Text("reminder.time")
+                                .font(Theme.Typo.row)
+                                .foregroundStyle(Theme.textMuted)
+                            Spacer(minLength: 10)
+                            DatePicker("reminder.time", selection: $reminderTime, displayedComponents: .hourAndMinute)
+                                .labelsHidden()
+                        }
+                        .padding(.vertical, 9)
+
+                        if reminderFrequency == .weekly {
+                            RowDivider()
+                            weekdayChips(selection: $reminderWeekdays)
+                                .padding(.vertical, 14)
+                        }
+                    }
+                }
+
+                if isReminderOn, reminderFrequency == .weekly, reminderWeekdays.isEmpty {
+                    Text("reminder.pickDays")
+                        .font(Theme.Typo.footnote)
+                        .foregroundStyle(Theme.accentText)
+                        .padding(.horizontal, 4)
+                }
+            }
+        }
+    }
+
+    private var widgetSection: some View {
+        LabeledSection("widget.title") {
+            VStack(alignment: .leading, spacing: 8) {
+                SegmentStrip(
+                    options: WidgetAction.allCases,
+                    selection: $widgetAction.animation(),
+                    title: { $0.localizedName }
+                )
+
+                if widgetAction == .quickAction, trackingMode == .value {
+                    CardGroup {
+                        TextFieldRow(
+                            label: "widget.amount",
+                            text: $widgetAmountText,
+                            keyboard: .decimalPad,
+                            suffix: unitSelection.displayText
+                        )
+                    }
+                }
+
+                if widgetAction == .quickAction, trackingMode == .milestones {
+                    Text("widget.milestoneHint")
+                        .font(Theme.Typo.footnote)
+                        .foregroundStyle(Theme.textGhost)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 4)
+                }
+            }
+        }
+    }
+
+    // MARK: - Day pickers
 
     private func weekdayChips(selection: Binding<Set<Int>>) -> some View {
         HStack(spacing: 6) {
@@ -389,20 +468,22 @@ struct AddEditGoalView: View {
                     }
                 } label: {
                     Text(Recurrence.weekdayAbbreviation(day))
-                        .font(.caption.bold())
+                        .font(.system(size: 11.5, weight: isSelected ? .medium : .regular))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                        .background(isSelected ? Color.accentColor : Color.secondary.opacity(0.15))
-                        .foregroundStyle(isSelected ? Color.white : Color.primary)
-                        .clipShape(Capsule())
+                        .frame(height: 32)
+                        .background(isSelected ? Theme.accent : Theme.control, in: .capsule)
+                        .foregroundStyle(isSelected ? Theme.onAccent : Theme.textMuted)
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
             }
         }
     }
 
     private var daysOfMonthGrid: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
             ForEach(1...31, id: \.self) { day in
                 let isSelected = recurrenceDaysOfMonth.contains(day)
                 Button {
@@ -413,16 +494,16 @@ struct AddEditGoalView: View {
                     }
                 } label: {
                     Text("\(day)")
-                        .font(.caption)
+                        .font(.system(size: 12, weight: isSelected ? .medium : .regular))
+                        .monospacedDigit()
                         .frame(width: 32, height: 32)
-                        .background(isSelected ? Color.accentColor : Color.secondary.opacity(0.15))
-                        .foregroundStyle(isSelected ? Color.white : Color.primary)
-                        .clipShape(Circle())
+                        .background(isSelected ? Theme.accent : Theme.control, in: .circle)
+                        .foregroundStyle(isSelected ? Theme.onAccent : Theme.textMuted)
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
             }
         }
-        .padding(.vertical, 4)
     }
 
     private func addMilestoneDraft() {

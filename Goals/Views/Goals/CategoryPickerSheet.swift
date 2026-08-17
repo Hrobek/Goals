@@ -32,7 +32,7 @@ struct CategoryPickerSheet: View {
                                 Spacer()
                                 if selection?.id == category.id {
                                     Image(systemName: "checkmark")
-                                        .foregroundStyle(Color.accentColor)
+                                        .foregroundStyle(Theme.accentText)
                                 }
                             }
                             .contentShape(.rect)
@@ -50,6 +50,7 @@ struct CategoryPickerSheet: View {
                     }
                 }
             }
+            .themedList()
             .navigationTitle("goal.field.category")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

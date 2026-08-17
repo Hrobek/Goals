@@ -87,6 +87,11 @@ struct ScheduleActivityView: View {
         return (0..<count).compactMap { calendar.date(byAdding: .day, value: $0, to: interval.start) }
     }
 
+    private var doneCountInPeriod: Int {
+        let days = checkInDays
+        return periodDays.count { days.contains(calendar.startOfDay(for: $0)) }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             switch range {
@@ -100,38 +105,69 @@ struct ScheduleActivityView: View {
 
     // MARK: - Layouts
 
+    // Plain stacks rather than a `LazyVGrid`: square cells inside a lazy grid resolve their size
+    // from a width the grid only knows after the fact, so on a screen with a Chart above them the
+    // grid measured one row short and the last week spilled out past the card. Rows of at most
+    // seven cells are nothing to be lazy about anyway.
+
     private var weekGrid: some View {
-        LazyVGrid(columns: columns(count: 7, spacing: 6), spacing: 4) {
-            // Keyed by weekday, not by date: two sibling ForEach over the same dates would share
-            // ids inside one grid and collapse the row of cells.
-            ForEach(weekdayOrder, id: \.self) { weekday in
-                Text(Recurrence.weekdayAbbreviation(weekday))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            ForEach(periodDays, id: \.self) { day in
-                cell(for: day, cornerRadius: 6)
-                    .aspectRatio(1, contentMode: .fit)
+        VStack(spacing: 4) {
+            weekdayHeader(spacing: 6)
+            HStack(spacing: 6) {
+                ForEach(periodDays, id: \.self) { day in
+                    square { cell(for: day, cornerRadius: 6) }
+                }
             }
         }
     }
 
     private var monthGrid: some View {
-        LazyVGrid(columns: columns(count: 7, spacing: 4), spacing: 4) {
-            ForEach(weekdayOrder, id: \.self) { weekday in
-                Text(Recurrence.weekdayAbbreviation(weekday))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
+        VStack(spacing: 4) {
+            weekdayHeader(spacing: 4)
             // Blanks so the first day of the month lands under its weekday column.
-            ForEach((0..<leadingBlanks(before: periodDays.first)).map(BlankDay.init), id: \.self) { _ in
-                Color.clear.aspectRatio(1, contentMode: .fit)
-            }
-            ForEach(periodDays, id: \.self) { day in
-                cell(for: day, cornerRadius: 5)
-                    .aspectRatio(1, contentMode: .fit)
+            ForEach(Array(monthWeeks.enumerated()), id: \.offset) { _, week in
+                HStack(spacing: 4) {
+                    ForEach(Array(week.enumerated()), id: \.offset) { _, day in
+                        square {
+                            if let day {
+                                cell(for: day, cornerRadius: 5)
+                            } else {
+                                Color.clear
+                            }
+                        }
+                    }
+                }
             }
         }
+    }
+
+    /// The month laid out a week to a row, padded with `nil` at both ends so every row has seven
+    /// slots and the columns line up under their weekday.
+    private var monthWeeks: [[Date?]] {
+        var slots: [Date?] = Array(repeating: nil, count: leadingBlanks(before: periodDays.first))
+        slots += periodDays.map { Optional($0) }
+        if slots.count % 7 != 0 {
+            slots += Array(repeating: nil, count: 7 - slots.count % 7)
+        }
+        return stride(from: 0, to: slots.count, by: 7).map { Array(slots[$0..<$0 + 7]) }
+    }
+
+    private func weekdayHeader(spacing: CGFloat) -> some View {
+        HStack(spacing: spacing) {
+            ForEach(weekdayOrder, id: \.self) { weekday in
+                Text(Recurrence.weekdayAbbreviation(weekday))
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(Theme.textGhost)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    /// One cell of a row: an equal share of the width, kept square.
+    private func square<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .frame(maxWidth: .infinity)
+            .aspectRatio(1, contentMode: .fit)
     }
 
     private var yearGrid: some View {
@@ -153,13 +189,13 @@ struct ScheduleActivityView: View {
         // The current year reads left-to-right up to today, so anchor on today's edge; a past
         // year is complete, so start from the beginning instead.
         .defaultScrollAnchor(offset == 0 ? .trailing : .leading)
+        // Swiping through 365 labelled squares one at a time is no way to learn how a year went,
+        // so the year view answers the actual question in one element instead.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("a11y.activity.summary \(doneCountInPeriod) \(periodDays.count)"))
     }
 
     // MARK: - Days
-
-    private func columns(count: Int, spacing: CGFloat) -> [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: spacing), count: count)
-    }
 
     /// Weekday numbers in the order the calendar lays them out (respects `firstWeekday`).
     private var weekdayOrder: [Int] {
@@ -185,16 +221,29 @@ struct ScheduleActivityView: View {
             .overlay {
                 if calendar.isDateInToday(day) {
                     RoundedRectangle(cornerRadius: cornerRadius)
-                        .stroke(Color.primary.opacity(0.4), lineWidth: 1.5)
+                        .stroke(Theme.text, lineWidth: 1.5)
                 }
             }
+            // A filled square carries all its meaning in colour, so each day has to say its date
+            // and its state out loud.
+            .accessibilityElement()
+            .accessibilityLabel(Text("\(day.formatted(date: .abbreviated, time: .omitted)), \(stateDescription(for: day))"))
+    }
+
+    private func stateDescription(for day: Date) -> String {
+        let key: String.LocalizationValue = switch state(for: day) {
+        case .done: "a11y.day.done"
+        case .scheduled: "a11y.day.scheduled"
+        case .blocked: "a11y.day.notScheduled"
+        }
+        return String(localized: key, bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
     }
 
     private func fill(for day: Date) -> Color {
         switch state(for: day) {
-        case .done: Color(hex: goal.colorHex)
-        case .scheduled: Color.secondary.opacity(0.18)
-        case .blocked: Color.secondary.opacity(0.05)
+        case .done: Theme.accent
+        case .scheduled: Theme.cellScheduled
+        case .blocked: Theme.cellBlocked
         }
     }
 
@@ -212,8 +261,8 @@ struct ScheduleActivityView: View {
         if appliesToRange, let interval {
             let done = goal.checkIns.filter { interval.contains($0.date) }.count
             Text("stats.quota \(done) \(goal.recurrenceCount)")
-                .font(.caption)
-                .foregroundStyle(done >= goal.recurrenceCount ? Color.green : Color.secondary)
+                .font(Theme.Typo.caption)
+                .foregroundStyle(done >= goal.recurrenceCount ? Theme.accentBright : Theme.textFaint)
         }
     }
 }

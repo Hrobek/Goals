@@ -161,7 +161,7 @@ struct ChartWidgetEntryView: View {
                 } else {
                     Text("goalDetail.chart.empty")
                         .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textFaint)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 // Side by side rather than stacked: the chart is the point of this widget, and a
@@ -169,7 +169,7 @@ struct ChartWidgetEntryView: View {
                 HStack(spacing: 6) {
                     Text(snapshot.periodLabel)
                         .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textFaint)
                         .lineLimit(1)
                     Spacer(minLength: 4)
                     WidgetPager(
@@ -196,11 +196,11 @@ struct ChartWidgetEntryView: View {
             ForEach(snapshot.points) { point in
                 LineMark(x: .value(dateLabel, point.date), y: .value(valueLabel, point.value))
                     .interpolationMethod(.monotone)
-                    .foregroundStyle(Color(hex: snapshot.colorHex))
+                    .foregroundStyle(Theme.accent)
             }
             RuleMark(y: .value(targetLabel, snapshot.target))
                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textFaint)
         }
         .chartXScale(domain: snapshot.domain)
         // `automatic` rather than a fixed stride: a stride from the 1st lands its last label on the
@@ -209,18 +209,18 @@ struct ChartWidgetEntryView: View {
         // widget's accent tint in Charts and comes out blue.
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: family == .systemLarge ? 5 : 3)) { _ in
-                AxisGridLine().foregroundStyle(Color.secondary.opacity(0.15))
+                AxisGridLine().foregroundStyle(Theme.hairlineSoft)
                 AxisValueLabel(format: .dateTime.day().month(.abbreviated).locale(locale))
                     .font(.system(size: 8))
-                    .foregroundStyle(Color.secondary)
+                    .foregroundStyle(Theme.textFaint)
             }
         }
         .chartYAxis {
             AxisMarks(position: .trailing, values: .automatic(desiredCount: family == .systemLarge ? 4 : 3)) { _ in
-                AxisGridLine().foregroundStyle(Color.secondary.opacity(0.15))
+                AxisGridLine().foregroundStyle(Theme.hairlineSoft)
                 AxisValueLabel()
                     .font(.system(size: 8))
-                    .foregroundStyle(Color.secondary)
+                    .foregroundStyle(Theme.textFaint)
             }
         }
         .chartPlotStyle { plot in
@@ -247,7 +247,7 @@ struct ProgressChartWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: WidgetKind.progressChart, provider: ChartProvider()) { entry in
             ChartWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(Theme.ground, for: .widget)
                 .environment(\.locale, AppLanguage.current.locale)
         }
         .configurationDisplayName("widget.chart.displayName")

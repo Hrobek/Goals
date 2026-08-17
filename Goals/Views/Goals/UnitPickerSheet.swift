@@ -51,6 +51,7 @@ struct UnitPickerSheet: View {
                     }
                 }
             }
+            .themedList()
             .navigationTitle("goal.field.unit")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -75,12 +76,15 @@ struct UnitPickerSheet: View {
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Theme.accentText)
                 }
             }
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        // The tick is what "selected" looks like; the trait is what it sounds like.
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
     private func deleteCustomUnits(at offsets: IndexSet) {

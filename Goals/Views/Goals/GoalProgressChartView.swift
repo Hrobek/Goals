@@ -66,25 +66,39 @@ struct GoalProgressChartView: View {
                         y: .value(valueLabel, point.value)
                     )
                     .interpolationMethod(.monotone)
-                    .foregroundStyle(Color(hex: goal.colorHex))
+                    .foregroundStyle(Theme.accent)
                     PointMark(
                         x: .value(dateLabel, point.date),
                         y: .value(valueLabel, point.value)
                     )
-                    .foregroundStyle(Color(hex: goal.colorHex))
+                    .foregroundStyle(Theme.accent)
+                    // Only the points carry accessibility, not the line as well — otherwise every
+                    // reading is announced twice on the way through.
+                    .accessibilityLabel(point.date.formatted(date: .abbreviated, time: .omitted))
+                    .accessibilityValue(goal.valueWithUnit(point.value, formattedValue: point.value.formatted(.number.precision(.fractionLength(0...1)))))
                 }
                 RuleMark(y: .value(targetLabel, goal.targetValue))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.accentSpent)
+                    .accessibilityLabel(targetLabel)
+                    .accessibilityValue(goal.valueWithUnit(goal.targetValue, formattedValue: goal.targetValue.formatted(.number.precision(.fractionLength(0...1)))))
             }
             .chartXScale(domain: xDomain)
             .chartXAxis { axisMarks }
-            .frame(height: 160)
-            .padding(.vertical, 4)
+            // Values down the left, as in the mock — and it keeps the last date label on the x-axis
+            // from being squeezed against the y-axis labels and truncated to "29…".
+            .chartYAxis {
+                AxisMarks(position: .leading) { _ in
+                    AxisGridLine().foregroundStyle(Theme.hairlineSoft)
+                    AxisValueLabel().foregroundStyle(Theme.textFaint)
+                }
+            }
+            .frame(height: 150)
         } else {
             Text("goalDetail.chart.empty")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(Theme.Typo.caption)
+                .foregroundStyle(Theme.textFaint)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -100,18 +114,21 @@ struct GoalProgressChartView: View {
         switch range {
         case .week:
             AxisMarks(values: .stride(by: .day)) { _ in
-                AxisGridLine()
+                AxisGridLine().foregroundStyle(Theme.hairlineSoft)
                 AxisValueLabel(format: .dateTime.weekday(.abbreviated).locale(locale))
+                    .foregroundStyle(Theme.textFaint)
             }
         case .month:
             AxisMarks(values: .stride(by: .day, count: 7)) { _ in
-                AxisGridLine()
+                AxisGridLine().foregroundStyle(Theme.hairlineSoft)
                 AxisValueLabel(format: .dateTime.day().month(.abbreviated).locale(locale))
+                    .foregroundStyle(Theme.textFaint)
             }
         case .year:
             AxisMarks(values: .stride(by: .month)) { _ in
-                AxisGridLine()
+                AxisGridLine().foregroundStyle(Theme.hairlineSoft)
                 AxisValueLabel(format: .dateTime.month(.abbreviated).locale(locale))
+                    .foregroundStyle(Theme.textFaint)
             }
         }
     }

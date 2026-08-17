@@ -77,13 +77,14 @@ struct FeedbackView: View {
             Section {
                 DisclosureGroup("feedback.diagnostics") {
                     Text(Diagnostics.summary)
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 12).monospaced())
+                        .foregroundStyle(Theme.textFaint)
                 }
             } footer: {
                 Text("feedback.diagnostics.footer")
             }
         }
+        .themedList()
         .navigationTitle("feedback.title")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -210,7 +211,7 @@ private struct AttachmentRow: View {
         HStack(spacing: 12) {
             ZStack {
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.secondary.opacity(0.15))
+                    .fill(Theme.control)
                     .frame(width: 44, height: 44)
                 if let preview = attachment.preview {
                     Image(uiImage: preview)
@@ -220,7 +221,7 @@ private struct AttachmentRow: View {
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                 } else {
                     Image(systemName: attachment.isVideo ? "film" : "doc")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textMuted)
                 }
             }
 
@@ -229,8 +230,8 @@ private struct AttachmentRow: View {
                     .font(.subheadline)
                     .lineLimit(1)
                 Text(attachment.byteCount.formatted(.byteCount(style: .file)))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(Theme.Typo.caption)
+                    .foregroundStyle(Theme.textFaint)
             }
         }
     }

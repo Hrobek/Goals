@@ -69,16 +69,17 @@ struct EmailAuthFormView: View {
 
                 if passwordsMismatch {
                     Text("auth.error.passwordMismatch")
-                        .foregroundStyle(.red)
-                        .font(.footnote)
+                        .foregroundStyle(Theme.accentText)
+                        .font(Theme.Typo.footnote)
                 }
 
                 if let errorMessage {
                     Text(errorMessage)
-                        .foregroundStyle(.red)
-                        .font(.footnote)
+                        .foregroundStyle(Theme.accentText)
+                        .font(Theme.Typo.footnote)
                 }
             }
+            .themedList()
             .navigationTitle(mode.localizedName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

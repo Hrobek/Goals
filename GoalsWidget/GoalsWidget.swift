@@ -184,10 +184,10 @@ struct GoalsWidgetEntryView: View {
         VStack(spacing: 6) {
             Image(systemName: "checkmark.circle")
                 .font(.title2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.accentSpent)
             Text("today.empty.title")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textFaint)
                 .multilineTextAlignment(.center)
         }
     }
@@ -209,18 +209,17 @@ private struct GoalRowView: View {
         HStack(spacing: isCompact ? 6 : 8) {
             Link(destination: GoalLink.url(for: goal.id)) {
                 HStack(spacing: isCompact ? 5 : 6) {
-                    Text(goal.emoji ?? "🎯")
-                        .font(isCompact ? .caption2 : .caption)
+                    GoalIdentity(emoji: goal.emoji, size: isCompact ? 12 : 14)
                     if isCompact {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(goal.title)
                                 .font(.caption2.weight(.semibold))
                                 .lineLimit(1)
                             HStack(spacing: 4) {
-                                ThinProgressBar(progress: goal.progress, color: Color(hex: goal.colorHex))
+                                ThinProgressBar(progress: goal.progress)
                                 Text(goal.detail)
                                     .font(.system(size: 9))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Theme.textFaint)
                                     .lineLimit(1)
                                     .fixedSize()
                             }
@@ -234,10 +233,10 @@ private struct GoalRowView: View {
                                 Spacer(minLength: 4)
                                 Text(goal.detail)
                                     .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Theme.textFaint)
                                     .lineLimit(1)
                             }
-                            ThinProgressBar(progress: goal.progress, color: Color(hex: goal.colorHex))
+                            ThinProgressBar(progress: goal.progress)
                         }
                     }
                 }
@@ -245,11 +244,12 @@ private struct GoalRowView: View {
             }
 
             if let label = goal.actionLabel {
-                QuickActionButton(goalID: goal.id, label: label, colorHex: goal.colorHex, width: isCompact ? 32 : 42)
+                QuickActionButton(goalID: goal.id, title: goal.title, label: label, width: isCompact ? 32 : 42)
             } else if goal.isDoneToday {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.caption2)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Theme.accent)
+                    .accessibilityLabel(Text("a11y.today.done"))
             }
         }
     }
@@ -259,13 +259,12 @@ private struct GoalRowView: View {
 /// minimum height — this one can be as thin as the compact row needs.
 private struct ThinProgressBar: View {
     let progress: Double
-    let color: Color
 
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
-                Capsule().fill(color.opacity(0.2))
-                Capsule().fill(color).frame(width: geometry.size.width * min(max(progress, 0), 1))
+                Capsule().fill(Theme.track)
+                Capsule().fill(Theme.accent).frame(width: geometry.size.width * min(max(progress, 0), 1))
             }
         }
         .frame(height: 3)
@@ -274,8 +273,8 @@ private struct ThinProgressBar: View {
 
 private struct QuickActionButton: View {
     let goalID: UUID
+    let title: String
     let label: String
-    let colorHex: String
     let width: CGFloat
 
     var body: some View {
@@ -286,11 +285,14 @@ private struct QuickActionButton: View {
                 .minimumScaleFactor(0.6)
                 .frame(width: width)
                 .padding(.vertical, 4)
-                .background(Color(hex: colorHex).opacity(0.2))
-                .foregroundStyle(Color(hex: colorHex))
+                .background(Theme.accentWell)
+                .foregroundStyle(Theme.accentWellText)
                 .clipShape(Capsule())
+                .overlay { Capsule().strokeBorder(Theme.accentWellBorder, lineWidth: 1) }
         }
         .buttonStyle(.plain)
+        // On a home screen full of these, "+250" alone doesn't say which goal it belongs to.
+        .accessibilityLabel(Text("a11y.widget.quickAction \(title)"))
     }
 }
 
@@ -311,7 +313,7 @@ struct GoalsWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: GoalsProvider()) { entry in
             GoalsWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(Theme.ground, for: .widget)
                 // Follows the in-app language override, the same way `RootView` applies it: `Text`
                 // resolves its key against this locale, not the device's.
                 .environment(\.locale, AppLanguage.current.locale)

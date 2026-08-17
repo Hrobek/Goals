@@ -10,33 +10,40 @@ import SwiftUI
 struct ProLockedCard: View {
     let title: LocalizedStringKey
     let message: LocalizedStringKey
-    let systemImage: String
 
     @State private var isShowingPaywall = false
 
     var body: some View {
-        VStack(spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.title2)
-                .foregroundStyle(.secondary)
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-            Text(message)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            Button {
-                isShowingPaywall = true
-            } label: {
-                Text("settings.pro.upgrade")
-                    .font(.caption.weight(.semibold))
+        Button {
+            isShowingPaywall = true
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "lock")
+                    .font(.system(size: 17))
+                    .foregroundStyle(Theme.accentSpent)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(Theme.Typo.captionEmphasis)
+                        .foregroundStyle(Theme.text)
+                    Text(message)
+                        .font(Theme.Typo.caption)
+                        .foregroundStyle(Theme.textFaint)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 8)
+
+                // "Pro" is the tier's name, not a word to translate.
+                AccentPill(text: "Pro")
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
-            .padding(.top, 2)
+            .cardSurface()
+            .contentShape(.rect)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 18)
+        .buttonStyle(.plain)
+        .accessibilityHint(Text("settings.pro.upgrade"))
         .sheet(isPresented: $isShowingPaywall) {
             PaywallView(source: .lockedFeature)
         }
@@ -44,10 +51,8 @@ struct ProLockedCard: View {
 }
 
 #Preview {
-    Form {
-        Section {
-            ProLockedCard(title: "stats.trends.title", message: "stats.trends.locked", systemImage: "chart.xyaxis.line")
-        }
-    }
-    .environment(PurchaseManager())
+    ProLockedCard(title: "stats.trends.title", message: "stats.trends.locked")
+        .padding()
+        .screenGround()
+        .environment(PurchaseManager())
 }

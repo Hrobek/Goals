@@ -17,7 +17,7 @@ struct TrendsSection: View {
     }
 
     var body: some View {
-        Section {
+        VStack(alignment: .leading, spacing: 0) {
             MonthComparisonRow(checkIns: checkIns)
 
             Chart(weeklyPoints) { point in
@@ -25,18 +25,37 @@ struct TrendsSection: View {
                     x: .value(weekLabel, point.weekStart, unit: .weekOfYear),
                     y: .value(checkInsLabel, point.count)
                 )
-                .foregroundStyle(Color.accentColor)
+                .cornerRadius(3)
+                // The most recent weeks carry the accent, the older ones fall back to grey — the
+                // eye lands on "lately" first, which is the question the chart answers.
+                .foregroundStyle(point.isRecent ? Theme.accent : Theme.textGhost)
+                // Charts hands VoiceOver raw plot values otherwise ("1.7976931348623157e+308"
+                // style dates included); spelling each bar out makes the chart navigable.
+                .accessibilityLabel(point.weekStart.formatted(date: .abbreviated, time: .omitted))
+                .accessibilityValue("\(point.count) \(checkInsLabel)")
             }
             .chartXAxis {
-                AxisMarks(values: .stride(by: .weekOfYear, count: 3))
+                AxisMarks(values: .stride(by: .weekOfYear, count: 3)) { _ in
+                    AxisGridLine().foregroundStyle(Theme.hairlineSoft)
+                    AxisValueLabel().foregroundStyle(Theme.textFaint)
+                }
             }
-            .frame(height: 140)
-            .padding(.vertical, 4)
-        } header: {
-            Text("stats.trends.title")
-        } footer: {
+            .chartYAxis {
+                AxisMarks { _ in
+                    AxisGridLine().foregroundStyle(Theme.hairlineSoft)
+                    AxisValueLabel().foregroundStyle(Theme.textFaint)
+                }
+            }
+            .frame(height: 130)
+            .padding(.top, 16)
+
             Text("stats.trends.footer")
+                .font(Theme.Typo.footnote)
+                .foregroundStyle(Theme.textFaint)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 8)
         }
+        .cardSurface(padding: 16)
     }
 
     private var weekLabel: String {
@@ -52,6 +71,8 @@ struct WeeklyActivityPoint: Identifiable {
     let id = UUID()
     let weekStart: Date
     let count: Int
+    /// Inside the last quarter of the window — the part the chart paints in the accent.
+    var isRecent = false
 
     /// The last `n` calendar weeks ending with the current one, zero-filled so the chart always
     /// shows a full run of bars instead of gaps where nothing happened.
@@ -64,9 +85,14 @@ struct WeeklyActivityPoint: Identifiable {
             counts[start, default: 0] += 1
         }
 
+        let recentCutoff = max(1, n / 3)
         return (0..<n).reversed().compactMap { offset in
             guard let weekStart = calendar.date(byAdding: .weekOfYear, value: -offset, to: currentWeek.start) else { return nil }
-            return WeeklyActivityPoint(weekStart: weekStart, count: counts[weekStart] ?? 0)
+            return WeeklyActivityPoint(
+                weekStart: weekStart,
+                count: counts[weekStart] ?? 0,
+                isRecent: offset < recentCutoff
+            )
         }
     }
 }
@@ -91,24 +117,27 @@ private struct MonthComparisonRow: View {
     private var delta: Int { thisMonthCount - lastMonthCount }
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("stats.trends.thisMonth")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(Theme.Typo.footnote)
+                    .foregroundStyle(Theme.textFaint)
                 Text("\(thisMonthCount)")
-                    .font(.title2.bold().monospacedDigit())
+                    .font(Theme.Typo.statMedium)
+                    .foregroundStyle(Theme.text)
             }
 
             Spacer()
 
             if lastMonthCount > 0 || thisMonthCount > 0 {
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     Image(systemName: delta >= 0 ? "arrow.up.right" : "arrow.down.right")
+                        .font(.system(size: 13))
                     Text(deltaText)
+                        .monospacedDigit()
                 }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(delta >= 0 ? Color.green : Color.red)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(delta >= 0 ? Theme.accentBright : Theme.textMuted)
             }
         }
     }
@@ -119,7 +148,7 @@ private struct MonthComparisonRow: View {
 }
 
 #Preview {
-    Form {
-        TrendsSection(checkIns: [])
-    }
+    TrendsSection(checkIns: [])
+        .padding()
+        .screenGround()
 }

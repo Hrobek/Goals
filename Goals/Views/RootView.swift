@@ -45,6 +45,9 @@ struct RootView: View {
         .environment(\.locale, language.locale)
         .id(languageRaw)
         .preferredColorScheme((AppearanceMode(rawValue: appearanceModeRaw) ?? .default).colorScheme)
+        // One tint for everything the app doesn't draw itself — switches, date pickers, the text
+        // cursor, the menus. Set once here so no system control is left on the stock blue.
+        .tint(Theme.accent)
         // Widgets read the language from the App Group, so the choice has to be pushed across and
         // the home screen redrawn — otherwise the app switches to Czech and its widgets don't.
         .onChange(of: languageRaw, initial: true) { _, _ in

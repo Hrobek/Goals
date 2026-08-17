@@ -14,24 +14,24 @@ struct WelcomeView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(alignment: .leading, spacing: 0) {
             Spacer()
 
-            VStack(spacing: 8) {
-                Image(systemName: "target")
-                    .font(.system(size: 56))
-                    .foregroundStyle(.tint)
+            VStack(alignment: .leading, spacing: 18) {
+                GoalsMark(size: 60)
                 Text("app.name")
-                    .font(.largeTitle.bold())
+                    .font(.system(size: 40, weight: .medium))
+                    .tracking(-1.4)
+                    .foregroundStyle(Theme.text)
                 Text("welcome.subtitle")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+                    .font(.system(size: 15))
+                    .foregroundStyle(Theme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer()
 
-            VStack(spacing: 12) {
+            VStack(spacing: 10) {
                 SignInWithAppleButton(.signIn) { request in
                     request.requestedScopes = [.fullName, .email]
                 } onCompletion: { result in
@@ -43,7 +43,8 @@ struct WelcomeView: View {
                 // after switching appearance in Settings.
                 .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
                 .id(colorScheme)
-                .frame(height: 48)
+                .frame(height: 50)
+                .clipShape(.rect(cornerRadius: 12))
 
                 GoogleSignInButton {
                     Task { await signInWithGoogle() }
@@ -52,25 +53,35 @@ struct WelcomeView: View {
                 Button {
                     isShowingEmailForm = true
                 } label: {
-                    Label("auth.continueWithEmail", systemImage: "envelope.fill")
-                        .frame(maxWidth: .infinity)
+                    Label("auth.continueWithEmail", systemImage: "envelope")
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-            }
-            .padding(.horizontal)
+                .buttonStyle(AccentOutlineButtonStyle(height: 50))
 
-            if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(Theme.Typo.footnote)
+                        .foregroundStyle(Theme.accentText)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 4)
+                }
             }
-
-            Spacer()
         }
-        .padding()
+        .padding(.horizontal, 24)
+        .padding(.bottom, 40)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // A faint red bloom behind the mark, thinning into the ground.
+        .background {
+            ZStack {
+                Theme.ground
+                RadialGradient(
+                    colors: [Theme.accentWell, .clear],
+                    center: .init(x: 0.5, y: 0.08),
+                    startRadius: 0,
+                    endRadius: 420
+                )
+            }
+            .ignoresSafeArea()
+        }
         .sheet(isPresented: $isShowingEmailForm) {
             EmailAuthFormView()
         }

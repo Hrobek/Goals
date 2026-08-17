@@ -23,6 +23,7 @@ struct AddCustomUnitSheet: View {
             Form {
                 TextField("unit.field.name", text: $name)
             }
+            .themedList()
             .navigationTitle("unit.new.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

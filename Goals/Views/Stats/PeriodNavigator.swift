@@ -21,14 +21,19 @@ struct PeriodNavigator: View {
                 withAnimation(.snappy) { offset -= 1 }
             } label: {
                 Image(systemName: "chevron.left")
-                    .frame(width: 32, height: 32)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.textMuted)
+                    .frame(width: 32, height: 28)
                     .contentShape(.rect)
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("a11y.period.previous"))
 
             Spacer(minLength: 8)
 
             Text(label)
-                .font(.subheadline.weight(.semibold))
+                .font(Theme.Typo.caption)
+                .foregroundStyle(Theme.textMuted)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .contentTransition(.opacity)
@@ -39,23 +44,19 @@ struct PeriodNavigator: View {
                 withAnimation(.snappy) { offset += 1 }
             } label: {
                 Image(systemName: "chevron.right")
-                    .frame(width: 32, height: 32)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(offset >= 0 ? Theme.textGhost : Theme.textMuted)
+                    .frame(width: 32, height: 28)
                     .contentShape(.rect)
             }
+            .buttonStyle(.plain)
             .disabled(offset >= 0)
-            .opacity(offset >= 0 ? 0.3 : 1)
+            .accessibilityLabel(Text("a11y.period.next"))
         }
-        // Not `.plain`: inside a Form row that style hands the whole row to a single tap target,
-        // so neither chevron ever fires. `.borderless` keeps the two buttons independently
-        // hit-testable — and it tints its labels, hence the explicit `.tint` to keep the chevrons
-        // the same muted grey as the label between them.
-        .buttonStyle(.borderless)
-        .tint(.secondary)
-        .foregroundStyle(.secondary)
-        // Left alone, the separator under this row starts at the centred label — a stub of a line,
-        // nothing like the full-width one above it. Pin it to the row's own leading edge, which is
-        // where every other separator in the Form begins.
-        .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
+        // Paging is a change of what's on screen rather than an achievement, so it gets the same
+        // light tick a picker gives — enough to feel the step, not enough to become noise while
+        // scrubbing back through months.
+        .sensoryFeedback(.selection, trigger: offset)
     }
 
     private var label: String {

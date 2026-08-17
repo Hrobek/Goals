@@ -206,7 +206,7 @@ struct ActivityWidgetEntryView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Link(destination: GoalLink.url(for: snapshot.id)) {
                             HStack(spacing: 3) {
-                                Text(snapshot.emoji ?? "🎯")
+                                GoalIdentity(emoji: snapshot.emoji, size: 14)
                                 Text(snapshot.title).lineLimit(1)
                             }
                             .font(.system(size: 9, weight: .semibold))
@@ -240,7 +240,7 @@ struct ActivityWidgetEntryView: View {
             if let quota = snapshot.quota {
                 Text("stats.quota \(quota.done) \(quota.target)")
                     .font(.system(size: 10))
-                    .foregroundStyle(quota.done >= quota.target ? Color.green : Color.secondary)
+                    .foregroundStyle(quota.done >= quota.target ? Theme.accentBright : Theme.textFaint)
             }
             WidgetPager(
                 kind: WidgetKind.activity,
@@ -258,7 +258,7 @@ struct ActivityWidgetEntryView: View {
             ForEach(Array(symbols.enumerated()), id: \.offset) { _, symbol in
                 Text(symbol)
                     .font(.system(size: 7))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textFaint)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .frame(width: side)
@@ -270,23 +270,23 @@ struct ActivityWidgetEntryView: View {
         HStack(spacing: spacing) {
             ForEach(snapshot.days) { day in
                 RoundedRectangle(cornerRadius: max(1, side / 5))
-                    .fill(fill(for: day.state, colorHex: snapshot.colorHex))
+                    .fill(fill(for: day.state))
                     .frame(width: side, height: side)
                     .overlay {
                         if day.isToday {
                             RoundedRectangle(cornerRadius: max(1, side / 5))
-                                .stroke(Color.primary.opacity(0.4), lineWidth: 1)
+                                .stroke(Theme.text, lineWidth: 1)
                         }
                     }
             }
         }
     }
 
-    private func fill(for state: ActivityDay.State, colorHex: String) -> Color {
+    private func fill(for state: ActivityDay.State) -> Color {
         switch state {
-        case .done: Color(hex: colorHex)
-        case .scheduled: Color.secondary.opacity(0.18)
-        case .blocked: Color.secondary.opacity(0.05)
+        case .done: Theme.accent
+        case .scheduled: Theme.cellScheduled
+        case .blocked: Theme.cellBlocked
         }
     }
 }
@@ -316,7 +316,7 @@ private struct ActivityGridView: View {
                     ForEach(Array(snapshot.weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
                         Text(symbol)
                             .font(.system(size: 7))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.textFaint)
                             .lineLimit(1)
                             .minimumScaleFactor(0.6)
                             .frame(width: cellWidth)
@@ -348,16 +348,16 @@ private struct ActivityGridView: View {
             .overlay {
                 if day.isToday {
                     RoundedRectangle(cornerRadius: radius)
-                        .stroke(Color.primary.opacity(0.4), lineWidth: 1)
+                        .stroke(Theme.text, lineWidth: 1)
                 }
             }
     }
 
     private func fill(for state: ActivityDay.State) -> Color {
         switch state {
-        case .done: Color(hex: snapshot.colorHex)
-        case .scheduled: Color.secondary.opacity(0.18)
-        case .blocked: Color.secondary.opacity(0.05)
+        case .done: Theme.accent
+        case .scheduled: Theme.cellScheduled
+        case .blocked: Theme.cellBlocked
         }
     }
 }
@@ -368,7 +368,7 @@ struct ActivityWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: WidgetKind.activity, provider: ActivityProvider()) { entry in
             ActivityWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(Theme.ground, for: .widget)
                 .environment(\.locale, AppLanguage.current.locale)
         }
         .configurationDisplayName("widget.activity.displayName")

@@ -76,7 +76,7 @@ struct WidgetPager: View {
                 Spacer(minLength: 2)
                 Text("\(page + 1)/\(pageCount)")
                     .font(.system(size: compact ? 9 : 10, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textFaint)
                 Spacer(minLength: 2)
                 button(step: 1, systemImage: "chevron.right")
             }
@@ -88,11 +88,12 @@ struct WidgetPager: View {
         Button(intent: PageIntent(kind: kind, scope: scope, step: step, pageCount: pageCount)) {
             Image(systemName: systemImage)
                 .font(.system(size: compact ? 9 : 11, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textMuted)
                 .frame(width: compact ? 20 : 26, height: compact ? 14 : 18)
-                .background(Color.secondary.opacity(0.12), in: Capsule())
+                .background(Theme.control, in: Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(Text(step < 0 ? "a11y.widget.previousPage" : "a11y.widget.nextPage"))
     }
 }
 
@@ -108,13 +109,14 @@ struct ProLockedWidgetView: View {
         VStack(spacing: 6) {
             Image(systemName: "lock.fill")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.accentSpent)
             Text(title)
                 .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.text)
                 .multilineTextAlignment(.center)
             Text("widget.pro.locked")
                 .font(.system(size: 10))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textFaint)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -124,16 +126,23 @@ struct ProLockedWidgetView: View {
 
 struct WidgetMessageView: View {
     let message: LocalizedStringKey
-    var systemImage = "target"
+    /// `nil` draws the app's own mark — the right glyph for "nothing here yet".
+    var systemImage: String?
 
     var body: some View {
         VStack(spacing: 6) {
-            Image(systemName: systemImage)
-                .font(.title3)
-                .foregroundStyle(.secondary)
+            Group {
+                if let systemImage {
+                    Image(systemName: systemImage)
+                        .font(.title3)
+                } else {
+                    GoalsMark(size: 22, tone: .mono, color: Theme.accentSpent)
+                }
+            }
+            .foregroundStyle(Theme.accentSpent)
             Text(message)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textFaint)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -152,8 +161,7 @@ struct WidgetGoalHeader: View {
     var body: some View {
         Link(destination: GoalLink.url(for: id)) {
             HStack(spacing: 5) {
-                Text(emoji ?? "🎯")
-                    .font(compact ? .caption2 : .caption)
+                GoalIdentity(emoji: emoji, size: compact ? 12 : 14)
                 Text(title)
                     .font((compact ? Font.caption2 : Font.caption).weight(.semibold))
                     .lineLimit(1)
@@ -161,7 +169,7 @@ struct WidgetGoalHeader: View {
                     Spacer(minLength: 4)
                     Text(detail)
                         .font(.system(size: compact ? 9 : 10))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textFaint)
                         .lineLimit(1)
                         .fixedSize()
                 }

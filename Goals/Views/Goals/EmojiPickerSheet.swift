@@ -17,20 +17,22 @@ struct EmojiPickerSheet: View {
             VStack(spacing: 24) {
                 ZStack {
                     Circle()
-                        .fill(Color.secondary.opacity(0.15))
+                        .fill(Theme.control)
+                        .overlay { Circle().strokeBorder(Theme.hairline, lineWidth: 1) }
                         .frame(width: 96, height: 96)
                     if let selection {
                         Text(selection).font(.system(size: 56))
                     } else {
                         Image(systemName: "face.smiling")
                             .font(.system(size: 40))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.textMuted)
                     }
                 }
                 Text("emoji.custom.placeholder")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(Theme.Typo.body)
+                    .foregroundStyle(Theme.textMuted)
                     .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
 
                 EmojiKeyboardField { emoji in
                     selection = emoji
@@ -42,6 +44,8 @@ struct EmojiPickerSheet: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.top, 40)
+            .screenGround()
+            .toolbarBackground(Theme.ground, for: .navigationBar)
             .navigationTitle("goal.field.emoji")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
