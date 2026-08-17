@@ -60,7 +60,7 @@ struct GoalsListView: View {
                 AddEditGoalView(goal: nil)
             }
             .sheet(isPresented: $isShowingPaywall) {
-                PaywallView()
+                PaywallView(source: .limitAlert)
             }
             .alert("goals.limit.title", isPresented: $isShowingLimitAlert) {
                 Button("goals.limit.upgrade") { isShowingPaywall = true }
@@ -135,6 +135,7 @@ struct GoalsListView: View {
     private func addGoalTapped() {
         if !purchaseManager.isProUnlocked && activeGoalsCount >= Self.freeActiveGoalLimit {
             isShowingLimitAlert = true
+            Analytics.send(.limitAlertShown)
         } else {
             isShowingAddGoal = true
         }

@@ -487,6 +487,11 @@ struct AddEditGoalView: View {
             )
             modelContext.insert(newGoal)
             saved = newGoal
+            Analytics.send(.goalCreated, [
+                .trackingMode: trackingMode.rawValue,
+                .priority: priority.rawValue,
+                .hasDeadline: String(hasDeadline)
+            ])
         }
 
         let time = Calendar.current.dateComponents([.hour, .minute], from: reminderTime)

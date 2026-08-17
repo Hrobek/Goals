@@ -17,6 +17,38 @@ enum StatsRange: String, CaseIterable, Identifiable {
         case .year: String(localized: "stats.range.year", defaultValue: "Year", bundle: AppLanguage.currentBundle)
         }
     }
+
+    var calendarComponent: Calendar.Component {
+        switch self {
+        case .week: .weekOfYear
+        case .month: .month
+        case .year: .year
+        }
+    }
+
+    /// The Nth period before/after the one `now` falls in — offset 0 is the current one, matching
+    /// how `PeriodNavigator` pages back and forth.
+    func interval(offset: Int, calendar: Calendar = .current, now: Date = .now) -> DateInterval? {
+        guard let current = calendar.dateInterval(of: calendarComponent, for: now) else { return nil }
+        guard offset != 0 else { return current }
+        guard let anchor = calendar.date(byAdding: calendarComponent, value: offset, to: current.start) else { return nil }
+        return calendar.dateInterval(of: calendarComponent, for: anchor)
+    }
+
+    /// A human-readable name for the interval — "11 Aug – 17 Aug 2026", "August 2026", "2026".
+    func label(for interval: DateInterval, calendar: Calendar = .current, locale: Locale) -> String {
+        switch self {
+        case .week:
+            let lastDay = calendar.date(byAdding: .second, value: -1, to: interval.end) ?? interval.end
+            let start = interval.start.formatted(.dateTime.day().month(.abbreviated).locale(locale))
+            let end = lastDay.formatted(.dateTime.day().month(.abbreviated).year().locale(locale))
+            return "\(start) – \(end)"
+        case .month:
+            return interval.start.formatted(.dateTime.month(.wide).year().locale(locale))
+        case .year:
+            return interval.start.formatted(.dateTime.year().locale(locale))
+        }
+    }
 }
 
 /// Check-in squares for a single goal. Days the goal isn't scheduled for are dimmed out, so a
@@ -24,6 +56,8 @@ enum StatsRange: String, CaseIterable, Identifiable {
 struct ScheduleActivityView: View {
     let goal: Goal
     let range: StatsRange
+    /// Which week/month/year to show — 0 is the current one, negative pages into the past.
+    var offset: Int = 0
 
     private let calendar = Calendar.current
 
@@ -31,8 +65,26 @@ struct ScheduleActivityView: View {
         case done, scheduled, blocked
     }
 
+    /// Distinct type from the weekday-label `Int` ids (1–7) so a grid's leading blanks never
+    /// collide with them under `id: \.self` — SwiftUI faults if two sibling child views in the
+    /// same LazyVGrid/LazyHGrid share an id, even across different `ForEach`s.
+    private struct BlankDay: Hashable {
+        let index: Int
+    }
+
     private var checkInDays: Set<Date> {
         Set(goal.checkIns.map { calendar.startOfDay(for: $0.date) })
+    }
+
+    private var interval: DateInterval? {
+        range.interval(offset: offset)
+    }
+
+    /// Every day in the displayed period, in order.
+    private var periodDays: [Date] {
+        guard let interval else { return [] }
+        let count = calendar.dateComponents([.day], from: interval.start, to: interval.end).day ?? 0
+        return (0..<count).compactMap { calendar.date(byAdding: .day, value: $0, to: interval.start) }
     }
 
     var body: some View {
@@ -49,8 +101,7 @@ struct ScheduleActivityView: View {
     // MARK: - Layouts
 
     private var weekGrid: some View {
-        let days = self.days(ofPeriod: .weekOfYear)
-        return LazyVGrid(columns: columns(count: 7, spacing: 6), spacing: 4) {
+        LazyVGrid(columns: columns(count: 7, spacing: 6), spacing: 4) {
             // Keyed by weekday, not by date: two sibling ForEach over the same dates would share
             // ids inside one grid and collapse the row of cells.
             ForEach(weekdayOrder, id: \.self) { weekday in
@@ -58,7 +109,7 @@ struct ScheduleActivityView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
-            ForEach(days, id: \.self) { day in
+            ForEach(periodDays, id: \.self) { day in
                 cell(for: day, cornerRadius: 6)
                     .aspectRatio(1, contentMode: .fit)
             }
@@ -66,18 +117,17 @@ struct ScheduleActivityView: View {
     }
 
     private var monthGrid: some View {
-        let days = self.days(ofPeriod: .month)
-        return LazyVGrid(columns: columns(count: 7, spacing: 4), spacing: 4) {
+        LazyVGrid(columns: columns(count: 7, spacing: 4), spacing: 4) {
             ForEach(weekdayOrder, id: \.self) { weekday in
                 Text(Recurrence.weekdayAbbreviation(weekday))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
             // Blanks so the first day of the month lands under its weekday column.
-            ForEach(0..<leadingBlanks(before: days.first), id: \.self) { _ in
+            ForEach((0..<leadingBlanks(before: periodDays.first)).map(BlankDay.init), id: \.self) { _ in
                 Color.clear.aspectRatio(1, contentMode: .fit)
             }
-            ForEach(days, id: \.self) { day in
+            ForEach(periodDays, id: \.self) { day in
                 cell(for: day, cornerRadius: 5)
                     .aspectRatio(1, contentMode: .fit)
             }
@@ -89,14 +139,20 @@ struct ScheduleActivityView: View {
         let spacing: CGFloat = 3
         return ScrollView(.horizontal, showsIndicators: false) {
             LazyHGrid(rows: Array(repeating: GridItem(.fixed(cellSize), spacing: spacing), count: 7), spacing: spacing) {
-                ForEach(yearDays, id: \.self) { day in
+                // Blanks so Jan 1 lands in its correct weekday row, same idea as the month grid.
+                ForEach((0..<leadingBlanks(before: periodDays.first)).map(BlankDay.init), id: \.self) { _ in
+                    Color.clear.frame(width: cellSize, height: cellSize)
+                }
+                ForEach(periodDays, id: \.self) { day in
                     cell(for: day, cornerRadius: 2)
                         .frame(width: cellSize, height: cellSize)
                 }
             }
             .frame(height: cellSize * 7 + spacing * 6)
         }
-        .defaultScrollAnchor(.trailing)
+        // The current year reads left-to-right up to today, so anchor on today's edge; a past
+        // year is complete, so start from the beginning instead.
+        .defaultScrollAnchor(offset == 0 ? .trailing : .leading)
     }
 
     // MARK: - Days
@@ -108,19 +164,6 @@ struct ScheduleActivityView: View {
     /// Weekday numbers in the order the calendar lays them out (respects `firstWeekday`).
     private var weekdayOrder: [Int] {
         (0..<7).map { (calendar.firstWeekday - 1 + $0) % 7 + 1 }
-    }
-
-    private func days(ofPeriod component: Calendar.Component) -> [Date] {
-        guard let interval = calendar.dateInterval(of: component, for: .now) else { return [] }
-        let count = calendar.dateComponents([.day], from: interval.start, to: interval.end).day ?? 7
-        return (0..<count).compactMap { calendar.date(byAdding: .day, value: $0, to: interval.start) }
-    }
-
-    /// 52 whole weeks ending with the current one, so every row is the same weekday.
-    private var yearDays: [Date] {
-        guard let thisWeek = calendar.dateInterval(of: .weekOfYear, for: .now),
-              let start = calendar.date(byAdding: .weekOfYear, value: -51, to: thisWeek.start) else { return [] }
-        return (0..<(52 * 7)).compactMap { calendar.date(byAdding: .day, value: $0, to: start) }
     }
 
     private func leadingBlanks(before firstDay: Date?) -> Int {
@@ -161,13 +204,12 @@ struct ScheduleActivityView: View {
     /// count for the period the quota is defined over.
     @ViewBuilder
     private var quotaCaption: some View {
-        let component: Calendar.Component? = switch (goal.recurrenceType, range) {
-        case (.timesPerWeek, .week): .weekOfYear
-        case (.timesPerMonth, .month): .month
-        default: nil
+        let appliesToRange: Bool = switch (goal.recurrenceType, range) {
+        case (.timesPerWeek, .week), (.timesPerMonth, .month): true
+        default: false
         }
 
-        if let component, let interval = calendar.dateInterval(of: component, for: .now) {
+        if appliesToRange, let interval {
             let done = goal.checkIns.filter { interval.contains($0.date) }.count
             Text("stats.quota \(done) \(goal.recurrenceCount)")
                 .font(.caption)

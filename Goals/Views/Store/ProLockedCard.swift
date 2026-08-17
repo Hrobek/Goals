@@ -38,7 +38,7 @@ struct ProLockedCard: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 18)
         .sheet(isPresented: $isShowingPaywall) {
-            PaywallView()
+            PaywallView(source: .lockedFeature)
         }
     }
 }

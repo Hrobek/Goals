@@ -27,6 +27,10 @@ struct GoalSnapshot: Identifiable, Hashable {
 struct GoalsEntry: TimelineEntry {
     let date: Date
     let goals: [GoalSnapshot]
+    /// Which slice of today's goals this is, and how many slices there are — the pager's whole job.
+    var page = 0
+    var pageCount = 1
+    var scope = WidgetKind.goals
 }
 
 // MARK: - Provider
@@ -38,25 +42,40 @@ struct GoalsProvider: TimelineProvider {
 
     @MainActor
     func getSnapshot(in context: Context, completion: @escaping (GoalsEntry) -> Void) {
-        let limit = Self.limit(for: context.family)
-        completion(GoalsEntry(date: .now, goals: context.isPreview ? [Self.sample] : Self.todaysGoals(limit: limit)))
+        completion(context.isPreview ? GoalsEntry(date: .now, goals: [Self.sample]) : Self.entry(for: context.family))
     }
 
     @MainActor
     func getTimeline(in context: Context, completion: @escaping (Timeline<GoalsEntry>) -> Void) {
-        let entry = GoalsEntry(date: .now, goals: Self.todaysGoals(limit: Self.limit(for: context.family)))
-        // Nothing changes on its own until the day rolls over — the app and the button push
-        // updates themselves.
+        // Nothing changes on its own until the day rolls over — the app, the quick action and the
+        // pager buttons all push their own updates.
         let midnight = Calendar.current.nextDate(
             after: .now,
             matching: DateComponents(hour: 0, minute: 1),
             matchingPolicy: .nextTime
         ) ?? Date().addingTimeInterval(3600)
-        completion(Timeline(entries: [entry], policy: .after(midnight)))
+        completion(Timeline(entries: [Self.entry(for: context.family)], policy: .after(midnight)))
     }
 
-    /// How many rows fit each widget size, tuned to the compact row height used below.
-    private static func limit(for family: WidgetFamily) -> Int {
+    /// Slices today's goals down to the page this widget is parked on.
+    @MainActor
+    private static func entry(for family: WidgetFamily) -> GoalsEntry {
+        let scope = "\(WidgetKind.goals).\(family.pageScopeName)"
+        let paged = WidgetGoals.page(todaysGoals(), perPage: rowLimit(for: family), scope: scope) {
+            GoalSnapshot(goal: $0)
+        }
+        return GoalsEntry(
+            date: .now,
+            goals: paged.items,
+            page: paged.page,
+            pageCount: max(1, paged.count),
+            scope: scope
+        )
+    }
+
+    /// How many rows fit each widget size, tuned to the compact row height used below — the pager
+    /// slots into the space the rows leave over, so it costs no goals.
+    private static func rowLimit(for family: WidgetFamily) -> Int {
         switch family {
         case .systemSmall: 3
         case .systemMedium: 4
@@ -66,7 +85,7 @@ struct GoalsProvider: TimelineProvider {
     }
 
     @MainActor
-    private static func todaysGoals(limit: Int) -> [GoalSnapshot] {
+    private static func todaysGoals() -> [Goal] {
         let context = SharedStore.container.mainContext
         let goals = (try? context.fetch(FetchDescriptor<Goal>())) ?? []
 
@@ -79,8 +98,6 @@ struct GoalsProvider: TimelineProvider {
                 if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
                 return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
             }
-            .prefix(limit)
-            .map(GoalSnapshot.init(goal:))
     }
 
     private static var sample: GoalSnapshot {
@@ -105,11 +122,11 @@ extension GoalSnapshot {
         switch goal.trackingMode {
         case .value:
             let sign = goal.isLowerBetter ? "−" : "+"
-            detail = "\(Self.formatted(goal.currentValue))/\(Self.formatted(goal.targetValue)) \(goal.unitDisplayText)"
+            detail = "\(Self.formatted(goal.currentValue))/\(goal.valueWithUnit(goal.targetValue, formattedValue: Self.formatted(goal.targetValue)))"
             actionLabel = showsAction ? sign + Self.formatted(goal.widgetQuickAmount) : nil
         case .milestones:
-            let unit = String(localized: "milestone.unit", defaultValue: "milestones", bundle: AppLanguage.currentBundle)
-            detail = "\(goal.completedMilestoneCount)/\(goal.milestones.count) \(unit)"
+            let unit = String(localized: "milestone.unit.count \(goal.milestones.count)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+            detail = "\(goal.completedMilestoneCount)/\(unit)"
             actionLabel = showsAction ? goal.nextMilestone?.title : nil
         }
 
@@ -149,8 +166,17 @@ struct GoalsWidgetEntryView: View {
                     }
                 }
                 Spacer(minLength: 0)
+                WidgetPager(
+                    kind: WidgetKind.goals,
+                    scope: entry.scope,
+                    page: entry.page,
+                    pageCount: entry.pageCount,
+                    compact: family == .systemSmall
+                )
             }
-            .widgetURL(entry.goals.count == 1 ? GoalLink.url(for: entry.goals[0].id) : nil)
+            // Only when the whole widget is one goal: with a pager on it, a tap anywhere would be
+            // ambiguous, and the row itself is already a link.
+            .widgetURL(entry.goals.count == 1 && entry.pageCount == 1 ? GoalLink.url(for: entry.goals[0].id) : nil)
         }
     }
 
@@ -272,6 +298,9 @@ enum GoalLink {
     static func url(for id: UUID) -> URL {
         URL(string: "goals://goal/\(id.uuidString)") ?? URL(string: "goals://")!
     }
+
+    /// Where a locked Pro widget sends you.
+    static let paywall = URL(string: "goals://pro")!
 }
 
 // MARK: - Widget
@@ -283,6 +312,9 @@ struct GoalsWidget: Widget {
         StaticConfiguration(kind: kind, provider: GoalsProvider()) { entry in
             GoalsWidgetEntryView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
+                // Follows the in-app language override, the same way `RootView` applies it: `Text`
+                // resolves its key against this locale, not the device's.
+                .environment(\.locale, AppLanguage.current.locale)
         }
         .configurationDisplayName("widget.displayName")
         .description("widget.description")

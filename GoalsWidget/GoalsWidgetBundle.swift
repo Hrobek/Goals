@@ -10,5 +10,7 @@ import SwiftUI
 struct GoalsWidgetBundle: WidgetBundle {
     var body: some Widget {
         GoalsWidget()
+        ActivityWidget()
+        ProgressChartWidget()
     }
 }

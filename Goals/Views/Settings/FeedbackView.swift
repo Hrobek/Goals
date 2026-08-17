@@ -99,6 +99,9 @@ struct FeedbackView: View {
         .sheet(isPresented: $isShowingMailComposer) {
             MailComposeView(report: report, attachments: attachments) { result in
                 if result == .sent {
+                    // The kind only — the message and its attachments are the whole reason this
+                    // screen exists and they go to the support mailbox, nowhere else.
+                    Analytics.send(.feedbackSent, [.feedbackKind: kind.rawValue])
                     dismiss()
                 }
             }

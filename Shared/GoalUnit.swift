@@ -103,12 +103,44 @@ enum GoalUnit: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// The count and the unit as one phrase — "1 den", "3 dny", "30 dní" — because the noun has to
+    /// agree with the number, and a String Catalog can only decline it while the two are together.
+    /// `nil` for units written as symbols (km, kg, kcal, currencies), which read the same at any
+    /// count and are better off with the caller's own number formatting.
+    func countPhrase(_ count: Int) -> String? {
+        switch self {
+        case .times: String(localized: "unit.times.count \(count)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+        case .steps: String(localized: "unit.steps.count \(count)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+        case .reps: String(localized: "unit.reps.count \(count)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+        case .pages: String(localized: "unit.pages.count \(count)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+        case .books: String(localized: "unit.books.count \(count)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+        case .miles: String(localized: "unit.miles.count \(count)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+        case .glasses: String(localized: "unit.glasses.count \(count)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+        case .minutes: String(localized: "unit.minutes.count \(count)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+        case .hours: String(localized: "unit.hours.count \(count)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+        case .days: String(localized: "unit.days.count \(count)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+        case .liters: String(localized: "unit.liters.count \(count)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+        case .km, .meters, .kg, .grams, .pounds, .milliliters, .kcal, .czk, .eur, .usd, .custom: nil
+        }
+    }
+
     /// Resolves the display unit text for a goal: the preset's localized name, or its custom text.
     static func displayText(unitKey: String, customUnitText: String?) -> String {
         guard let unit = GoalUnit(rawValue: unitKey), unit != .custom else {
             return customUnitText ?? ""
         }
         return unit.localizedName
+    }
+
+    /// A value with its unit — "100 dní", "2,5 km". Whole numbers go through the declined phrase;
+    /// anything fractional keeps the caller's formatting (a plural rule is defined over integers,
+    /// and rounding 2.5 to "2 stránky" would quietly lose half a page).
+    static func valueWithUnit(_ value: Double, formattedValue: String, unitKey: String, customUnitText: String?) -> String {
+        let standalone = "\(formattedValue) \(displayText(unitKey: unitKey, customUnitText: customUnitText))"
+        guard value == value.rounded(), abs(value) < Double(Int.max),
+              let unit = GoalUnit(rawValue: unitKey),
+              let phrase = unit.countPhrase(Int(value)) else { return standalone }
+        return phrase
     }
 }
 

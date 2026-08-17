@@ -10,6 +10,11 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 
     static let storageKey = "Goals.appearanceMode"
 
+    /// What the app looks like until someone says otherwise. Dark rather than `.system`: the whole
+    /// design — the card-on-black lists, the goal colours, the activity grids — was drawn against a
+    /// dark background, and it's what the app should introduce itself in.
+    static let `default` = AppearanceMode.dark
+
     var id: String { rawValue }
 
     var localizedName: String {

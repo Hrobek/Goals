@@ -18,7 +18,9 @@ struct GoalDetailView: View {
     @State private var isShowingDeleteConfirmation = false
     @State private var newMilestoneTitle = ""
     @State private var activityRange: StatsRange = .month
+    @State private var activityOffset = 0
     @State private var chartRange: StatsRange = .month
+    @State private var chartOffset = 0
 
     private var sortedMilestones: [Milestone] {
         goal.sortedMilestones
@@ -148,12 +150,19 @@ struct GoalDetailView: View {
                     Image(systemName: "target").foregroundStyle(Color(hex: goal.colorHex))
                 }
             }
-            if let categoryName = goal.category?.name {
-                Text(categoryName)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+            // The navigation bar title is truncated to a few words, so the goal's name is repeated
+            // here in full alongside its emoji and category.
+            VStack(alignment: .leading, spacing: 2) {
+                Text(goal.title)
+                    .font(.headline)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let categoryName = goal.category?.name {
+                    Text(categoryName)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
-            Spacer()
+            Spacer(minLength: 0)
         }
     }
 
@@ -165,8 +174,7 @@ struct GoalDetailView: View {
                 Text(formattedValue(goal.currentValue))
                 Text("/")
                     .foregroundStyle(.secondary)
-                Text(formattedValue(goal.targetValue))
-                Text(goal.unitDisplayText)
+                Text(goal.valueWithUnit(goal.targetValue, formattedValue: formattedValue(goal.targetValue)))
                     .foregroundStyle(.secondary)
             }
             .font(.title3.monospacedDigit())
@@ -175,8 +183,7 @@ struct GoalDetailView: View {
                 Text("\(goal.completedMilestoneCount)")
                 Text("/")
                     .foregroundStyle(.secondary)
-                Text("\(goal.milestones.count)")
-                Text("milestone.unit")
+                Text("milestone.unit.count \(goal.milestones.count)")
                     .foregroundStyle(.secondary)
             }
             .font(.title3.monospacedDigit())
@@ -219,7 +226,13 @@ struct GoalDetailView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                GoalProgressChartView(goal: goal, range: chartRange)
+                .onChange(of: chartRange) { chartOffset = 0 }
+                PeriodNavigator(range: chartRange, offset: $chartOffset)
+                GoalProgressChartView(goal: goal, range: chartRange, offset: chartOffset)
+                    // Without this the row's top separator starts where the Chart's plot area
+                    // begins (past the y-axis labels), rendering half-width unlike every other
+                    // separator in the Form.
+                    .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
             } else {
                 ProLockedCard(title: "goalDetail.chart.title", message: "goalDetail.chart.locked", systemImage: "chart.line.uptrend.xyaxis")
             }
@@ -237,7 +250,10 @@ struct GoalDetailView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            ScheduleActivityView(goal: goal, range: activityRange)
+            .onChange(of: activityRange) { activityOffset = 0 }
+            PeriodNavigator(range: activityRange, offset: $activityOffset)
+            ScheduleActivityView(goal: goal, range: activityRange, offset: activityOffset)
+                .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
         }
     }
 

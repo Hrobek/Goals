@@ -8,14 +8,18 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AuthSession.self) private var session
     @Environment(PurchaseManager.self) private var purchaseManager
-    @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.system.rawValue
+    @Environment(\.openURL) private var openURL
+    @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.default.rawValue
     @AppStorage(AppLanguage.storageKey) private var languageRaw = AppLanguage.deviceDefault.rawValue
 
     @State private var isShowingPaywall = false
+    // Not `@AppStorage`: the flag lives in the App Group so the widget honours it too, and
+    // `Analytics` stays the only place that knows the key.
+    @State private var isAnalyticsEnabled = Analytics.isEnabled
 
     private var appearanceMode: Binding<AppearanceMode> {
         Binding(
-            get: { AppearanceMode(rawValue: appearanceModeRaw) ?? .system },
+            get: { AppearanceMode(rawValue: appearanceModeRaw) ?? .default },
             set: { appearanceModeRaw = $0.rawValue }
         )
     }
@@ -67,11 +71,30 @@ struct SettingsView: View {
                     .labelsHidden()
                 }
 
+                Section {
+                    Toggle("settings.privacy.analytics", isOn: $isAnalyticsEnabled)
+                } header: {
+                    Text("settings.privacy")
+                } footer: {
+                    Text("settings.privacy.analytics.footer")
+                }
+
                 Section("settings.support") {
                     NavigationLink {
                         FeedbackView()
                     } label: {
                         Label("settings.support.feedback", systemImage: "exclamationmark.bubble")
+                    }
+
+                    // Straight to the App Store's own review sheet rather than the in-app
+                    // StoreKit prompt: that one is rate-limited and may show nothing at all,
+                    // which would make the button look broken.
+                    if let url = AppReviewPrompt.writeReviewURL {
+                        Button {
+                            openURL(url)
+                        } label: {
+                            Label("settings.support.rate", systemImage: "star")
+                        }
                     }
                 }
 
@@ -88,8 +111,11 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("settings.title")
+            .onChange(of: isAnalyticsEnabled) { _, isEnabled in
+                Analytics.isEnabled = isEnabled
+            }
             .sheet(isPresented: $isShowingPaywall) {
-                PaywallView()
+                PaywallView(source: .settings)
             }
         }
     }

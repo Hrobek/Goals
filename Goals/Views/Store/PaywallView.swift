@@ -6,7 +6,18 @@
 import SwiftUI
 import StoreKit
 
+/// Where a paywall was opened from. The whole point of the purchase funnel is knowing which of
+/// these actually converts, so every presentation names itself.
+enum PaywallSource: String {
+    case limitAlert = "limit_alert"
+    case settings
+    case lockedFeature = "locked_feature"
+    case widget
+}
+
 struct PaywallView: View {
+    let source: PaywallSource
+
     @Environment(PurchaseManager.self) private var purchaseManager
     @Environment(\.dismiss) private var dismiss
 
@@ -59,6 +70,7 @@ struct PaywallView: View {
                 if isUnlocked { dismiss() }
             }
             .task {
+                Analytics.send(.paywallOpened, [.source: source.rawValue])
                 await purchaseManager.loadProduct()
             }
         }
@@ -96,6 +108,6 @@ struct PaywallView: View {
 }
 
 #Preview {
-    PaywallView()
+    PaywallView(source: .settings)
         .environment(PurchaseManager())
 }

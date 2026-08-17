@@ -12,17 +12,11 @@ import Charts
 struct GoalProgressChartView: View {
     let goal: Goal
     let range: StatsRange
-
-    private var calendarComponent: Calendar.Component {
-        switch range {
-        case .week: .weekOfYear
-        case .month: .month
-        case .year: .year
-        }
-    }
+    /// Which week/month/year to show — 0 is the current one, negative pages into the past.
+    var offset: Int = 0
 
     private var interval: DateInterval? {
-        Calendar.current.dateInterval(of: calendarComponent, for: .now)
+        range.interval(offset: offset)
     }
 
     private var allPoints: [ProgressPoint] {

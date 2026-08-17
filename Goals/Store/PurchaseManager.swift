@@ -6,6 +6,7 @@
 import Foundation
 import StoreKit
 import Observation
+import WidgetKit
 
 /// The Pro unlock: a single non-consumable that removes the active-goal limit. No subscriptions,
 /// no consumables — one product keeps the whole purchase flow small and the entitlement check
@@ -52,6 +53,7 @@ final class PurchaseManager {
     func purchase() async {
         guard let product else { return }
         lastErrorMessage = nil
+        Analytics.send(.purchaseAttempted)
         do {
             let result = try await product.purchase()
             switch result {
@@ -61,6 +63,9 @@ final class PurchaseManager {
                     return
                 }
                 await transaction.finish()
+                // Only this branch counts as a conversion. Restores and entitlements picked up from
+                // `Transaction.updates` unlock Pro just the same, but nobody bought anything there.
+                Analytics.send(.purchaseCompleted)
                 await refreshEntitlements()
             case .userCancelled, .pending:
                 break
@@ -85,9 +90,19 @@ final class PurchaseManager {
     private func refreshEntitlements() async {
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result, transaction.productID == Self.proProductID else { continue }
-            isProUnlocked = true
+            apply(isUnlocked: true)
             return
         }
-        isProUnlocked = false
+        apply(isUnlocked: false)
+    }
+
+    /// The widget extension can't run an entitlement check of its own — StoreKit is async and a
+    /// timeline provider has to answer immediately — so the answer is written into the App Group
+    /// and the Pro-only widgets are redrawn against it.
+    private func apply(isUnlocked: Bool) {
+        isProUnlocked = isUnlocked
+        guard ProEntitlement.isUnlocked != isUnlocked else { return }
+        ProEntitlement.isUnlocked = isUnlocked
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }

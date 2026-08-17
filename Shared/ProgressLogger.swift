@@ -28,7 +28,7 @@ enum ProgressLogger {
             guard let milestone = goal.nextMilestone else { return false }
             milestone.isCompleted = true
             if goal.isTargetReached {
-                goal.isCompleted = true
+                markCompleted(goal)
             }
             // No value to snapshot, but the day still counts towards the streak.
             record(value: nil, for: goal, in: context, now: now, calendar: calendar)
@@ -47,7 +47,7 @@ enum ProgressLogger {
         if let newValue {
             goal.currentValue = newValue
             if goal.isTargetReached {
-                goal.isCompleted = true
+                markCompleted(goal)
             }
         }
 
@@ -71,6 +71,15 @@ enum ProgressLogger {
             ))
         }
 
+        Analytics.send(.checkInLogged, [.trackingMode: goal.trackingMode.rawValue])
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// Guarded, so a goal that's already done doesn't report finishing again — a later check-in on
+    /// a completed goal would otherwise count as a second completion.
+    private static func markCompleted(_ goal: Goal) {
+        guard !goal.isCompleted else { return }
+        goal.isCompleted = true
+        Analytics.send(.goalCompleted, [.trackingMode: goal.trackingMode.rawValue])
     }
 }

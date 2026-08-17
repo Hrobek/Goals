@@ -75,10 +75,10 @@ struct GoalRow: View {
     private var valueText: String {
         switch goal.trackingMode {
         case .value:
-            "\(formatted(goal.currentValue))/\(formatted(goal.targetValue)) \(goal.unitDisplayText)"
+            "\(formatted(goal.currentValue))/\(goal.valueWithUnit(goal.targetValue, formattedValue: formatted(goal.targetValue)))"
         case .milestones:
-            "\(goal.completedMilestoneCount)/\(goal.milestones.count) "
-                + String(localized: "milestone.unit", defaultValue: "milestones", bundle: AppLanguage.currentBundle)
+            "\(goal.completedMilestoneCount)/"
+                + String(localized: "milestone.unit.count \(goal.milestones.count)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
         }
     }
 

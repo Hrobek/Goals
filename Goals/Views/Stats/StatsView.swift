@@ -24,9 +24,15 @@ struct StatsView: View {
         trackedGoals.filter(\.isCompleted).count
     }
 
-    /// Every goal with its streak, longest first — computed once so the list and the tile agree.
+    /// Only active goals get a row — completed ones are already summed up in the tile above, and
+    /// a finished goal's frozen streak doesn't need to keep taking up space in the list.
+    private var activeGoals: [Goal] {
+        trackedGoals.filter { $0.status == .active }
+    }
+
+    /// Every active goal with its streak, longest first — computed once so the list and the tile agree.
     private var streaks: [(goal: Goal, streak: Int)] {
-        trackedGoals
+        activeGoals
             .map { ($0, StreakCalculator.currentStreak(for: $0)) }
             .sorted { lhs, rhs in
                 lhs.1 == rhs.1

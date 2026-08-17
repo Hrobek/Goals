@@ -268,4 +268,11 @@ final class Goal {
     var unitDisplayText: String {
         GoalUnit.displayText(unitKey: unitKey, customUnitText: customUnitText)
     }
+
+    /// A value written out with this goal's unit — "100 dní", "2,5 km" — with the noun agreeing
+    /// with the number. `formattedValue` is the caller's own rendering of the same value, used for
+    /// fractions, which have no plural form to pick.
+    func valueWithUnit(_ value: Double, formattedValue: String) -> String {
+        GoalUnit.valueWithUnit(value, formattedValue: formattedValue, unitKey: unitKey, customUnitText: customUnitText)
+    }
 }
