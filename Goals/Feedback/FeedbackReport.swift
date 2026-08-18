@@ -31,8 +31,9 @@ enum FeedbackKind: String, CaseIterable, Identifiable {
 }
 
 enum SupportContact {
-    /// Swap for a dedicated support address before shipping.
-    static let email = "martin.hrbek5@gmail.com"
+    /// The app's own address, kept out of anyone's personal inbox: it shows in the "To" field of the
+    /// mail the user sends, and on screen in the support page when Mail isn't set up.
+    static let email = "goals.app.support@gmail.com"
 }
 
 struct FeedbackAttachment: Identifiable, Equatable {
