@@ -26,14 +26,34 @@ enum ProgressLogger {
             return true
         case .milestones:
             guard let milestone = goal.nextMilestone else { return false }
-            milestone.isCompleted = true
+            toggleMilestone(milestone, on: goal, in: context, now: now, calendar: calendar)
+            return true
+        }
+    }
+
+    /// Ticks or unticks one milestone, keeping the goal's completion and today's check-in in sync
+    /// — the same bookkeeping `performQuickAction` does, but for any milestone (not just the next
+    /// one) and reversible, so a card can offer plain checkboxes.
+    @discardableResult
+    static func toggleMilestone(
+        _ milestone: Milestone,
+        on goal: Goal,
+        in context: ModelContext,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> Bool {
+        milestone.isCompleted.toggle()
+        if milestone.isCompleted {
             if goal.isTargetReached {
                 markCompleted(goal)
             }
             // No value to snapshot, but the day still counts towards the streak.
             record(value: nil, for: goal, in: context, now: now, calendar: calendar)
-            return true
+        } else if goal.isCompleted, !goal.isTargetReached {
+            // Unticking after every milestone was done reopens the goal.
+            goal.isCompleted = false
         }
+        return milestone.isCompleted
     }
 
     static func record(

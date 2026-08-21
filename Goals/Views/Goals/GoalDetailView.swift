@@ -377,7 +377,7 @@ struct GoalDetailView: View {
         LabeledSection("goalDetail.milestones") {
             CardGroup {
                 ForEach(sortedMilestones) { milestone in
-                    MilestoneRow(milestone: milestone)
+                    MilestoneRow(milestone: milestone, goal: goal, modelContext: modelContext)
                         // The card isn't a List any more, so the swipe that used to remove a
                         // milestone becomes a long press instead.
                         .contextMenu {
@@ -494,10 +494,12 @@ struct GoalDetailView: View {
 
 private struct MilestoneRow: View {
     @Bindable var milestone: Milestone
+    let goal: Goal
+    let modelContext: ModelContext
 
     var body: some View {
         Button {
-            milestone.isCompleted.toggle()
+            ProgressLogger.toggleMilestone(milestone, on: goal, in: modelContext)
         } label: {
             HStack(spacing: 11) {
                 Image(systemName: milestone.isCompleted ? "checkmark.circle.fill" : "circle")

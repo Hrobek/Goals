@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 /// The goal summary used by both the Today screen and the goals overview — a card rather than a
 /// list row, so the two screens can be plain scrolling stacks on the app's own ground.
@@ -12,7 +13,11 @@ struct GoalRow: View {
     /// Today's screen marks off what's already been logged; the overview shows the deadline instead.
     var showsTodayState = false
 
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// Bumped on every quick action, to trigger the confirming haptic — the goal's own state can't
+    /// drive it, since navigating here also touches properties that shouldn't feel like progress.
+    @State private var actionTick = 0
     /// The icon circle grows with the text, but only so far: left unbounded it triples at
     /// accessibility sizes and squeezes the title into a column narrow enough to break words
     /// in half. Decoration yields to the words.
@@ -79,6 +84,10 @@ struct GoalRow: View {
                         }
                     }
                 }
+
+                if showsTodayState {
+                    todayQuickContent
+                }
             }
         }
         .padding(.horizontal, 14)
@@ -89,6 +98,7 @@ struct GoalRow: View {
                 .strokeBorder(isSettled ? Theme.hairlineSoft : Theme.hairline, lineWidth: 1)
         }
         .opacity(isSettled ? 0.72 : 1)
+        .sensoryFeedback(.selection, trigger: actionTick)
         // Read as one sentence. Left to itself VoiceOver walks the row piece by piece — emoji,
         // title, "56 percent", the bare "12/30 km" — and the state icon, being decoration, says
         // nothing at all about whether today is done.
@@ -130,6 +140,79 @@ struct GoalRow: View {
             }
         }
         return Text(parts.joined(separator: ", "))
+    }
+
+    /// The row's own way to make progress without leaving Today — a quick-add chip for value
+    /// goals, or the next couple of open milestones as plain checkboxes for milestone goals.
+    @ViewBuilder
+    private var todayQuickContent: some View {
+        switch goal.trackingMode {
+        case .value:
+            // Stays put even once today is checked off — logging more water past the target is
+            // still a normal thing to want to do.
+            quickAddButton
+        case .milestones:
+            if !upcomingMilestones.isEmpty {
+                milestoneChecklist
+            }
+        }
+    }
+
+    private var quickAddButton: some View {
+        Button {
+            ProgressLogger.performQuickAction(on: goal, in: modelContext)
+            actionTick += 1
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "plus")
+                    .font(.system(size: 12, weight: .semibold))
+                Text(goal.valueWithUnit(goal.widgetQuickAmount, formattedValue: formatted(goal.widgetQuickAmount)))
+                    .font(Theme.Typo.captionEmphasis)
+                    .monospacedDigit()
+            }
+            .foregroundStyle(Theme.accentText)
+            .padding(.horizontal, 12)
+            .frame(height: 30)
+            .background(Theme.accentWell, in: .capsule)
+            .overlay { Capsule().strokeBorder(Theme.accentWellBorder, lineWidth: 1) }
+            .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 10)
+        .accessibilityLabel(Text("a11y.quickAdd \(goal.valueWithUnit(goal.widgetQuickAmount, formattedValue: formatted(goal.widgetQuickAmount)))"))
+    }
+
+    /// Up to two nearest open milestones — just the one left, if only one remains.
+    private var upcomingMilestones: [Milestone] {
+        Array(goal.sortedMilestones.filter { !$0.isCompleted }.prefix(2))
+    }
+
+    private var milestoneChecklist: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(upcomingMilestones) { milestone in
+                Button {
+                    ProgressLogger.toggleMilestone(milestone, on: goal, in: modelContext)
+                    actionTick += 1
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "circle")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Theme.textGhost)
+                        Text(milestone.title)
+                            .font(Theme.Typo.caption)
+                            .foregroundStyle(Theme.textStrong)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(milestone.title))
+                .accessibilityAddTraits(.isToggle)
+                .accessibilityValue(Text("a11y.milestone.todo"))
+            }
+        }
+        .padding(.top, 8)
     }
 
     /// "12/30 km" is the right shape for the eye and the wrong one for the ear — the slash comes
