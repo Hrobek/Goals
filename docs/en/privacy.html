@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Goals — Privacy Policy</title>
+<meta name="description" content="What the Goals app collects, what it never sends anywhere, and how to turn it off.">
+<style>
+/* The palette is lifted from the app's own Theme.swift, so the site and the app read as one thing.
+   Light values live on bare :root; dark redefines only what changes, once for the system setting
+   and once for an explicit choice. */
+:root {
+  color-scheme: light dark;
+  --ground: #ECECEE;
+  --surface: #F7F7F8;
+  --hairline: #DCDCDF;
+  --text: #1A1A1C;
+  --text-faint: #6E6E73;
+  --accent: #C03225;
+  --accent-well: #FFE9E7;
+  --bloom: transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #101011;
+    --surface: #1A1A1C;
+    --hairline: #2C2C2F;
+    --text: #F2F2F3;
+    --text-faint: #9A9A9E;
+    --accent: #FF7F72;
+    --accent-well: #3A0F0A;
+    --bloom: #2A1512;
+  }
+}
+
+* { box-sizing: border-box; }
+
+/* Painted here too: below the glow the body's own background ends, and without this the page
+   falls through to the browser's default white — light text on white. */
+html {
+  background-color: var(--ground);
+}
+
+body {
+  margin: 0;
+  /* Colour and glow are set as separate properties on purpose. A `background` shorthand in the
+     .bloom rule below would reset this colour to transparent. */
+  background-color: var(--ground);
+  color: var(--text);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* The app paints a warm ellipse behind its welcome and paywall screens; this is the flat echo.
+   Its height is in pixels rather than a percentage: a percentage is measured against the whole
+   page, so on a long page the glow stretched all the way to the footer instead of sitting behind
+   the header. */
+.bloom {
+  background-image: radial-gradient(ellipse 90% 420px at 50% 0, var(--bloom) 0%, transparent 70%);
+  background-repeat: no-repeat;
+}
+
+.wrap { max-width: 720px; margin: 0 auto; padding: 0 24px 72px; }
+
+header { padding: 56px 0 40px; text-align: center; }
+
+.mark {
+  width: 64px; height: 64px;
+  margin: 0 auto 20px;
+  display: block;
+}
+
+h1 { font-size: 30px; line-height: 1.2; margin: 0 0 10px; letter-spacing: -0.02em; }
+h2 { font-size: 20px; margin: 40px 0 12px; letter-spacing: -0.01em; }
+h3 { font-size: 16px; margin: 26px 0 8px; }
+
+.lede { color: var(--text-faint); margin: 0; font-size: 17px; }
+.stamp { color: var(--text-faint); font-size: 14px; margin-top: 8px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  padding: 22px 24px;
+  margin: 20px 0;
+}
+
+a { color: var(--accent); }
+
+.mail {
+  display: inline-block;
+  font-size: 18px;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 12px 20px;
+  border-radius: 12px;
+  background: var(--accent-well);
+  border: 1px solid var(--hairline);
+  margin-top: 4px;
+}
+
+ul { padding-left: 22px; }
+li { margin: 7px 0; }
+
+table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 15px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+th { color: var(--text-faint); font-weight: 600; }
+
+/* Wide tables scroll inside their own box rather than pushing the page sideways. */
+.scroll { overflow-x: auto; }
+
+footer {
+  margin-top: 56px;
+  padding-top: 24px;
+  border-top: 1px solid var(--hairline);
+  color: var(--text-faint);
+  font-size: 14px;
+  text-align: center;
+}
+
+footer a { color: var(--text-faint); }
+
+.nav { text-align: center; margin-top: 28px; font-size: 15px; }
+</style>
+</head>
+<body class="bloom">
+<div class="wrap">
+
+<header>
+  <h1>Privacy Policy</h1>
+  <p class="lede">Goals for iOS</p>
+  <p class="stamp">Effective 18 Aug 2026 · <a href="../privacy.html">Čeština</a></p>
+</header>
+
+<div class="card">
+  <h2 style="margin-top:0">In short</h2>
+  <p>Goals has no server. Your goals, milestones, check-ins, notes, custom categories, and units stay on your phone and are never sent anywhere — not to me, not to anyone else.</p>
+  <p style="margin-bottom:0">One thing does leave the device: <strong>anonymous usage statistics</strong>, from which nobody can tell who you are or what you've written in the app. You can turn it off in Settings.</p>
+</div>
+
+<h2>Who's responsible for the app</h2>
+<p>The app is developed by Martin Hrbek as a private individual. Under GDPR, he is the data controller for the processing described below. Contact: <a href="mailto:goals.app.support@gmail.com">goals.app.support@gmail.com</a>.</p>
+
+<h2>What stays only on your phone</h2>
+<p>The app stores this locally and never sends it anywhere:</p>
+<ul>
+  <li>Goals and their settings — title, category, deadline, priority, target value, schedule</li>
+  <li>Milestones, check-ins, and their notes</li>
+  <li>Custom categories and custom units you create</li>
+  <li>Your sign-in identity — name and email from Apple, Google, or in-app registration</li>
+  <li>Appearance, language, and reminder settings</li>
+</ul>
+<p>Data lives in the app's own storage and in the shared container the home-screen widgets read from. If you register by email, your password isn't stored in readable form — only as a cryptographic hash in the system Keychain.</p>
+<p><strong>The app has no cloud sync.</strong> Delete it, and your data goes with it.</p>
+
+<h2>Signing in</h2>
+<p>You can sign in with Apple, with Google, or with an email and password. Signing in is only an identity inside the app — it doesn't synchronize anything and doesn't create any account with me, because there's no server to create one on.</p>
+<p>With <strong>Sign in with Apple</strong> and <strong>Google</strong>, your phone communicates directly with Apple or Google; the app keeps only your name and email from their response, and stores it locally. That exchange is covered by those companies' own privacy policies.</p>
+
+<h2>Anonymous usage statistics</h2>
+<p>To see what's working for people in the app and where they get stuck, Goals sends anonymous usage data. It's processed by <strong>TelemetryDeck</strong>, with servers in the European Union.</p>
+
+<h3>What's sent</h3>
+<div class="scroll">
+<table>
+  <tr><th>Data</th><th>Example</th></tr>
+  <tr><td>Event name</td><td>"goal created," "progress logged," "paywall opened," "purchase completed"</td></tr>
+  <tr><td>Event parameters</td><td>goal tracking mode, priority, whether it has a deadline, which Pro plan was bought, which screen opened the paywall</td></tr>
+  <tr><td>Random install identifier</td><td>generated at random on first launch — used to tell repeat visits apart, not derived from your account or your phone</td></tr>
+  <tr><td>Technical runtime details</td><td>session identifier, system and app version</td></tr>
+</table>
+</div>
+
+<h3>What's never sent</h3>
+<p>Nothing you've written: <strong>goal titles, notes, custom categories and units, feedback text, your name, or your email</strong>. No advertising identifier is sent either. The app doesn't use any advertising network, and data is never sold or handed off for marketing.</p>
+<p>The list of data that can be sent is a closed enumeration in the app's own code — the compiler enforces it, not just good intentions.</p>
+
+<h3>How to turn it off</h3>
+<p>In the app: <strong>Settings → Privacy → Share Anonymous Statistics</strong>. Once off, no signal leaves — not from the app, not from the widgets.</p>
+<p class="stamp">Statistics are <strong>on by default</strong> after install. The legal basis is legitimate interest in improving the app (GDPR Art. 6(1)(f)); the data is anonymous and isn't used for profiling or for tracking across other apps or websites.</p>
+
+<h2>Crash reports</h2>
+<p>If you have diagnostics sharing turned on for developers (<em>iOS Settings → Privacy &amp; Security → Analytics &amp; Improvements</em>), I receive anonymized crash reports from Apple. Apple collects these, not me, and they're governed by Apple's own rules. You can turn it off at any time in system settings.</p>
+
+<h2>Purchases</h2>
+<p>Pro is bought through the App Store. Apple handles the entire payment — <strong>the app never has access to your card number or payment details</strong>. It only knows whether you're entitled to Pro or not.</p>
+
+<h2>Feedback by email</h2>
+<p>When you send feedback from the app, your mail client opens with a draft already prepared — <strong>you have to send it yourself</strong>, and you see the entire content beforehand. The device model, system version, and app version are filled in automatically so the issue can be traced. You're the only one who adds attachments.</p>
+<p>The message then lands in my own inbox and is used solely to handle what you reported.</p>
+
+<h2>Reminders and widgets</h2>
+<p>Reminders are entirely local — your phone schedules them, and no notification comes from a server. Widgets read data from the same app's shared container; they don't send anything anywhere, except for the same anonymous statistics described above (and only when it's turned on).</p>
+
+<h2>Children</h2>
+<p>The app isn't directed at children under 13 and knowingly collects no data from them.</p>
+
+<h2>Your rights</h2>
+<p>Because the vast majority of your data lives only on your phone, you're already fully in control of it: delete it directly in the app, or by uninstalling.</p>
+<p>For the anonymous statistics, I can't tie the data to a specific person — it contains nothing that could identify you — so it can't be looked up or deleted individually on request. You can stop it being sent at any time with the switch in Settings. Under GDPR you have the right to access, rectification, erasure, restriction of processing, and objection; you can exercise these at the contact address above. You also have the right to lodge a complaint with your local data protection authority.</p>
+
+<h2>Changes</h2>
+<p>If how data is processed changes, I'll update this page and move the effective date at the top. Significant changes will also be mentioned in the App Store update notes.</p>
+
+<div class="nav">
+  <a href="index.html">← Back to support</a>
+</div>
+
+<footer>
+  Goals · built by Martin Hrbek
+</footer>
+
+</div>
+</body>
+</html>
