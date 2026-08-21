@@ -4,7 +4,7 @@
 <dict>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.Hrobek.Goals</string>
+		<string>group.com.hrobek.goals</string>
 	</array>
 </dict>
 </plist>

@@ -15,7 +15,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>Hrobek.Goals</string>
+			<string>com.hrobek.goals</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>goals</string>

@@ -48,7 +48,7 @@
           "locale" : "pt_BR"
         }
       ],
-      "productID" : "Hrobek.Goals.pro",
+      "productID" : "com.hrobek.goals.pro",
       "promotionalImageID" : "57B4E245",
       "referenceName" : "Goals Pro Lifetime",
       "type" : "NonConsumable"
@@ -121,7 +121,7 @@
               "locale" : "pt_BR"
             }
           ],
-          "productID" : "Hrobek.Goals.pro.yearly",
+          "productID" : "com.hrobek.goals.pro.yearly",
           "promotionalImageID" : "57B4E245",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Goals Pro Yearly",
@@ -178,7 +178,7 @@
               "locale" : "pt_BR"
             }
           ],
-          "productID" : "Hrobek.Goals.pro.monthly",
+          "productID" : "com.hrobek.goals.pro.monthly",
           "promotionalImageID" : "57B4E245",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Goals Pro Monthly",

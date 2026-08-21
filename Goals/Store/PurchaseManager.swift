@@ -12,9 +12,9 @@ import WidgetKit
 /// non-consumable that unlocks it for good. The lifetime product keeps its original ID so anyone
 /// who bought it before the subscriptions existed stays unlocked.
 enum ProPlan: String, CaseIterable, Identifiable, Sendable {
-    case monthly = "Hrobek.Goals.pro.monthly"
-    case yearly = "Hrobek.Goals.pro.yearly"
-    case lifetime = "Hrobek.Goals.pro"
+    case monthly = "com.hrobek.goals.pro.monthly"
+    case yearly = "com.hrobek.goals.pro.yearly"
+    case lifetime = "com.hrobek.goals.pro"
 
     var id: String { rawValue }
 

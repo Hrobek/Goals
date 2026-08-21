@@ -36,7 +36,7 @@ Vyberte schéma **Goals** a spusťte. Bez dalšího nastavení běží všechno 
 
 ### Podpisování
 
-Projekt má v sobě App Group `group.Hrobek.Goals` a Přihlášení přes Apple. Pro běh na skutečném zařízení nastavte v Xcode svůj tým a **změňte identifikátory** — App Group i oba bundle ID (`Hrobek.Goals` a `Hrobek.Goals.GoalsWidget`) jsou vázané na účet autora. App Group musí být zapsaná v obou cílech, jinak widgety neuvidí data aplikace.
+Projekt má v sobě App Group `group.com.hrobek.goals` a Přihlášení přes Apple. Pro běh na skutečném zařízení nastavte v Xcode svůj tým a **změňte identifikátory** — App Group i oba bundle ID (`com.hrobek.goals` a `com.hrobek.goals.GoalsWidget`) jsou vázané na účet autora. App Group musí být zapsaná v obou cílech, jinak widgety neuvidí data aplikace.
 
 ### Přihlášení Googlem (volitelné)
 

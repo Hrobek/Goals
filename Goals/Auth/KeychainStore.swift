@@ -9,7 +9,7 @@ import Security
 /// Thin wrapper around the Keychain Services API for storing small pieces of local-only data
 /// (password hashes, salts). There is no backend — everything stays on-device.
 enum KeychainStore {
-    private static let service = "Hrobek.Goals.auth"
+    private static let service = "com.hrobek.goals.auth"
 
     static func set(_ data: Data, for account: String) {
         let query: [String: Any] = [

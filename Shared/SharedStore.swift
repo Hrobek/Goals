@@ -9,7 +9,7 @@ import SwiftData
 /// The SwiftData store, living in the App Group container so the widget extension reads and
 /// writes the same database as the app.
 enum SharedStore {
-    static let appGroupID = "group.Hrobek.Goals"
+    static let appGroupID = "group.com.hrobek.goals"
 
     static let schema = Schema([
         Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self
