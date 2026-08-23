@@ -7744,37 +7744,37 @@
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Čas zapsat pokrok."
+            "value" : "Jak to jde s tímto cílem?"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeit, dieses Ziel abzuhaken."
+            "value" : "Wie läuft dieses Ziel?"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Time to check in on this goal."
+            "value" : "How's this goal going?"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toca marcar el progreso de este objetivo."
+            "value" : "¿Cómo va este objetivo?"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "C’est le moment de cocher cet objectif."
+            "value" : "Comment ça avance, cet objectif ?"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hora de marcar este objetivo."
+            "value" : "Como está indo esse objetivo?"
           }
         }
       }
@@ -13288,6 +13288,86 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Toque para desbloquear com o Pro."
+          }
+        }
+      }
+    },
+    "widget.single.description" : {
+      "localizations" : {
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Připni si na plochu jeden cíl. Který to bude, vybereš při úpravě widgetu."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Ziel auf dem Homescreen anheften. Welches, wählst du beim Bearbeiten des Widgets."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pin one goal to your Home Screen. Choose which one when you edit the widget."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fija un objetivo en tu pantalla de inicio. Elige cuál al editar el widget."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Épingle un objectif sur ton écran d’accueil. Choisis lequel en modifiant le widget."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fixe um objetivo na tela inicial. Escolha qual ao editar o widget."
+          }
+        }
+      }
+    },
+    "widget.single.displayName" : {
+      "localizations" : {
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jeden cíl"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Ziel"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One Goal"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un objetivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un objectif"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um objetivo"
           }
         }
       }

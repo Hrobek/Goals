@@ -28,9 +28,6 @@ struct RootView: View {
     /// Which of the two put it up, so the funnel can tell them apart.
     @State private var paywallSource: PaywallSource = .widget
 
-    /// Shown once, after the first sign-in on this device. Per device rather than per account on
-    /// purpose: nothing syncs, so signing in here is a fresh start however old the account is.
-    @AppStorage("Goals.hasSeenFirstRunWelcome") private var hasSeenFirstRunWelcome = false
     @State private var isShowingFirstRunWelcome = false
     /// Set when the welcome sheet's primary button is tapped, consumed once that sheet has fully
     /// dismissed — presenting Add Goal only then avoids stacking it on the outgoing sheet.
@@ -68,7 +65,7 @@ struct RootView: View {
             }
         }
         .onChange(of: session.isAuthenticated, initial: true) { _, isAuthenticated in
-            guard isAuthenticated, !hasSeenFirstRunWelcome else { return }
+            guard isAuthenticated, let userId = session.currentUser?.id, !FirstRunWelcomeStore.hasSeen(userId: userId) else { return }
             isShowingFirstRunWelcome = true
         }
         // Marked as seen on dismissal rather than on presentation, so a welcome killed by a crash
@@ -76,7 +73,9 @@ struct RootView: View {
         // once this sheet is actually gone, rather than from the button action — presenting a new
         // sheet while this one is still animating out gets silently dropped.
         .sheet(isPresented: $isShowingFirstRunWelcome, onDismiss: {
-            hasSeenFirstRunWelcome = true
+            if let userId = session.currentUser?.id {
+                FirstRunWelcomeStore.markSeen(userId: userId)
+            }
             if wantsAddGoalAfterWelcome {
                 wantsAddGoalAfterWelcome = false
                 addGoalTrigger = true
@@ -166,6 +165,20 @@ struct RootView: View {
 
         AppReviewPrompt.recordRequest()
         requestReview()
+    }
+}
+
+/// Tracks the first-run welcome sheet per account rather than per device, so switching to a
+/// different account on a device that has already seen it gets its own turn.
+private enum FirstRunWelcomeStore {
+    private static func key(for userId: UUID) -> String { "Goals.hasSeenFirstRunWelcome.\(userId.uuidString)" }
+
+    static func hasSeen(userId: UUID) -> Bool {
+        UserDefaults.standard.bool(forKey: key(for: userId))
+    }
+
+    static func markSeen(userId: UUID) {
+        UserDefaults.standard.set(true, forKey: key(for: userId))
     }
 }
 

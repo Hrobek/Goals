@@ -49,14 +49,6 @@ struct FirstRunWelcomeView: View {
                 .buttonStyle(AccentButtonStyle(height: 52))
                 .disabled(isPreparing)
 
-                // Spelled out before the system prompt appears, so the permission sheet isn't the
-                // first the user hears of it.
-                Text("firstRun.reminderNote")
-                    .font(Theme.Typo.footnote)
-                    .foregroundStyle(Theme.textFaint)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-
                 Button("firstRun.skip") { dismiss() }
                     .font(Theme.Typo.rowEmphasis)
                     .foregroundStyle(Theme.textMuted)

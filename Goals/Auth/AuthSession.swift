@@ -80,9 +80,21 @@ final class AuthSession {
         let name = [credential.fullName?.givenName, credential.fullName?.familyName]
             .compactMap { $0 }
             .joined(separator: " ")
-        let displayName = name.isEmpty ? String(localized: "auth.appleUserFallback", defaultValue: "Apple User", bundle: AppLanguage.currentBundle) : name
 
-        signIn(as: AuthenticatedUser(id: id, displayName: displayName, email: credential.email, provider: .apple), context: context)
+        // Apple only includes the name and email on the very first authorization for a given
+        // Apple ID + app pair — every sign-in after that returns both as nil, even though we
+        // still request the scopes. Fall back to whatever we cached from that first authorization
+        // instead of overwriting a known identity with the "Apple User" placeholder.
+        let cached = AppleIdentityCache.get(for: id)
+        let displayName = !name.isEmpty ? name
+            : cached?.displayName ?? String(localized: "auth.appleUserFallback", defaultValue: "Apple User", bundle: AppLanguage.currentBundle)
+        let email = credential.email ?? cached?.email
+
+        if !name.isEmpty || credential.email != nil {
+            AppleIdentityCache.set(displayName: displayName, email: email, for: id)
+        }
+
+        signIn(as: AuthenticatedUser(id: id, displayName: displayName, email: email, provider: .apple), context: context)
     }
 
     func signInWithGoogle(context: ModelContext? = nil) async throws {
@@ -98,5 +110,29 @@ final class AuthSession {
     func login(email: String, password: String, context: ModelContext? = nil) throws {
         let user = try EmailAuthService.login(email: email, password: password)
         signIn(as: user, context: context)
+    }
+}
+
+/// Remembers the name and email Apple handed over on an id's first authorization, since Apple
+/// omits both on every authorization after that. Device-local by design — it only needs to
+/// survive a sign-out/sign-in cycle on this device, not sync anywhere.
+private enum AppleIdentityCache {
+    private struct Entry: Codable {
+        var displayName: String
+        var email: String?
+    }
+
+    private static func key(for id: UUID) -> String { "Goals.appleIdentityCache.\(id.uuidString)" }
+
+    static func get(for id: UUID) -> (displayName: String, email: String?)? {
+        guard let data = UserDefaults.standard.data(forKey: key(for: id)),
+              let entry = try? JSONDecoder().decode(Entry.self, from: data)
+        else { return nil }
+        return (entry.displayName, entry.email)
+    }
+
+    static func set(displayName: String, email: String?, for id: UUID) {
+        guard let data = try? JSONEncoder().encode(Entry(displayName: displayName, email: email)) else { return }
+        UserDefaults.standard.set(data, forKey: key(for: id))
     }
 }

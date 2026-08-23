@@ -86,8 +86,9 @@ struct GoalsProvider: TimelineProvider {
         }
     }
 
+    /// Not private: `SingleGoalProvider` reuses this to show the same "today" tally in its header.
     @MainActor
-    private static func todaysGoals() -> [Goal] {
+    static func todaysGoals() -> [Goal] {
         guard let userId = CurrentUser.currentUserId else { return [] }
         let context = SharedStore.container.mainContext
         let descriptor = FetchDescriptor<Goal>(predicate: #Predicate { $0.ownerId == userId })
@@ -260,8 +261,9 @@ private struct GoalRowView: View {
 }
 
 /// A hand-drawn bar instead of `ProgressView`, which won't go below its platform-defined
-/// minimum height — this one can be as thin as the compact row needs.
-private struct ThinProgressBar: View {
+/// minimum height — this one can be as thin as the compact row needs. Not private: also used by
+/// `SingleGoalWidget`.
+struct ThinProgressBar: View {
     let progress: Double
 
     var body: some View {
