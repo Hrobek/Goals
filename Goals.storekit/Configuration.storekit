@@ -1,196 +1,196 @@
 {
-  "appPolicies" : {
-    "eula" : "",
-    "policies" : [
+  "appPolicies": {
+    "eula": "",
+    "policies": [
       {
-        "locale" : "en_US",
-        "policyText" : "",
-        "policyURL" : ""
+        "locale": "en_US",
+        "policyText": "",
+        "policyURL": ""
       }
     ]
   },
-  "identifier" : "6A50BD58-9B26-4D85-9CCD-957E618E8AD7",
-  "nonRenewingSubscriptions" : [],
-  "products" : [
+  "identifier": "6A50BD58-9B26-4D85-9CCD-957E618E8AD7",
+  "nonRenewingSubscriptions": [],
+  "products": [
     {
-      "displayPrice" : "39.99",
-      "familyShareable" : false,
-      "internalID" : "057111A5-9730-4384-B24B-594970D2EB22",
-      "localizations" : [
+      "displayPrice": "39.99",
+      "familyShareable": false,
+      "internalID": "057111A5-9730-4384-B24B-594970D2EB22",
+      "localizations": [
         {
-          "description" : "Unlock unlimited active goals, forever.",
-          "displayName" : "Goals Pro Lifetime",
-          "locale" : "en_US"
+          "description": "Unlimited goals & advanced stats. Forever.",
+          "displayName": "Goals Pro Lifetime",
+          "locale": "en_US"
         },
         {
-          "description" : "Odemkni neomezený počet aktivních cílů. Napořád.",
-          "displayName" : "Goals Pro navždy",
-          "locale" : "cs_CZ"
+          "description": "Neomezené cíle a statistiky. Navždy.",
+          "displayName": "Goals Pro navždy",
+          "locale": "cs_CZ"
         },
         {
-          "description" : "Schalte unbegrenzt aktive Ziele frei. Für immer.",
-          "displayName" : "Goals Pro für immer",
-          "locale" : "de_DE"
+          "description": "Unbegrenzte Ziele & Statistiken. Für immer.",
+          "displayName": "Goals Pro für immer",
+          "locale": "de_DE"
         },
         {
-          "description" : "Desbloquea objetivos activos ilimitados. Para siempre.",
-          "displayName" : "Goals Pro para siempre",
-          "locale" : "es_ES"
+          "description": "Objetivos y estadísticas ilimitados.",
+          "displayName": "Goals Pro para siempre",
+          "locale": "es_ES"
         },
         {
-          "description" : "Débloque un nombre illimité d’objectifs actifs. À vie.",
-          "displayName" : "Goals Pro à vie",
-          "locale" : "fr_FR"
+          "description": "Objectifs et statistiques illimités. À vie.",
+          "displayName": "Goals Pro à vie",
+          "locale": "fr_FR"
         },
         {
-          "description" : "Desbloqueie objetivos ativos ilimitados. Para sempre.",
-          "displayName" : "Goals Pro vitalício",
-          "locale" : "pt_BR"
+          "description": "Metas e estatísticas ilimitadas.",
+          "displayName": "Goals Pro vitalício",
+          "locale": "pt_BR"
         }
       ],
-      "productID" : "com.hrobek.goals.pro",
-      "promotionalImageID" : "57B4E245",
-      "referenceName" : "Goals Pro Lifetime",
-      "type" : "NonConsumable"
+      "productID": "com.hrobek.goals.pro",
+      "promotionalImageID": "57B4E245",
+      "referenceName": "Goals Pro Lifetime",
+      "type": "NonConsumable"
     }
   ],
-  "settings" : {
-    "_askToBuyEnabled" : false,
-    "_billingGracePeriodEnabled" : false,
-    "_billingIssuesEnabled" : false,
-    "_disableDialogs" : false,
-    "_failTransactionsEnabled" : false,
-    "_locale" : "en_US",
-    "_renewalBillingIssuesEnabled" : false,
-    "_storefront" : "USA",
-    "_storeKitErrors" : [],
-    "_timeRate" : 0
+  "settings": {
+    "_askToBuyEnabled": false,
+    "_billingGracePeriodEnabled": false,
+    "_billingIssuesEnabled": false,
+    "_disableDialogs": false,
+    "_failTransactionsEnabled": false,
+    "_locale": "en_US",
+    "_renewalBillingIssuesEnabled": false,
+    "_storefront": "USA",
+    "_storeKitErrors": [],
+    "_timeRate": 0
   },
-  "subscriptionGroups" : [
+  "subscriptionGroups": [
     {
-      "id" : "8C1D2F73-4A0E-4C1B-9E52-1B6A7C0D5E11",
-      "localizations" : [],
-      "name" : "Goals Pro",
-      "subscriptions" : [
+      "id": "8C1D2F73-4A0E-4C1B-9E52-1B6A7C0D5E11",
+      "localizations": [],
+      "name": "Goals Pro",
+      "subscriptions": [
         {
-          "adHocOffers" : [],
-          "billingPlans" : [
+          "adHocOffers": [],
+          "billingPlans": [
             {
-              "billingPlanType" : "BILLED_UPFRONT",
-              "commitmentDisplayPrice" : "27.99",
-              "displayPrice" : "27.99",
-              "internalID" : "4F231DF7",
-              "isEnabled" : true
+              "billingPlanType": "BILLED_UPFRONT",
+              "commitmentDisplayPrice": "27.99",
+              "displayPrice": "27.99",
+              "internalID": "4F231DF7",
+              "isEnabled": true
             }
           ],
-          "codeOffers" : [],
-          "displayPrice" : "27.99",
-          "familyShareable" : false,
-          "groupNumber" : 1,
-          "internalID" : "3F2A9B41-7D6C-42E8-8B10-2C4D9E7F1A22",
-          "introductoryOffers" : [],
-          "localizations" : [
+          "codeOffers": [],
+          "displayPrice": "27.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "3F2A9B41-7D6C-42E8-8B10-2C4D9E7F1A22",
+          "introductoryOffers": [],
+          "localizations": [
             {
-              "description" : "Unlock unlimited active goals. Billed yearly.",
-              "displayName" : "Goals Pro Yearly",
-              "locale" : "en_US"
+              "description": "Unlimited goals & advanced statistics.",
+              "displayName": "Goals Pro Yearly",
+              "locale": "en_US"
             },
             {
-              "description" : "Odemkni neomezený počet aktivních cílů. Účtováno ročně.",
-              "displayName" : "Goals Pro na rok",
-              "locale" : "cs_CZ"
+              "description": "Neomezené cíle a pokročilé statistiky.",
+              "displayName": "Goals Pro na rok",
+              "locale": "cs_CZ"
             },
             {
-              "description" : "Schalte unbegrenzt aktive Ziele frei. Jährliche Abrechnung.",
-              "displayName" : "Goals Pro jährlich",
-              "locale" : "de_DE"
+              "description": "Unbegrenzte Ziele & erweiterte Statistiken.",
+              "displayName": "Goals Pro jährlich",
+              "locale": "de_DE"
             },
             {
-              "description" : "Desbloquea objetivos activos ilimitados. Facturación anual.",
-              "displayName" : "Goals Pro anual",
-              "locale" : "es_ES"
+              "description": "Objetivos y estadísticas ilimitados.",
+              "displayName": "Goals Pro anual",
+              "locale": "es_ES"
             },
             {
-              "description" : "Débloque un nombre illimité d’objectifs actifs. Facturé chaque année.",
-              "displayName" : "Goals Pro annuel",
-              "locale" : "fr_FR"
+              "description": "Objectifs et statistiques illimités.",
+              "displayName": "Goals Pro annuel",
+              "locale": "fr_FR"
             },
             {
-              "description" : "Desbloqueie objetivos ativos ilimitados. Cobrança anual.",
-              "displayName" : "Goals Pro anual",
-              "locale" : "pt_BR"
+              "description": "Metas e estatísticas ilimitadas.",
+              "displayName": "Goals Pro anual",
+              "locale": "pt_BR"
             }
           ],
-          "productID" : "com.hrobek.goals.pro.yearly",
-          "promotionalImageID" : "57B4E245",
-          "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Goals Pro Yearly",
-          "subscriptionGroupID" : "8C1D2F73-4A0E-4C1B-9E52-1B6A7C0D5E11",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : []
+          "productID": "com.hrobek.goals.pro.yearly",
+          "promotionalImageID": "57B4E245",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Goals Pro Yearly",
+          "subscriptionGroupID": "8C1D2F73-4A0E-4C1B-9E52-1B6A7C0D5E11",
+          "type": "RecurringSubscription",
+          "winbackOffers": []
         },
         {
-          "adHocOffers" : [],
-          "billingPlans" : [
+          "adHocOffers": [],
+          "billingPlans": [
             {
-              "billingPlanType" : "BILLED_UPFRONT",
-              "commitmentDisplayPrice" : "3.99",
-              "displayPrice" : "3.99",
-              "internalID" : "DAB1F11E",
-              "isEnabled" : true
+              "billingPlanType": "BILLED_UPFRONT",
+              "commitmentDisplayPrice": "3.99",
+              "displayPrice": "3.99",
+              "internalID": "DAB1F11E",
+              "isEnabled": true
             }
           ],
-          "codeOffers" : [],
-          "displayPrice" : "3.99",
-          "familyShareable" : false,
-          "groupNumber" : 2,
-          "internalID" : "5B8E3C60-1F4A-4D97-A3C5-6E0B2D8F3A33",
-          "introductoryOffers" : [],
-          "localizations" : [
+          "codeOffers": [],
+          "displayPrice": "3.99",
+          "familyShareable": false,
+          "groupNumber": 2,
+          "internalID": "5B8E3C60-1F4A-4D97-A3C5-6E0B2D8F3A33",
+          "introductoryOffers": [],
+          "localizations": [
             {
-              "description" : "Unlock unlimited active goals. Billed monthly.",
-              "displayName" : "Goals Pro Monthly",
-              "locale" : "en_US"
+              "description": "Unlimited goals & advanced statistics.",
+              "displayName": "Goals Pro Monthly",
+              "locale": "en_US"
             },
             {
-              "description" : "Odemkni neomezený počet aktivních cílů. Účtováno měsíčně.",
-              "displayName" : "Goals Pro na měsíc",
-              "locale" : "cs_CZ"
+              "description": "Neomezené cíle a pokročilé statistiky.",
+              "displayName": "Goals Pro na měsíc",
+              "locale": "cs_CZ"
             },
             {
-              "description" : "Schalte unbegrenzt aktive Ziele frei. Monatliche Abrechnung.",
-              "displayName" : "Goals Pro monatlich",
-              "locale" : "de_DE"
+              "description": "Unbegrenzte Ziele & erweiterte Statistiken.",
+              "displayName": "Goals Pro monatlich",
+              "locale": "de_DE"
             },
             {
-              "description" : "Desbloquea objetivos activos ilimitados. Facturación mensual.",
-              "displayName" : "Goals Pro mensual",
-              "locale" : "es_ES"
+              "description": "Objetivos y estadísticas ilimitados.",
+              "displayName": "Goals Pro mensual",
+              "locale": "es_ES"
             },
             {
-              "description" : "Débloque un nombre illimité d’objectifs actifs. Facturé chaque mois.",
-              "displayName" : "Goals Pro mensuel",
-              "locale" : "fr_FR"
+              "description": "Objectifs et statistiques illimités.",
+              "displayName": "Goals Pro mensuel",
+              "locale": "fr_FR"
             },
             {
-              "description" : "Desbloqueie objetivos ativos ilimitados. Cobrança mensal.",
-              "displayName" : "Goals Pro mensal",
-              "locale" : "pt_BR"
+              "description": "Metas e estatísticas ilimitadas.",
+              "displayName": "Goals Pro mensal",
+              "locale": "pt_BR"
             }
           ],
-          "productID" : "com.hrobek.goals.pro.monthly",
-          "promotionalImageID" : "57B4E245",
-          "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Goals Pro Monthly",
-          "subscriptionGroupID" : "8C1D2F73-4A0E-4C1B-9E52-1B6A7C0D5E11",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : []
+          "productID": "com.hrobek.goals.pro.monthly",
+          "promotionalImageID": "57B4E245",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Goals Pro Monthly",
+          "subscriptionGroupID": "8C1D2F73-4A0E-4C1B-9E52-1B6A7C0D5E11",
+          "type": "RecurringSubscription",
+          "winbackOffers": []
         }
       ]
     }
   ],
-  "version" : {
-    "major" : 5,
-    "minor" : 0
+  "version": {
+    "major": 5,
+    "minor": 0
   }
 }

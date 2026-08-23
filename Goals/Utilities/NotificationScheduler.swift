@@ -35,13 +35,14 @@ enum NotificationScheduler {
     /// Rebuilds every scheduled notification from the current data. Cheap for a handful of goals
     /// and idempotent, which beats trying to patch individual requests from a dozen call sites.
     @MainActor
-    static func syncAll(context: ModelContext) async {
+    static func syncAll(context: ModelContext, userId: UUID) async {
         guard await authorizationStatus() == .authorized else {
             UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
             return
         }
 
-        let goals = (try? context.fetch(FetchDescriptor<Goal>())) ?? []
+        let descriptor = FetchDescriptor<Goal>(predicate: #Predicate { $0.ownerId == userId })
+        let goals = (try? context.fetch(descriptor)) ?? []
         let center = UNUserNotificationCenter.current()
 
         let stale = await center.pendingNotificationRequests()

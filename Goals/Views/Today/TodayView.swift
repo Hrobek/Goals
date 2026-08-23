@@ -11,7 +11,12 @@ import SwiftData
 struct TodayView: View {
     @Binding var path: NavigationPath
 
-    @Query(sort: \Goal.createdAt, order: .reverse) private var goals: [Goal]
+    @Query private var goals: [Goal]
+
+    init(userId: UUID, path: Binding<NavigationPath>) {
+        self._path = path
+        _goals = Query(filter: #Predicate<Goal> { $0.ownerId == userId }, sort: \Goal.createdAt, order: .reverse)
+    }
 
     private var todaysGoals: [Goal] {
         goals
@@ -145,6 +150,6 @@ struct TodayView: View {
 }
 
 #Preview {
-    TodayView(path: .constant(NavigationPath()))
+    TodayView(userId: UUID(), path: .constant(NavigationPath()))
         .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)
 }

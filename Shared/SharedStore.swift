@@ -10,15 +10,32 @@ import SwiftData
 /// writes the same database as the app.
 enum SharedStore {
     static let appGroupID = "group.com.hrobek.goals"
+    static let cloudKitContainerID = "iCloud.com.hrobek.goals"
 
     static let schema = Schema([
         Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self
     ])
 
+    private static let cloudSyncKey = "Goals.cloudSyncEnabled"
+
+    /// Whether the store syncs through CloudKit. Read once, at `container`'s first access — flip
+    /// it from Settings and it takes effect on the next launch, not live: swapping a running
+    /// `ModelContainer`'s `cloudKitDatabase` option would invalidate every `@Query` and context
+    /// already bound to it throughout the app and the widget.
+    static var isCloudSyncEnabled: Bool {
+        get { UserDefaults(suiteName: appGroupID)?.bool(forKey: cloudSyncKey) ?? false }
+        set { UserDefaults(suiteName: appGroupID)?.set(newValue, forKey: cloudSyncKey) }
+    }
+
     static let container: ModelContainer = {
         migrateLocalStoreIfNeeded()
+        let configuration = ModelConfiguration(
+            schema: schema,
+            url: storeURL,
+            cloudKitDatabase: isCloudSyncEnabled ? .private(cloudKitContainerID) : .none
+        )
         do {
-            return try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, url: storeURL))
+            return try ModelContainer(for: schema, configurations: configuration)
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }

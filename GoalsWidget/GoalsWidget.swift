@@ -31,6 +31,7 @@ struct GoalsEntry: TimelineEntry {
     var page = 0
     var pageCount = 1
     var scope = WidgetKind.goals
+    var isSignedIn = true
 }
 
 // MARK: - Provider
@@ -69,7 +70,8 @@ struct GoalsProvider: TimelineProvider {
             goals: paged.items,
             page: paged.page,
             pageCount: max(1, paged.count),
-            scope: scope
+            scope: scope,
+            isSignedIn: WidgetGoals.isSignedIn
         )
     }
 
@@ -86,8 +88,10 @@ struct GoalsProvider: TimelineProvider {
 
     @MainActor
     private static func todaysGoals() -> [Goal] {
+        guard let userId = CurrentUser.currentUserId else { return [] }
         let context = SharedStore.container.mainContext
-        let goals = (try? context.fetch(FetchDescriptor<Goal>())) ?? []
+        let descriptor = FetchDescriptor<Goal>(predicate: #Predicate { $0.ownerId == userId })
+        let goals = (try? context.fetch(descriptor)) ?? []
 
         return goals
             .filter { $0.status == .active && $0.isScheduledToday() }
@@ -182,10 +186,10 @@ struct GoalsWidgetEntryView: View {
 
     private var emptyState: some View {
         VStack(spacing: 6) {
-            Image(systemName: "checkmark.circle")
+            Image(systemName: entry.isSignedIn ? "checkmark.circle" : "person.crop.circle.badge.questionmark")
                 .font(.title2)
                 .foregroundStyle(Theme.accentSpent)
-            Text("today.empty.title")
+            Text(LocalizedStringKey(entry.isSignedIn ? "today.empty.title" : "widget.notSignedIn"))
                 .font(.caption)
                 .foregroundStyle(Theme.textFaint)
                 .multilineTextAlignment(.center)

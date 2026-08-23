@@ -42,8 +42,13 @@ struct ThemedSecureField: UIViewRepresentable {
 
     func updateUIView(_ field: UITextField, context: Context) {
         context.coordinator.parent = self
-        // Only when it differs: assigning `text` while editing would move the caret to the end.
-        if field.text != text { field.text = text }
+        // Compare against the last value *we* reported up, not against `field.text` itself: AutoFill
+        // can still be inserting characters into `field.text` when this runs, and a SwiftUI render
+        // carrying an older `text` snapshot would otherwise stomp on those in-flight characters.
+        if context.coordinator.lastReportedText != text {
+            field.text = text
+            context.coordinator.lastReportedText = text
+        }
         field.textContentType = textContentType
         field.attributedPlaceholder = NSAttributedString(
             string: placeholder,
@@ -55,15 +60,20 @@ struct ThemedSecureField: UIViewRepresentable {
 
     final class Coordinator: NSObject, UITextFieldDelegate {
         var parent: ThemedSecureField
+        /// The last text this field reported up to SwiftUI, so `updateUIView` can tell an echo of its
+        /// own edit apart from a genuinely external change (e.g. the fields being reset on mode switch).
+        var lastReportedText: String
 
         init(parent: ThemedSecureField) {
             self.parent = parent
+            self.lastReportedText = parent.text
         }
 
         /// Fires for typing and for an AutoFill insertion alike, which is what keeps the binding in
         /// step with a generated password.
         @objc func editingChanged(_ field: UITextField) {
             let value = field.text ?? ""
+            lastReportedText = value
             if parent.text != value { parent.text = value }
         }
 

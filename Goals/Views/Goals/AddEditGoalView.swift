@@ -11,6 +11,7 @@ struct AddEditGoalView: View {
     @Environment(\.dismiss) private var dismiss
 
     private let goal: Goal?
+    private let userId: UUID
 
     @State private var title: String
     @State private var category: Category?
@@ -45,8 +46,12 @@ struct AddEditGoalView: View {
     @State private var isShowingCategoryPicker = false
     @State private var isShowingUnitPicker = false
 
-    init(goal: Goal?) {
+    init(goal: Goal?, userId: UUID) {
         self.goal = goal
+        // When editing, the goal's own owner is the only correct scope for its category/unit
+        // pickers — trusting a separately-passed `userId` here would let a mismatched caller leak
+        // another account's categories into this one's edit sheet.
+        self.userId = goal?.ownerId ?? userId
         _title = State(initialValue: goal?.title ?? "")
         _category = State(initialValue: goal?.category)
         _priority = State(initialValue: goal?.priority ?? .medium)
@@ -170,10 +175,10 @@ struct AddEditGoalView: View {
                 EmojiPickerSheet(selection: $emoji)
             }
             .sheet(isPresented: $isShowingCategoryPicker) {
-                CategoryPickerSheet(selection: $category)
+                CategoryPickerSheet(selection: $category, userId: userId)
             }
             .sheet(isPresented: $isShowingUnitPicker) {
-                UnitPickerSheet(selection: $unitSelection)
+                UnitPickerSheet(selection: $unitSelection, userId: userId)
             }
         }
     }
@@ -224,7 +229,7 @@ struct AddEditGoalView: View {
 
     private var basicsSection: some View {
         CardGroup {
-            DisclosureRow(label: "goal.field.category", value: category?.name) {
+            DisclosureRow(label: "goal.field.category", value: category?.displayName) {
                 isShowingCategoryPicker = true
             }
             RowDivider()
@@ -548,6 +553,7 @@ struct AddEditGoalView: View {
             saved = goal
         } else {
             let newGoal = Goal(
+                ownerId: userId,
                 title: trimmedTitle,
                 category: category,
                 deadline: hasDeadline ? deadline : nil,
@@ -591,7 +597,8 @@ struct AddEditGoalView: View {
         }
 
         let context = modelContext
-        Task { await NotificationScheduler.syncAll(context: context) }
+        let userId = userId
+        Task { await NotificationScheduler.syncAll(context: context, userId: userId) }
         dismiss()
     }
 
@@ -618,7 +625,7 @@ struct AddEditGoalView: View {
                 milestone.title = draft.title
                 milestone.order = index
             } else {
-                modelContext.insert(Milestone(id: draft.id, title: draft.title, order: index, goal: goal))
+                modelContext.insert(Milestone(id: draft.id, ownerId: goal.ownerId, title: draft.title, order: index, goal: goal))
             }
         }
     }
@@ -631,6 +638,6 @@ private struct MilestoneDraft: Identifiable, Hashable {
 }
 
 #Preview {
-    AddEditGoalView(goal: nil)
+    AddEditGoalView(goal: nil, userId: UUID())
         .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)
 }

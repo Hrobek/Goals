@@ -10,12 +10,19 @@ import SwiftData
 /// "Add Category" as the last entry.
 struct CategoryPickerSheet: View {
     @Binding var selection: Category?
+    let userId: UUID
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: \Category.createdAt) private var categories: [Category]
+    @Query private var categories: [Category]
 
     @State private var isShowingAddCategory = false
+
+    init(selection: Binding<Category?>, userId: UUID) {
+        self._selection = selection
+        self.userId = userId
+        _categories = Query(filter: #Predicate<Category> { $0.ownerId == userId }, sort: \Category.createdAt)
+    }
 
     var body: some View {
         NavigationStack {
@@ -27,7 +34,7 @@ struct CategoryPickerSheet: View {
                             dismiss()
                         } label: {
                             HStack {
-                                Text(category.name)
+                                Text(category.displayName)
                                     .foregroundStyle(.primary)
                                 Spacer()
                                 if selection?.id == category.id {
@@ -59,7 +66,7 @@ struct CategoryPickerSheet: View {
                 }
             }
             .sheet(isPresented: $isShowingAddCategory) {
-                AddCategorySheet { newCategory in
+                AddCategorySheet(userId: userId) { newCategory in
                     selection = newCategory
                     dismiss()
                 }
@@ -79,6 +86,6 @@ struct CategoryPickerSheet: View {
 }
 
 #Preview {
-    CategoryPickerSheet(selection: .constant(nil))
+    CategoryPickerSheet(selection: .constant(nil), userId: UUID())
         .modelContainer(for: [Category.self], inMemory: true)
 }

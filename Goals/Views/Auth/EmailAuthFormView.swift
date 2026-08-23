@@ -19,6 +19,7 @@ struct EmailAuthFormView: View {
 
     @Environment(AuthSession.self) private var session
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
     @State private var mode: Mode = .signIn
     @State private var displayName = ""
@@ -125,9 +126,9 @@ struct EmailAuthFormView: View {
         do {
             switch mode {
             case .signIn:
-                try session.login(email: email, password: password)
+                try session.login(email: email, password: password, context: modelContext)
             case .register:
-                try session.register(email: email, password: password, displayName: displayName)
+                try session.register(email: email, password: password, displayName: displayName, context: modelContext)
             }
             dismiss()
         } catch {

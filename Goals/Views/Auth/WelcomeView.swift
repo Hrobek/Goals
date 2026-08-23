@@ -9,6 +9,7 @@ import AuthenticationServices
 struct WelcomeView: View {
     @Environment(AuthSession.self) private var session
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.modelContext) private var modelContext
 
     @State private var isShowingEmailForm = false
     @State private var errorMessage: String?
@@ -80,7 +81,7 @@ struct WelcomeView: View {
         switch result {
         case .success(let authorization):
             do {
-                try session.completeAppleSignIn(with: authorization)
+                try session.completeAppleSignIn(with: authorization, context: modelContext)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -96,7 +97,7 @@ struct WelcomeView: View {
     private func signInWithGoogle() async {
         errorMessage = nil
         do {
-            try await session.signInWithGoogle()
+            try await session.signInWithGoogle(context: modelContext)
         } catch GoogleSignInError.cancelled {
             // Closing the sheet isn't a failure — the Apple button treats it the same way.
             return

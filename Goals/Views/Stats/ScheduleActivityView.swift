@@ -269,7 +269,7 @@ struct ScheduleActivityView: View {
 
 #Preview {
     ScheduleActivityView(
-        goal: Goal(title: "Gym", recurrenceType: .specificWeekdays, recurrenceWeekdays: [2, 4, 6]),
+        goal: Goal(ownerId: UUID(), title: "Gym", recurrenceType: .specificWeekdays, recurrenceWeekdays: [2, 4, 6]),
         range: .month
     )
     .padding()

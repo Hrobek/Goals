@@ -80,7 +80,7 @@ struct GoalDetailView: View {
             !wasCompleted && isCompleted ? .success : nil
         }
         .sheet(isPresented: $isShowingEdit) {
-            AddEditGoalView(goal: goal)
+            AddEditGoalView(goal: goal, userId: goal.ownerId)
         }
         .sheet(isPresented: $isShowingCheckIn) {
             CheckInSheetView(goal: goal) { logTick += 1 }
@@ -169,7 +169,7 @@ struct GoalDetailView: View {
 
     private var subtitleText: String {
         var parts: [String] = []
-        if let categoryName = goal.category?.name { parts.append(categoryName) }
+        if let categoryName = goal.category?.displayName { parts.append(categoryName) }
         parts.append(goal.priority.localizedName)
         if let deadline = goal.deadline {
             parts.append(deadline.formatted(date: .abbreviated, time: .omitted))
@@ -455,7 +455,43 @@ struct GoalDetailView: View {
                 // actually does — and in what unit — has to be said.
                 .accessibilityLabel(quickAddLabel(for: delta))
             }
+            undoQuickActionButton
         }
+    }
+
+    /// Reverses whatever a stray tap on the Today row or widget button just logged — those two
+    /// surfaces only ever apply `widgetQuickAmount` in one direction, so this is its exact inverse.
+    private var undoQuickActionDelta: Double {
+        goal.isLowerBetter ? goal.widgetQuickAmount : -goal.widgetQuickAmount
+    }
+
+    /// False once the floor clamp at 0 would swallow the tap — e.g. at 0/50 there's nothing left
+    /// to undo, so the button shouldn't pretend it can still act.
+    private var canUndoQuickAction: Bool {
+        max(goal.currentValue + undoQuickActionDelta, 0) != goal.currentValue
+    }
+
+    private var undoQuickActionButton: some View {
+        Button {
+            // Doesn't go through `logDelta`/`record` — a correction tap shouldn't blindly touch
+            // today's check-in the way a real log does. See `ProgressLogger.undoQuickAction`.
+            if ProgressLogger.undoQuickAction(on: goal, in: modelContext) {
+                logTick += 1
+            }
+        } label: {
+            Image(systemName: "minus")
+                .font(.system(size: 14, weight: .semibold))
+                .frame(width: 40, height: 40)
+                .background(Theme.control, in: .rect(cornerRadius: Theme.Radius.control))
+                .overlay {
+                    RoundedRectangle(cornerRadius: Theme.Radius.control)
+                        .strokeBorder(Theme.textGhost, lineWidth: 1)
+                }
+                .foregroundStyle(canUndoQuickAction ? Theme.textMuted : Theme.textGhost)
+        }
+        .buttonStyle(.plain)
+        .disabled(!canUndoQuickAction)
+        .accessibilityLabel(quickAddLabel(for: undoQuickActionDelta))
     }
 
     private func quickAddLabel(for delta: Double) -> Text {
@@ -480,13 +516,14 @@ struct GoalDetailView: View {
     /// A completed, archived or deleted goal shouldn't keep reminding.
     private func syncReminders() {
         let context = modelContext
-        Task { await NotificationScheduler.syncAll(context: context) }
+        let ownerId = goal.ownerId
+        Task { await NotificationScheduler.syncAll(context: context, userId: ownerId) }
     }
 
     private func addMilestone() {
         let trimmed = newMilestoneTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        let milestone = Milestone(title: trimmed, order: goal.milestones.count, goal: goal)
+        let milestone = Milestone(ownerId: goal.ownerId, title: trimmed, order: goal.milestones.count, goal: goal)
         modelContext.insert(milestone)
         newMilestoneTitle = ""
     }
@@ -554,7 +591,7 @@ private struct CheckInRow: View {
 
 #Preview {
     NavigationStack {
-        GoalDetailView(goal: Goal(title: "Run 100 km", targetValue: 100, currentValue: 20, unitKey: GoalUnit.km.rawValue))
+        GoalDetailView(goal: Goal(ownerId: UUID(), title: "Run 100 km", targetValue: 100, currentValue: 20, unitKey: GoalUnit.km.rawValue))
     }
     .environment(PurchaseManager())
     .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)

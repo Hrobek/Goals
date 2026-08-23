@@ -36,9 +36,16 @@ extension WidgetFamily {
 /// back plain values — never SwiftData models.
 @MainActor
 enum WidgetGoals {
+    /// `false` right after an update, before the main app has run once to migrate the signed-in
+    /// identity into the App Group — distinct from a signed-in user who simply has no goals, so
+    /// widgets can show "open the app" instead of a plain empty state.
+    static var isSignedIn: Bool { CurrentUser.currentUserId != nil }
+
     static func fetch(_ include: (Goal) -> Bool) -> [Goal] {
+        guard let userId = CurrentUser.currentUserId else { return [] }
         let context = SharedStore.container.mainContext
-        let goals = (try? context.fetch(FetchDescriptor<Goal>())) ?? []
+        let descriptor = FetchDescriptor<Goal>(predicate: #Predicate { $0.ownerId == userId })
+        let goals = (try? context.fetch(descriptor)) ?? []
         return goals
             .filter { $0.status == .active && include($0) }
             .sorted { lhs, rhs in

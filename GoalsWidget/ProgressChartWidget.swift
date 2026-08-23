@@ -36,6 +36,7 @@ struct ChartEntry: TimelineEntry {
     var page = 0
     var pageCount = 1
     var scope = WidgetKind.progressChart
+    var isSignedIn = true
 }
 
 // MARK: - Provider
@@ -81,7 +82,8 @@ struct ChartProvider: TimelineProvider {
             snapshot: paged.items.first,
             page: paged.page,
             pageCount: paged.count,
-            scope: scope
+            scope: scope,
+            isSignedIn: WidgetGoals.isSignedIn
         )
     }
 
@@ -148,6 +150,8 @@ struct ChartWidgetEntryView: View {
     var body: some View {
         if !entry.isProUnlocked {
             ProLockedWidgetView(title: "widget.chart.displayName", systemImage: "chart.line.uptrend.xyaxis")
+        } else if !entry.isSignedIn {
+            WidgetMessageView(message: "widget.notSignedIn", systemImage: "person.crop.circle.badge.questionmark")
         } else if let snapshot = entry.snapshot {
             VStack(alignment: .leading, spacing: 6) {
                 WidgetGoalHeader(

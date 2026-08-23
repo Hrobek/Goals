@@ -32,6 +32,11 @@ struct RootView: View {
     /// purpose: nothing syncs, so signing in here is a fresh start however old the account is.
     @AppStorage("Goals.hasSeenFirstRunWelcome") private var hasSeenFirstRunWelcome = false
     @State private var isShowingFirstRunWelcome = false
+    /// Set when the welcome sheet's primary button is tapped, consumed once that sheet has fully
+    /// dismissed — presenting Add Goal only then avoids stacking it on the outgoing sheet.
+    @State private var wantsAddGoalAfterWelcome = false
+    /// Drives `GoalsListView` straight into its Add Goal sheet for a new user's first goal.
+    @State private var addGoalTrigger = false
 
     private var language: AppLanguage {
         AppLanguage(rawValue: languageRaw) ?? .deviceDefault
@@ -39,8 +44,8 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if session.isAuthenticated {
-                MainTabView(selection: $selectedTab, todayPath: $todayPath)
+            if let userId = session.currentUser?.id {
+                MainTabView(userId: userId, selection: $selectedTab, todayPath: $todayPath, addGoalTrigger: $addGoalTrigger)
             } else {
                 WelcomeView()
             }
@@ -67,9 +72,20 @@ struct RootView: View {
             isShowingFirstRunWelcome = true
         }
         // Marked as seen on dismissal rather than on presentation, so a welcome killed by a crash
-        // or a language switch mid-sheet still gets its turn.
-        .sheet(isPresented: $isShowingFirstRunWelcome, onDismiss: { hasSeenFirstRunWelcome = true }) {
-            FirstRunWelcomeView { selectedTab = .goals }
+        // or a language switch mid-sheet still gets its turn. Add Goal is also fired from here,
+        // once this sheet is actually gone, rather than from the button action — presenting a new
+        // sheet while this one is still animating out gets silently dropped.
+        .sheet(isPresented: $isShowingFirstRunWelcome, onDismiss: {
+            hasSeenFirstRunWelcome = true
+            if wantsAddGoalAfterWelcome {
+                wantsAddGoalAfterWelcome = false
+                addGoalTrigger = true
+            }
+        }) {
+            FirstRunWelcomeView {
+                selectedTab = .goals
+                wantsAddGoalAfterWelcome = true
+            }
         }
         // Every visit rebuilds the schedule, which is also what pushes the "haven't seen you"
         // nudge further into the future.
@@ -77,7 +93,9 @@ struct RootView: View {
             switch phase {
             case .active:
                 AppReviewPrompt.recordFirstLaunchIfNeeded()
-                Task { await NotificationScheduler.syncAll(context: modelContext) }
+                if let userId = session.currentUser?.id {
+                    Task { await NotificationScheduler.syncAll(context: modelContext, userId: userId) }
+                }
                 // One after the other: whichever of the two goes first, the second one sees it on
                 // screen and stands down rather than stacking a second sheet on top.
                 Task {
@@ -117,7 +135,9 @@ struct RootView: View {
     private func showProPromoIfEarned() async {
         guard session.isAuthenticated, !isShowingFirstRunWelcome, !isShowingPaywall else { return }
 
-        let checkInCount = (try? modelContext.fetchCount(FetchDescriptor<CheckIn>())) ?? 0
+        guard let userId = session.currentUser?.id else { return }
+        let checkInDescriptor = FetchDescriptor<CheckIn>(predicate: #Predicate { $0.ownerId == userId })
+        let checkInCount = (try? modelContext.fetchCount(checkInDescriptor)) ?? 0
         guard ProPromoPrompt.shouldShow(isProUnlocked: purchaseManager.isProUnlocked, checkInCount: checkInCount) else { return }
 
         try? await Task.sleep(for: .seconds(2))
@@ -136,7 +156,9 @@ struct RootView: View {
     private func requestReviewIfEarned() async {
         guard session.isAuthenticated, !isShowingFirstRunWelcome, !isShowingPaywall else { return }
 
-        let checkInCount = (try? modelContext.fetchCount(FetchDescriptor<CheckIn>())) ?? 0
+        guard let userId = session.currentUser?.id else { return }
+        let checkInDescriptor = FetchDescriptor<CheckIn>(predicate: #Predicate { $0.ownerId == userId })
+        let checkInCount = (try? modelContext.fetchCount(checkInDescriptor)) ?? 0
         guard AppReviewPrompt.shouldRequest(checkInCount: checkInCount) else { return }
 
         try? await Task.sleep(for: .seconds(2))

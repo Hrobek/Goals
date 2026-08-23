@@ -31,6 +31,48 @@ enum ProgressLogger {
         }
     }
 
+    /// Reverses the goal's one-tap action — the exact inverse of `performQuickAction`, for
+    /// correcting a stray tap on the Today row or widget button. Unlike a normal log, this never
+    /// establishes a fresh streak day on its own: if undoing brings today's value back down to (or
+    /// below) whatever it stood at before today, today's check-in is retracted too, so an
+    /// add-then-undo within the same day leaves no streak credit behind.
+    @discardableResult
+    static func undoQuickAction(
+        on goal: Goal,
+        in context: ModelContext,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> Bool {
+        guard goal.trackingMode == .value else { return false }
+
+        let delta = goal.isLowerBetter ? goal.widgetQuickAmount : -goal.widgetQuickAmount
+        let newValue = max(goal.currentValue + delta, 0)
+        guard newValue != goal.currentValue else { return false }
+
+        goal.currentValue = newValue
+        if goal.isCompleted, !goal.isTargetReached {
+            goal.isCompleted = false
+        }
+
+        let priorValue = goal.checkIns
+            .filter { !calendar.isDate($0.date, inSameDayAs: now) }
+            .max { $0.date < $1.date }?
+            .valueSnapshot ?? 0
+
+        if let today = goal.checkIns.first(where: { calendar.isDate($0.date, inSameDayAs: now) }) {
+            if newValue > priorValue {
+                today.date = now
+                today.valueSnapshot = newValue
+            } else {
+                context.delete(today)
+            }
+        }
+        // No check-in for today yet: undoing shouldn't create one — there's nothing to retract.
+
+        WidgetCenter.shared.reloadAllTimelines()
+        return true
+    }
+
     /// Ticks or unticks one milestone, keeping the goal's completion and today's check-in in sync
     /// — the same bookkeeping `performQuickAction` does, but for any milestone (not just the next
     /// one) and reversible, so a card can offer plain checkboxes.
@@ -84,6 +126,7 @@ enum ProgressLogger {
             }
         } else {
             context.insert(CheckIn(
+                ownerId: goal.ownerId,
                 date: now,
                 note: resolvedNote,
                 valueSnapshot: newValue == nil ? nil : goal.currentValue,

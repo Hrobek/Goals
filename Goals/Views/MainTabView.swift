@@ -55,9 +55,12 @@ extension View {
 }
 
 struct MainTabView: View {
+    let userId: UUID
     /// Owned by `RootView` so the tab survives the rebuild that applies a language change.
     @Binding var selection: MainTab
     @Binding var todayPath: NavigationPath
+    /// Owned by `RootView`, flipped to drop a brand-new user straight into Add Goal.
+    @Binding var addGoalTrigger: Bool
 
     /// The four screens stay alive behind one another rather than being rebuilt on every switch,
     /// so scroll position and navigation state survive a trip to Settings and back.
@@ -68,9 +71,9 @@ struct MainTabView: View {
             Theme.ground.ignoresSafeArea()
 
             ZStack {
-                screen(.today) { TodayView(path: $todayPath) }
-                screen(.goals) { GoalsListView() }
-                screen(.stats) { StatsView() }
+                screen(.today) { TodayView(userId: userId, path: $todayPath) }
+                screen(.goals) { GoalsListView(userId: userId, addGoalTrigger: $addGoalTrigger) }
+                screen(.stats) { StatsView(userId: userId) }
                 screen(.settings) { SettingsView() }
             }
             .onPreferenceChange(TabBarHiddenKey.self) { isHidden in
@@ -149,7 +152,7 @@ struct MainTabView: View {
 }
 
 #Preview {
-    MainTabView(selection: .constant(.today), todayPath: .constant(NavigationPath()))
+    MainTabView(userId: UUID(), selection: .constant(.today), todayPath: .constant(NavigationPath()), addGoalTrigger: .constant(false))
         .environment(AuthSession())
         .environment(PurchaseManager())
         .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)

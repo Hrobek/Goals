@@ -34,11 +34,11 @@ enum GoalPaceInsight {
             remaining = Double(goal.milestones.count - goal.completedMilestoneCount)
             amount = { count in
                 guard count == count.rounded() else {
-                    return "\(Self.formatted(count)) " + String(localized: "milestone.unit", defaultValue: "milestones", bundle: AppLanguage.currentBundle)
+                    return "\(Self.formatted(count)) " + String(localized: "milestone.unit", defaultValue: "subtasks", bundle: AppLanguage.currentBundle)
                 }
                 return String(localized: "milestone.unit.count \(Int(count))", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
             }
-            unitLabel = String(localized: "milestone.unit", defaultValue: "milestones", bundle: AppLanguage.currentBundle)
+            unitLabel = String(localized: "milestone.unit", defaultValue: "subtasks", bundle: AppLanguage.currentBundle)
         }
         guard remaining > 0 else { return nil }
 

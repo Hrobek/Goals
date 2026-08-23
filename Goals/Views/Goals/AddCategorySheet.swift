@@ -7,6 +7,7 @@ import SwiftUI
 import SwiftData
 
 struct AddCategorySheet: View {
+    let userId: UUID
     var onCreate: (Category) -> Void
 
     @Environment(\.modelContext) private var modelContext
@@ -39,7 +40,7 @@ struct AddCategorySheet: View {
     }
 
     private func save() {
-        let category = Category(name: name.trimmingCharacters(in: .whitespacesAndNewlines))
+        let category = Category(ownerId: userId, name: name.trimmingCharacters(in: .whitespacesAndNewlines))
         modelContext.insert(category)
         onCreate(category)
         dismiss()
@@ -47,6 +48,6 @@ struct AddCategorySheet: View {
 }
 
 #Preview {
-    AddCategorySheet(onCreate: { _ in })
+    AddCategorySheet(userId: UUID(), onCreate: { _ in })
         .modelContainer(for: [Category.self], inMemory: true)
 }

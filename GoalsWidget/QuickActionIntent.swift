@@ -11,7 +11,7 @@ import WidgetKit
 /// store through the same code path the app uses, then asks WidgetKit to redraw.
 struct QuickActionIntent: AppIntent {
     static var title: LocalizedStringResource { "Log progress" }
-    static var description: IntentDescription { "Adds the goal's quick amount, or ticks off its next milestone." }
+    static var description: IntentDescription { "Adds the goal's quick amount, or ticks off its next subtask." }
 
     @Parameter(title: "Goal")
     var goalID: String

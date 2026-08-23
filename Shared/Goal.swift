@@ -57,26 +57,31 @@ enum GoalTrackingMode: String, Codable, CaseIterable, Identifiable {
     var localizedName: String {
         switch self {
         case .value: String(localized: "tracking.value", defaultValue: "Units", bundle: AppLanguage.currentBundle)
-        case .milestones: String(localized: "tracking.milestones", defaultValue: "Milestones", bundle: AppLanguage.currentBundle)
+        case .milestones: String(localized: "tracking.milestones", defaultValue: "Subtasks", bundle: AppLanguage.currentBundle)
         }
     }
 }
 
 @Model
 final class Goal {
-    var id: UUID
-    var title: String
+    /// Reserved for rows written before per-user data isolation existed; a one-time migration
+    /// claims every row still carrying this value for whichever account signs in first.
+    static let unownedId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+
+    var id: UUID = UUID()
+    var ownerId: UUID = Goal.unownedId
+    var title: String = ""
     var deadline: Date?
-    var priority: GoalPriority
-    var isCompleted: Bool
-    var createdAt: Date
+    var priority: GoalPriority = GoalPriority.medium
+    var isCompleted: Bool = false
+    var createdAt: Date = Date.now
 
     @Relationship(deleteRule: .nullify)
     var category: Category?
 
-    var targetValue: Double
-    var currentValue: Double
-    var unitKey: String
+    var targetValue: Double = 1
+    var currentValue: Double = 0
+    var unitKey: String = GoalUnit.times.rawValue
     var customUnitText: String?
 
     // Properties added after the first goals were saved. They are stored as optionals and read
@@ -157,13 +162,13 @@ final class Goal {
         sortedMilestones.first { !$0.isCompleted }
     }
 
-    var colorHex: String
+    var colorHex: String = ColorPalette.defaultHex
     var emoji: String?
 
-    var recurrenceType: RecurrenceType
-    var recurrenceWeekdays: [Int]
-    var recurrenceDaysOfMonth: [Int]
-    var recurrenceCount: Int
+    var recurrenceType: RecurrenceType = RecurrenceType.daily
+    var recurrenceWeekdays: [Int] = []
+    var recurrenceDaysOfMonth: [Int] = []
+    var recurrenceCount: Int = 3
 
     @Relationship(deleteRule: .cascade, inverse: \Milestone.goal)
     var milestones: [Milestone] = []
@@ -173,6 +178,7 @@ final class Goal {
 
     init(
         id: UUID = UUID(),
+        ownerId: UUID,
         title: String,
         category: Category? = nil,
         deadline: Date? = nil,
@@ -195,6 +201,7 @@ final class Goal {
         createdAt: Date = .now
     ) {
         self.id = id
+        self.ownerId = ownerId
         self.title = title
         self.category = category
         self.deadline = deadline

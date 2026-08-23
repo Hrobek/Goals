@@ -241,6 +241,6 @@ struct CheckInSheetView: View {
 }
 
 #Preview {
-    CheckInSheetView(goal: Goal(title: "Run 100 km", targetValue: 100, currentValue: 20, unitKey: GoalUnit.km.rawValue))
+    CheckInSheetView(goal: Goal(ownerId: UUID(), title: "Run 100 km", targetValue: 100, currentValue: 20, unitKey: GoalUnit.km.rawValue))
         .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)
 }

@@ -154,7 +154,7 @@ private struct ProgressPoint: Identifiable {
 
 #Preview {
     GoalProgressChartView(
-        goal: Goal(title: "Lose weight", targetValue: 84, currentValue: 90, isLowerBetter: true, unitKey: GoalUnit.kg.rawValue),
+        goal: Goal(ownerId: UUID(), title: "Lose weight", targetValue: 84, currentValue: 90, isLowerBetter: true, unitKey: GoalUnit.kg.rawValue),
         range: .month
     )
     .padding()

@@ -7,6 +7,7 @@ import SwiftUI
 import SwiftData
 
 struct AddCustomUnitSheet: View {
+    let userId: UUID
     var onCreate: (CustomUnit) -> Void
 
     @Environment(\.modelContext) private var modelContext
@@ -39,7 +40,7 @@ struct AddCustomUnitSheet: View {
     }
 
     private func save() {
-        let unit = CustomUnit(name: name.trimmingCharacters(in: .whitespacesAndNewlines))
+        let unit = CustomUnit(ownerId: userId, name: name.trimmingCharacters(in: .whitespacesAndNewlines))
         modelContext.insert(unit)
         onCreate(unit)
         dismiss()
@@ -47,6 +48,6 @@ struct AddCustomUnitSheet: View {
 }
 
 #Preview {
-    AddCustomUnitSheet(onCreate: { _ in })
+    AddCustomUnitSheet(userId: UUID(), onCreate: { _ in })
         .modelContainer(for: [CustomUnit.self], inMemory: true)
 }

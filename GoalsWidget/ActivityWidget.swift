@@ -40,6 +40,7 @@ struct ActivityEntry: TimelineEntry {
     var page = 0
     var pageCount = 1
     var scope = WidgetKind.activity
+    var isSignedIn = true
 }
 
 // MARK: - Provider
@@ -88,7 +89,8 @@ struct ActivityProvider: TimelineProvider {
             snapshots: paged.items,
             page: paged.page,
             pageCount: paged.count,
-            scope: scope
+            scope: scope,
+            isSignedIn: WidgetGoals.isSignedIn
         )
     }
 
@@ -185,6 +187,8 @@ struct ActivityWidgetEntryView: View {
     var body: some View {
         if !entry.isProUnlocked {
             ProLockedWidgetView(title: "widget.activity.displayName", systemImage: "square.grid.3x3.fill")
+        } else if !entry.isSignedIn {
+            WidgetMessageView(message: "widget.notSignedIn", systemImage: "person.crop.circle.badge.questionmark")
         } else if entry.snapshots.isEmpty {
             WidgetMessageView(message: "widget.empty.noGoals")
         } else if isCompact {

@@ -11,7 +11,13 @@ struct GoalsListView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(PurchaseManager.self) private var purchaseManager
-    @Query(sort: \Goal.createdAt, order: .reverse) private var goals: [Goal]
+    @Query private var goals: [Goal]
+
+    let userId: UUID
+
+    /// Flipped by `RootView` to drop the new-user straight into Add Goal after the first-run
+    /// welcome sheet, instead of leaving them looking at an empty list.
+    @Binding private var addGoalTrigger: Bool
 
     /// Pushing is driven by the path rather than by a `NavigationLink` inside each row: a link in a
     /// List row brings a disclosure chevron the design doesn't have, and hiding it behind the card
@@ -21,6 +27,12 @@ struct GoalsListView: View {
     @State private var isShowingAddGoal = false
     @State private var isShowingLimitAlert = false
     @State private var isShowingPaywall = false
+
+    init(userId: UUID, addGoalTrigger: Binding<Bool> = .constant(false)) {
+        self.userId = userId
+        self._addGoalTrigger = addGoalTrigger
+        _goals = Query(filter: #Predicate<Goal> { $0.ownerId == userId }, sort: \Goal.createdAt, order: .reverse)
+    }
 
     private var activeGoalsCount: Int {
         goals.filter { $0.status == .active }.count
@@ -56,7 +68,7 @@ struct GoalsListView: View {
                 }
             }
             .sheet(isPresented: $isShowingAddGoal) {
-                AddEditGoalView(goal: nil)
+                AddEditGoalView(goal: nil, userId: userId)
             }
             .sheet(isPresented: $isShowingPaywall) {
                 PaywallView(source: .limitAlert)
@@ -67,6 +79,11 @@ struct GoalsListView: View {
                 Button("action.ok", role: .cancel) {}
             } message: {
                 Text("goals.limit.message")
+            }
+            .onChange(of: addGoalTrigger) { _, isTriggered in
+                guard isTriggered else { return }
+                addGoalTrigger = false
+                addGoalTapped()
             }
         }
     }
@@ -155,7 +172,8 @@ struct GoalsListView: View {
     /// Archived and deleted goals must stop nudging right away, not at the next app launch.
     private func syncReminders() {
         let context = modelContext
-        Task { await NotificationScheduler.syncAll(context: context) }
+        let userId = userId
+        Task { await NotificationScheduler.syncAll(context: context, userId: userId) }
     }
 
     private func addGoalTapped() {
@@ -169,7 +187,7 @@ struct GoalsListView: View {
 }
 
 #Preview {
-    GoalsListView()
+    GoalsListView(userId: UUID())
         .environment(PurchaseManager())
         .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)
 }

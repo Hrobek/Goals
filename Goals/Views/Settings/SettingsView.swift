@@ -17,6 +17,9 @@ struct SettingsView: View {
     // Not `@AppStorage`: the flag lives in the App Group so the widget honours it too, and
     // `Analytics` stays the only place that knows the key.
     @State private var isAnalyticsEnabled = Analytics.isEnabled
+    // Takes effect on the next launch: the store's `ModelContainer` is built once at app start,
+    // so flipping this can't hot-swap CloudKit sync into an already-running container.
+    @State private var isCloudSyncEnabled = SharedStore.isCloudSyncEnabled
 
     private var appearanceMode: Binding<AppearanceMode> {
         Binding(
@@ -55,6 +58,9 @@ struct SettingsView: View {
             .toolbar(.hidden, for: .navigationBar)
             .onChange(of: isAnalyticsEnabled) { _, isEnabled in
                 Analytics.isEnabled = isEnabled
+            }
+            .onChange(of: isCloudSyncEnabled) { _, isEnabled in
+                SharedStore.isCloudSyncEnabled = isEnabled
             }
             .sheet(isPresented: $isShowingPaywall) {
                 PaywallView(source: .settings)
@@ -133,12 +139,9 @@ struct SettingsView: View {
                 }
                 RowDivider()
                 SwitchRow(label: "settings.privacy.analytics", icon: "chart.pie", isOn: $isAnalyticsEnabled)
+                RowDivider()
+                SwitchRow(label: "settings.icloudSync", icon: "icloud", isOn: $isCloudSyncEnabled)
             }
-            Text("settings.privacy.analytics.footer")
-                .font(Theme.Typo.footnote)
-                .foregroundStyle(Theme.textGhost)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 4)
         }
     }
 

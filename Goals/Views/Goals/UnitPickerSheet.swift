@@ -10,12 +10,19 @@ import SwiftData
 /// "Add Unit" as the last entry.
 struct UnitPickerSheet: View {
     @Binding var selection: UnitSelection
+    let userId: UUID
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: \CustomUnit.createdAt) private var customUnits: [CustomUnit]
+    @Query private var customUnits: [CustomUnit]
 
     @State private var isShowingAddUnit = false
+
+    init(selection: Binding<UnitSelection>, userId: UUID) {
+        self._selection = selection
+        self.userId = userId
+        _customUnits = Query(filter: #Predicate<CustomUnit> { $0.ownerId == userId }, sort: \CustomUnit.createdAt)
+    }
 
     var body: some View {
         NavigationStack {
@@ -60,7 +67,7 @@ struct UnitPickerSheet: View {
                 }
             }
             .sheet(isPresented: $isShowingAddUnit) {
-                AddCustomUnitSheet { newUnit in
+                AddCustomUnitSheet(userId: userId) { newUnit in
                     selection = .custom(newUnit.name)
                     dismiss()
                 }
@@ -95,6 +102,6 @@ struct UnitPickerSheet: View {
 }
 
 #Preview {
-    UnitPickerSheet(selection: .constant(.preset(.times)))
+    UnitPickerSheet(selection: .constant(.preset(.times)), userId: UUID())
         .modelContainer(for: [CustomUnit.self], inMemory: true)
 }

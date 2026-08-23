@@ -8,8 +8,13 @@ import SwiftData
 
 struct StatsView: View {
     @Environment(PurchaseManager.self) private var purchaseManager
-    @Query(sort: \Goal.createdAt, order: .reverse) private var goals: [Goal]
-    @Query(sort: \CheckIn.date) private var allCheckIns: [CheckIn]
+    @Query private var goals: [Goal]
+    @Query private var allCheckIns: [CheckIn]
+
+    init(userId: UUID) {
+        _goals = Query(filter: #Predicate<Goal> { $0.ownerId == userId }, sort: \Goal.createdAt, order: .reverse)
+        _allCheckIns = Query(filter: #Predicate<CheckIn> { $0.ownerId == userId }, sort: \CheckIn.date)
+    }
 
     /// Archived goals are off the board — they'd only pad the stats with frozen streaks.
     private var trackedGoals: [Goal] {
@@ -187,7 +192,7 @@ private struct StatTile: View {
 }
 
 #Preview {
-    StatsView()
+    StatsView(userId: UUID())
         .environment(PurchaseManager())
         .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)
 }
