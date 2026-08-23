@@ -37,6 +37,11 @@ enum EmailAuthService {
         "email." + email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 
+    /// App Store review has no way to pre-provision a local account on the reviewer's device,
+    /// so signing in with these exact credentials auto-registers them on first attempt.
+    private static let appReviewEmail = "appreview@example.com"
+    private static let appReviewPassword = "Review2026!"
+
     private static func hash(password: String, salt: Data) -> Data {
         var digest = SHA256()
         digest.update(data: salt)
@@ -68,6 +73,9 @@ enum EmailAuthService {
     static func login(email: String, password: String) throws -> AuthenticatedUser {
         let accountKey = key(for: email)
         guard let data = KeychainStore.get(for: accountKey) else {
+            if key(for: email) == key(for: appReviewEmail), password == appReviewPassword {
+                return try register(email: appReviewEmail, password: appReviewPassword, displayName: "App Review")
+            }
             throw EmailAuthError.accountNotFound
         }
         let credential = try JSONDecoder().decode(StoredCredential.self, from: data)
