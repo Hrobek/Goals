@@ -14,9 +14,8 @@ import SwiftUI
 /// someone who has used the app long enough to have an opinion.
 @MainActor
 enum AppReviewPrompt {
-    /// Swap for the real App Store ID once the listing exists — until then the Settings button
-    /// lands on an App Store error page.
-    static let appStoreID = "0000000000"
+    /// The app's App Store ID, used to build the review and listing URLs.
+    static let appStoreID = "6804143515"
 
     /// `action=write-review` opens the listing with the review sheet already up, which is the
     /// point of the button — the plain listing URL would just show the product page.
