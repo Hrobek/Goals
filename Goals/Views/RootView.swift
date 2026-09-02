@@ -91,6 +91,7 @@ struct RootView: View {
         .onChange(of: scenePhase, initial: true) { _, phase in
             switch phase {
             case .active:
+                Analytics.beginSession()
                 AppReviewPrompt.recordFirstLaunchIfNeeded()
                 if let userId = session.currentUser?.id {
                     Task { await NotificationScheduler.syncAll(context: modelContext, userId: userId) }
@@ -102,6 +103,7 @@ struct RootView: View {
                     await showProPromoIfEarned()
                 }
             case .background:
+                Analytics.endSession()
                 // Whatever changed in the app, the home screen should show it.
                 WidgetCenter.shared.reloadAllTimelines()
             default:

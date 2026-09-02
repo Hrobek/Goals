@@ -12,6 +12,10 @@ struct AddEditGoalView: View {
 
     private let goal: Goal?
     private let userId: UUID
+    /// Set when a brand-new goal is being started from one of the first-run templates. Only used to
+    /// seed the initial field values below and to tag the `goalCreated` signal; nil for every edit
+    /// and for a blank "Custom goal".
+    private let template: GoalTemplate?
 
     @State private var title: String
     @State private var category: Category?
@@ -46,38 +50,44 @@ struct AddEditGoalView: View {
     @State private var isShowingCategoryPicker = false
     @State private var isShowingUnitPicker = false
 
-    init(goal: Goal?, userId: UUID) {
+    init(goal: Goal?, userId: UUID, template: GoalTemplate? = nil, presetCategory: Category? = nil) {
         self.goal = goal
+        // A template only seeds a *new* goal; ignore it outright when editing so an edit sheet can
+        // never be reshaped by a stale value left on the caller.
+        let template = goal == nil ? template : nil
+        self.template = template
         // When editing, the goal's own owner is the only correct scope for its category/unit
         // pickers — trusting a separately-passed `userId` here would let a mismatched caller leak
         // another account's categories into this one's edit sheet.
         self.userId = goal?.ownerId ?? userId
-        _title = State(initialValue: goal?.title ?? "")
-        _category = State(initialValue: goal?.category)
+        _title = State(initialValue: goal?.title ?? template?.localizedTitle ?? "")
+        _category = State(initialValue: goal?.category ?? presetCategory)
         _priority = State(initialValue: goal?.priority ?? .medium)
         _hasDeadline = State(initialValue: goal?.deadline != nil)
         _deadline = State(initialValue: goal?.deadline ?? Date().addingTimeInterval(7 * 24 * 3600))
-        _trackingMode = State(initialValue: goal?.trackingMode ?? .value)
+        _trackingMode = State(initialValue: goal?.trackingMode ?? template?.trackingMode ?? .value)
         // The literal fallbacks are written as `0.0`/`1.0`, not `0`/`1`: an Int literal defaulting
         // to Double through `??` still triggers Foundation's runtime format-string checker to
         // flag "%g" as expecting "%lld" — a spurious but noisy Fault log. Writing them as Double
         // literals from the start avoids it.
-        _startValueText = State(initialValue: String(format: "%g", goal?.startValue ?? 0.0))
-        _targetValueText = State(initialValue: goal.map { String(format: "%g", $0.targetValue) } ?? "")
-        _isLowerBetter = State(initialValue: goal?.isLowerBetter ?? false)
+        _startValueText = State(initialValue: String(format: "%g", goal?.startValue ?? template?.startValue ?? 0.0))
+        _targetValueText = State(initialValue: goal.map { String(format: "%g", $0.targetValue) }
+            ?? template.map { String(format: "%g", $0.targetValue) }
+            ?? "")
+        _isLowerBetter = State(initialValue: goal?.isLowerBetter ?? template?.isLowerBetter ?? false)
         _unitSelection = State(initialValue: UnitSelection(
-            unitKey: goal?.unitKey ?? GoalUnit.times.rawValue,
+            unitKey: goal?.unitKey ?? template?.unit.rawValue ?? GoalUnit.times.rawValue,
             customUnitText: goal?.customUnitText
         ))
         _milestoneDrafts = State(initialValue: (goal?.sortedMilestones ?? []).map {
             MilestoneDraft(id: $0.id, title: $0.title, isCompleted: $0.isCompleted)
         })
-        _emoji = State(initialValue: goal?.emoji)
+        _emoji = State(initialValue: goal?.emoji ?? template?.emoji)
         _colorHex = State(initialValue: goal?.colorHex ?? ColorPalette.defaultHex)
-        _recurrenceType = State(initialValue: goal?.recurrenceType ?? .daily)
+        _recurrenceType = State(initialValue: goal?.recurrenceType ?? template?.recurrenceType ?? .daily)
         _recurrenceWeekdays = State(initialValue: Set(goal?.recurrenceWeekdays ?? []))
         _recurrenceDaysOfMonth = State(initialValue: Set(goal?.recurrenceDaysOfMonth ?? []))
-        _recurrenceCount = State(initialValue: goal?.recurrenceCount ?? 3)
+        _recurrenceCount = State(initialValue: goal?.recurrenceCount ?? template?.recurrenceCount ?? 3)
         _isReminderOn = State(initialValue: goal?.isReminderOn ?? false)
         _reminderFrequency = State(initialValue: goal?.reminderFrequency ?? .daily)
         _reminderTime = State(initialValue: Calendar.current.date(
@@ -89,7 +99,7 @@ struct AddEditGoalView: View {
         _reminderWeekdays = State(initialValue: Set(goal?.reminderWeekdays ?? []))
         _widgetAction = State(initialValue: goal?.widgetAction ?? .quickAction)
         _widgetAmountText = State(initialValue: String(format: "%g", goal?.widgetQuickAmount
-            ?? GoalUnit(rawValue: goal?.unitKey ?? GoalUnit.times.rawValue)?.quickAddSteps.first
+            ?? GoalUnit(rawValue: goal?.unitKey ?? template?.unit.rawValue ?? GoalUnit.times.rawValue)?.quickAddSteps.first
             ?? 1.0))
     }
 
@@ -577,7 +587,8 @@ struct AddEditGoalView: View {
             Analytics.send(.goalCreated, [
                 .trackingMode: trackingMode.rawValue,
                 .priority: priority.rawValue,
-                .hasDeadline: String(hasDeadline)
+                .hasDeadline: String(hasDeadline),
+                .template: template?.id ?? "custom"
             ])
         }
 

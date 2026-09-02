@@ -24,9 +24,28 @@ struct GoalsListView: View {
     /// leaves two overlapping tap targets that can push the wrong goal.
     @State private var path: [UUID] = []
     @State private var filter: GoalStatus = .active
-    @State private var isShowingAddGoal = false
     @State private var isShowingLimitAlert = false
     @State private var isShowingPaywall = false
+
+    /// The first-run template grid, shown once via `addGoalTrigger` in place of a blank form.
+    @State private var isShowingTemplatePicker = false
+    /// What the template picker chose, applied once the picker has finished dismissing so the Add
+    /// Goal sheet isn't stacked on the outgoing one.
+    @State private var pendingAdd: PendingAdd?
+    /// Drives the Add Goal sheet. An item rather than a bool so its template/category ride in as
+    /// the presentation payload — captured once, and safe from a stray dismiss clearing them.
+    @State private var addGoalConfig: AddGoalConfig?
+
+    private enum PendingAdd {
+        case blank
+        case template(GoalTemplate)
+    }
+
+    private struct AddGoalConfig: Identifiable {
+        let id = UUID()
+        var template: GoalTemplate?
+        var category: Category?
+    }
 
     init(userId: UUID, addGoalTrigger: Binding<Bool> = .constant(false)) {
         self.userId = userId
@@ -67,8 +86,14 @@ struct GoalsListView: View {
                     GoalDetailView(goal: goal)
                 }
             }
-            .sheet(isPresented: $isShowingAddGoal) {
-                AddEditGoalView(goal: nil, userId: userId)
+            .sheet(item: $addGoalConfig) { config in
+                AddEditGoalView(goal: nil, userId: userId, template: config.template, presetCategory: config.category)
+            }
+            .sheet(isPresented: $isShowingTemplatePicker, onDismiss: presentPendingAdd) {
+                TemplatePickerView { picked in
+                    pendingAdd = picked.map(PendingAdd.template) ?? .blank
+                    isShowingTemplatePicker = false
+                }
             }
             .sheet(isPresented: $isShowingPaywall) {
                 PaywallView(source: .limitAlert)
@@ -83,7 +108,15 @@ struct GoalsListView: View {
             .onChange(of: addGoalTrigger) { _, isTriggered in
                 guard isTriggered else { return }
                 addGoalTrigger = false
-                addGoalTapped()
+                // A brand-new user gets the template grid rather than the empty form — but the
+                // free-tier limit still applies, in the odd case the trigger fires with goals
+                // already in place.
+                if !purchaseManager.isProUnlocked && activeGoalsCount >= Self.freeActiveGoalLimit {
+                    isShowingLimitAlert = true
+                    Analytics.send(.limitAlertShown)
+                } else {
+                    isShowingTemplatePicker = true
+                }
             }
         }
     }
@@ -181,8 +214,33 @@ struct GoalsListView: View {
             isShowingLimitAlert = true
             Analytics.send(.limitAlertShown)
         } else {
-            isShowingAddGoal = true
+            // The manual "+" and the empty-state button always open a blank form.
+            addGoalConfig = AddGoalConfig()
         }
+    }
+
+    /// Runs after the template picker has fully dismissed: opens the Add Goal sheet seeded with
+    /// whatever was chosen. A plain Cancel on the picker leaves `pendingAdd` nil and does nothing.
+    private func presentPendingAdd() {
+        guard let pendingAdd else { return }
+        self.pendingAdd = nil
+
+        switch pendingAdd {
+        case .blank:
+            addGoalConfig = AddGoalConfig()
+        case .template(let template):
+            addGoalConfig = AddGoalConfig(template: template, category: resolveCategory(template.categoryDefaultKey))
+        }
+    }
+
+    /// The user's own seeded category for a template key, or nil if they've deleted it. Filtered in
+    /// Swift rather than in the predicate — an optional-to-non-optional `defaultKey` comparison
+    /// inside `#Predicate` is exactly the kind of thing SwiftData miscompiles.
+    private func resolveCategory(_ key: String?) -> Category? {
+        guard let key else { return nil }
+        let userId = userId
+        let descriptor = FetchDescriptor<Category>(predicate: #Predicate { $0.ownerId == userId })
+        return (try? modelContext.fetch(descriptor))?.first { $0.defaultKey == key }
     }
 }
 
