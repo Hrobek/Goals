@@ -36,18 +36,14 @@ enum SharedStore {
     ///   3. a fresh store with the old file moved aside as a `.bak`, if it's corrupt or can't
     ///      migrate,
     ///   4. in-memory, so the app still runs even if the disk is the problem.
-    /// CloudKit is the app process's job. The widget extension has no CloudKit entitlement (adding
-    /// one drags in a signing capability and, if the profile misses it, the extension won't even
-    /// launch) — it opens the local store the app keeps mirrored, and a write from its button
-    /// reaches the app through Core Data's cross-process change notifications.
-    private static var isAppExtension: Bool {
-        Bundle.main.bundleURL.pathExtension == "appex"
-    }
-
     static let container: ModelContainer = {
         migrateLocalStoreIfNeeded()
 
-        let wantsCloudKit = isCloudSyncEnabled && !isAppExtension
+        // Both the app and the widget extension open the store the same way — a CloudKit-mirrored
+        // store rejects writes from a process that opened it plain, which is why a widget-button
+        // check-in "did nothing" once sync was on. The widget target must carry the matching
+        // iCloud/CloudKit capability (see GoalsWidgetExtension.entitlements).
+        let wantsCloudKit = isCloudSyncEnabled
 
         if let container = makeContainer(cloudKit: wantsCloudKit ? .private(cloudKitContainerID) : .none) {
             return container

@@ -162,9 +162,13 @@ struct HabitsWidgetEntryView: View {
 
     // MARK: Home screen — a grid of emoji rings, nothing else
 
-    /// Rings-per-row: 2 on the small, 5 on the medium. They flex to fill the width, so on the
-    /// medium they land proportionally smaller — that's fine, the point is they run edge to edge.
+    /// Rings-per-row: 2 on the small, 5 on the medium. They flex to fill the width; on the medium
+    /// they land proportionally smaller, which is fine.
     private var columnCount: Int { family == .systemSmall ? 2 : 5 }
+
+    /// One value used for the outer inset AND the gaps between rings, so every margin — top,
+    /// bottom, left, right, and between — reads the same. A touch tighter on the small.
+    private var gap: CGFloat { family == .systemSmall ? 12 : 14 }
 
     @ViewBuilder
     private var homeBody: some View {
@@ -175,44 +179,21 @@ struct HabitsWidgetEntryView: View {
                 .widgetURL(GoalLink.habits)
         } else {
             LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: columnCount),
-                spacing: 8
+                columns: Array(repeating: GridItem(.flexible(), spacing: gap), count: columnCount),
+                spacing: gap
             ) {
                 ForEach(entry.habits) { habit in
                     ring(for: habit)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .padding(6)
+            .padding(gap)
         }
     }
 
     private func ring(for habit: HabitSnapshot) -> some View {
-        let color = Color(hex: habit.colorHex)
-        return Button(intent: HabitCheckInIntent(habitID: habit.id)) {
-            GeometryReader { geo in
-                let side = min(geo.size.width, geo.size.height)
-                ZStack {
-                    Circle()
-                        .fill(color.opacity(habit.isDone ? 0.28 : 0.14))
-                    Circle()
-                        .stroke(color.opacity(0.22), lineWidth: side * 0.1)
-                    Circle()
-                        .trim(from: 0, to: max(0.001, habit.progress))
-                        .stroke(color, style: StrokeStyle(lineWidth: side * 0.1, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                    if let emoji = habit.emoji, !emoji.isEmpty {
-                        Text(emoji).font(.system(size: side * 0.44))
-                    } else {
-                        Image(systemName: "repeat")
-                            .font(.system(size: side * 0.34, weight: .medium))
-                            .foregroundStyle(color)
-                    }
-                }
-                .frame(width: side, height: side)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-            .aspectRatio(1, contentMode: .fit)
+        Button(intent: HabitCheckInIntent(habitID: habit.id)) {
+            RingShape(habit: habit, family: family)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(habit.title))
@@ -266,6 +247,38 @@ struct HabitsWidgetEntryView: View {
         } else {
             Text("habits.empty.title").font(.caption)
         }
+    }
+}
+
+/// One emoji ring. A plain, fixed-shape view with no `GeometryReader` — that combination as a
+/// `Button` label was swallowing taps in the widget.
+private struct RingShape: View {
+    let habit: HabitSnapshot
+    let family: WidgetFamily
+
+    private var color: Color { Color(hex: habit.colorHex) }
+    private var lineWidth: CGFloat { family == .systemSmall ? 6 : 5 }
+    private var glyphSize: CGFloat { family == .systemSmall ? 24 : 20 }
+
+    var body: some View {
+        ZStack {
+            Circle().fill(color.opacity(habit.isDone ? 0.28 : 0.14))
+            Circle().stroke(color.opacity(0.22), lineWidth: lineWidth)
+            Circle()
+                .trim(from: 0, to: max(0.001, habit.progress))
+                .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            if let emoji = habit.emoji, !emoji.isEmpty {
+                Text(emoji).font(.system(size: glyphSize))
+            } else {
+                Image(systemName: "repeat")
+                    .font(.system(size: glyphSize * 0.8, weight: .medium))
+                    .foregroundStyle(color)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .aspectRatio(1, contentMode: .fit)
+        .contentShape(.circle)
     }
 }
 
