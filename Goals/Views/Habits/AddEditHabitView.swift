@@ -21,7 +21,9 @@ struct AddEditHabitView: View {
     @State private var emoji: String?
     @State private var colorHex: String
     @State private var customColor: Color
-    @State private var dailyTarget: Int
+    /// Only meaningful for a value habit (one with a unit); a checkbox habit ignores both.
+    @State private var targetAmountText: String
+    @State private var quickAmountText: String
     @State private var unitSelection: UnitSelection
     @State private var recurrenceType: RecurrenceType
     @State private var recurrenceWeekdays: Set<Int>
@@ -44,11 +46,15 @@ struct AddEditHabitView: View {
         let hex = habit?.colorHex ?? ColorPalette.defaultHex
         _colorHex = State(initialValue: hex)
         _customColor = State(initialValue: Color(hex: hex))
-        _dailyTarget = State(initialValue: habit?.dailyTarget ?? 1)
-        _unitSelection = State(initialValue: UnitSelection(
+        let unit = UnitSelection(
             unitKey: habit?.unitKey ?? GoalUnit.times.rawValue,
             customUnitText: habit?.customUnitText
-        ))
+        )
+        _unitSelection = State(initialValue: unit)
+        _targetAmountText = State(initialValue: (habit?.hasUnit ?? false)
+            ? Self.trimmed(habit?.targetAmount ?? 1) : "")
+        _quickAmountText = State(initialValue: Self.trimmed(
+            habit?.widgetQuickAmount ?? Self.defaultStep(for: unit)))
         _recurrenceType = State(initialValue: habit?.recurrenceType ?? .daily)
         _recurrenceWeekdays = State(initialValue: Set(habit?.recurrenceWeekdays ?? []))
         _recurrenceDaysOfMonth = State(initialValue: Set(habit?.recurrenceDaysOfMonth ?? []))
@@ -62,8 +68,32 @@ struct AddEditHabitView: View {
         _reminderWeekdays = State(initialValue: Set(habit?.reminderWeekdays ?? []))
     }
 
+    /// A habit tracks a quantity when its unit is anything other than the bare "times".
+    private var isValueHabit: Bool {
+        unitSelection != .preset(.times)
+    }
+
+    private var parsedTarget: Double? {
+        let v = Double(targetAmountText.replacingOccurrences(of: ",", with: "."))
+        return (v ?? 0) > 0 ? v : nil
+    }
+
+    private var parsedQuick: Double {
+        let v = Double(quickAmountText.replacingOccurrences(of: ",", with: "."))
+        return (v ?? 0) > 0 ? v! : Self.defaultStep(for: unitSelection)
+    }
+
     private var isValid: Bool {
-        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        return isValueHabit ? parsedTarget != nil : true
+    }
+
+    private static func trimmed(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(0...2)).grouping(.never))
+    }
+
+    private static func defaultStep(for unit: UnitSelection) -> Double {
+        GoalUnit(rawValue: unit.unitKey)?.quickAddSteps.first ?? 1
     }
 
     var body: some View {
@@ -80,18 +110,24 @@ struct AddEditHabitView: View {
                             count: $recurrenceCount
                         )
                     }
-                    LabeledSection("habit.field.dailyTarget") {
-                        CardGroup {
-                            Stepper(value: $dailyTarget, in: 1...50) {
-                                Text("habit.field.dailyTarget.count \(dailyTarget)")
-                                    .font(Theme.Typo.row)
-                                    .foregroundStyle(Theme.text)
+                    LabeledSection("habit.field.tracking") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            CardGroup {
+                                DisclosureRow(label: "goal.field.unit", value: unitSelection.displayText) {
+                                    isShowingUnitPicker = true
+                                }
+                                if isValueHabit {
+                                    RowDivider()
+                                    TextFieldRow(label: "habit.field.dailyTarget", text: $targetAmountText, keyboard: .decimalPad, suffix: unitSelection.displayText)
+                                    RowDivider()
+                                    TextFieldRow(label: "habit.field.quickAdd", text: $quickAmountText, keyboard: .decimalPad, suffix: unitSelection.displayText)
+                                }
                             }
-                            .padding(.vertical, 9)
-                            RowDivider()
-                            DisclosureRow(label: "goal.field.unit", value: unitSelection.displayText) {
-                                isShowingUnitPicker = true
-                            }
+                            Text(isValueHabit ? "habit.field.tracking.value.hint" : "habit.field.tracking.checkbox.hint")
+                                .font(Theme.Typo.footnote)
+                                .foregroundStyle(Theme.textGhost)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.horizontal, 4)
                         }
                     }
                     LabeledSection("reminder.title") {
@@ -127,6 +163,13 @@ struct AddEditHabitView: View {
                         .foregroundStyle(isValid ? Theme.accentText : Theme.textGhost)
                         .disabled(!isValid)
                 }
+            }
+            .onChange(of: unitSelection) { _, newUnit in
+                // Switching to a real unit: seed the quick-add step from that unit if the field is
+                // empty or still on the previous unit's default.
+                guard newUnit != .preset(.times) else { return }
+                let step = Self.trimmed(Self.defaultStep(for: newUnit))
+                if quickAmountText.isEmpty { quickAmountText = step }
             }
             .onChange(of: isReminderOn) { _, isOn in
                 guard isOn else { return }
@@ -199,16 +242,17 @@ struct AddEditHabitView: View {
 
     /// True when the current colour is one the user dialled in themselves, not a preset.
     private var isCustomColor: Bool {
-        !ColorPalette.hexValues.contains(colorHex.uppercased())
+        !ColorPalette.hexValues.contains { $0.caseInsensitiveCompare(colorHex) == .orderedSame }
     }
 
     private var colorRow: some View {
         LabeledSection("habit.field.color") {
             HStack(spacing: 10) {
                 ForEach(ColorPalette.hexValues, id: \.self) { hex in
-                    let isSelected = hex.caseInsensitiveCompare(colorHex) == .orderedSame
+                    let isSelected = !isCustomColor && hex.caseInsensitiveCompare(colorHex) == .orderedSame
                     Button {
                         colorHex = hex
+                        customColor = Color(hex: hex)
                     } label: {
                         Circle()
                             .fill(Color(hex: hex))
@@ -222,29 +266,20 @@ struct AddEditHabitView: View {
                     .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
                 }
 
-                // The wheel, as one more swatch: a ring that shows the chosen custom colour (or a
-                // neutral "+" until one is picked) and opens the system picker.
-                ZStack {
-                    Circle()
-                        .fill(isCustomColor ? Color(hex: colorHex) : Theme.control)
-                        .frame(width: 28, height: 28)
-                        .overlay {
-                            Circle().strokeBorder(Theme.text, lineWidth: isCustomColor ? 2.5 : 0)
+                // The system colour picker as the last swatch — tapping it opens the full iOS
+                // picker (grid, spectrum wheel, RGB / HSB sliders). Its well shows the current
+                // custom colour; a ring marks it selected once the colour isn't a preset.
+                ColorPicker("habit.field.color.custom", selection: $customColor, supportsOpacity: false)
+                    .labelsHidden()
+                    .scaleEffect(1.05)
+                    .overlay {
+                        if isCustomColor {
+                            Circle().strokeBorder(Theme.text, lineWidth: 2.5)
                         }
-                    if !isCustomColor {
-                        Image(systemName: "eyedropper")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Theme.textMuted)
                     }
-                    ColorPicker("habit.field.color.custom", selection: $customColor, supportsOpacity: false)
-                        .labelsHidden()
-                        .opacity(0.015)          // keep it hit-testable but invisible over our swatch
-                        .frame(width: 28, height: 28)
-                }
-                .onChange(of: customColor) { _, newColor in
-                    colorHex = newColor.hexString
-                }
-                .accessibilityLabel(Text("habit.field.color.custom"))
+                    .onChange(of: customColor) { _, newColor in
+                        colorHex = newColor.hexString
+                    }
 
                 Spacer(minLength: 0)
             }
@@ -260,14 +295,18 @@ struct AddEditHabitView: View {
             return (c.hour ?? 9) * 60 + (c.minute ?? 0)
         }
 
+        let target = isValueHabit ? (parsedTarget ?? 1) : 1
+        let quick = isValueHabit ? parsedQuick : 1
+
         let saved: Habit
         if let habit {
             habit.title = trimmedTitle
             habit.emoji = emoji
             habit.colorHex = colorHex
-            habit.dailyTarget = dailyTarget
             habit.unitKey = unitSelection.unitKey
             habit.customUnitText = unitSelection.customUnitText
+            habit.targetAmount = target
+            habit.widgetQuickAmount = quick
             habit.recurrenceType = recurrenceType
             habit.recurrenceWeekdays = sortedWeekdays
             habit.recurrenceDaysOfMonth = sortedDaysOfMonth
@@ -280,7 +319,8 @@ struct AddEditHabitView: View {
                 emoji: emoji,
                 colorHex: colorHex,
                 sortIndex: nextSortIndex(),
-                dailyTarget: dailyTarget,
+                targetAmount: target,
+                widgetQuickAmount: quick,
                 unitKey: unitSelection.unitKey,
                 customUnitText: unitSelection.customUnitText,
                 recurrenceType: recurrenceType,

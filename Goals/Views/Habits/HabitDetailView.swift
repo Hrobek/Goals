@@ -15,6 +15,8 @@ struct HabitDetailView: View {
 
     @State private var isShowingEdit = false
     @State private var isShowingDeleteConfirmation = false
+    @State private var isShowingLogPrompt = false
+    @State private var logAmountText = ""
     @State private var activityRange: StatsRange = .month
     @State private var activityOffset = 0
     @State private var checkTick = 0
@@ -58,7 +60,7 @@ struct HabitDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.section) {
                 header
-                checkTodayButton
+                todayControl
                 activitySection
                 if purchaseManager.isProUnlocked {
                     statsSection
@@ -85,6 +87,17 @@ struct HabitDetailView: View {
                 syncReminders()
                 dismiss()
             }
+        }
+        .alert("habit.log.title", isPresented: $isShowingLogPrompt) {
+            TextField(habit.targetText, text: $logAmountText)
+                .keyboardType(.decimalPad)
+            Button("action.save") {
+                if let value = Double(logAmountText.replacingOccurrences(of: ",", with: ".")) {
+                    HabitLogger.setAmount(habit, to: value, in: modelContext)
+                    checkTick += 1
+                }
+            }
+            Button("action.cancel", role: .cancel) {}
         }
     }
 
@@ -170,7 +183,16 @@ struct HabitDetailView: View {
         .padding(.top, 4)
     }
 
-    private var checkTodayButton: some View {
+    @ViewBuilder
+    private var todayControl: some View {
+        if habit.isCheckbox {
+            checkboxButton
+        } else {
+            valuePanel
+        }
+    }
+
+    private var checkboxButton: some View {
         Button {
             HabitLogger.toggleToday(habit, in: modelContext)
             checkTick += 1
@@ -180,12 +202,6 @@ struct HabitDetailView: View {
                     .font(.system(size: 18))
                 Text(doneToday ? "habit.doneToday" : "habit.markToday")
                     .font(Theme.Typo.buttonSmall)
-                if habit.dailyTarget > 1 {
-                    Spacer(minLength: 0)
-                    Text(habit.progressText())
-                        .font(Theme.Typo.captionEmphasis)
-                        .monospacedDigit()
-                }
             }
             .foregroundStyle(doneToday ? Theme.onAccent : Theme.accentText)
             .frame(maxWidth: .infinity)
@@ -198,6 +214,80 @@ struct HabitDetailView: View {
             }
         }
         .buttonStyle(.plain)
+    }
+
+    /// Today's amount against the target, a progress bar, and the unit's quick-add steps — the
+    /// same shape as a value goal's detail.
+    private var valuePanel: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .lastTextBaseline, spacing: 6) {
+                Text(habit.progressText())
+                    .font(Theme.Typo.statMedium)
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.text)
+                Spacer(minLength: 0)
+                if doneToday {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(tint)
+                        .accessibilityLabel(Text("a11y.today.done"))
+                }
+            }
+
+            ThinBar(progress: habit.progressFraction(), color: tint)
+
+            HStack(spacing: 8) {
+                ForEach(quickSteps, id: \.self) { step in
+                    Button {
+                        HabitLogger.adjust(habit, by: step, in: modelContext)
+                        checkTick += 1
+                    } label: {
+                        Text("+\(habit.quickAddLabel(step))")
+                            .font(.system(size: 14, weight: .medium))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .background(Theme.control, in: .rect(cornerRadius: Theme.Radius.control))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: Theme.Radius.control)
+                                    .strokeBorder(Theme.textGhost, lineWidth: 1)
+                            }
+                            .foregroundStyle(Theme.text)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("a11y.quickAdd \(habit.quickAddLabel(step))"))
+                }
+
+                Button {
+                    HabitLogger.adjust(habit, by: -habit.widgetQuickAmount, in: modelContext)
+                    checkTick += 1
+                } label: {
+                    Image(systemName: "minus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 40, height: 40)
+                        .background(Theme.control, in: .rect(cornerRadius: Theme.Radius.control))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: Theme.Radius.control)
+                                .strokeBorder(Theme.textGhost, lineWidth: 1)
+                        }
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("a11y.removeTime"))
+            }
+
+            Button("habit.log.exact") { isShowingLogPrompt = true }
+                .font(Theme.Typo.captionEmphasis)
+                .foregroundStyle(Theme.textMuted)
+                .buttonStyle(.plain)
+        }
+        .cardSurface(radius: Theme.Radius.panel, padding: 18)
+    }
+
+    private var quickSteps: [Double] {
+        GoalUnit(rawValue: habit.unitKey)?.quickAddSteps ?? [1, 2, 5, 10]
     }
 
     private var activitySection: some View {

@@ -17,11 +17,15 @@ struct HabitSnapshot: Identifiable, Hashable {
     let emoji: String?
     let colorHex: String
     let streak: Int
-    let countToday: Int
-    let dailyTarget: Int
+    let isCheckbox: Bool
+    /// "+250" style label for a value habit's tap; empty for a checkbox habit.
+    let quickAddLabel: String
 
-    var isDone: Bool { countToday >= dailyTarget }
-    var progress: Double { dailyTarget > 0 ? min(Double(countToday) / Double(dailyTarget), 1) : 0 }
+    let amountToday: Double
+    let target: Double
+
+    var isDone: Bool { amountToday >= target }
+    var progress: Double { target > 0 ? min(amountToday / target, 1) : 0 }
 }
 
 struct HabitsEntry: TimelineEntry {
@@ -71,8 +75,10 @@ struct HabitsProvider: TimelineProvider {
                 emoji: habit.emoji,
                 colorHex: habit.colorHex,
                 streak: habit.currentStreak,
-                countToday: habit.count(on: .now),
-                dailyTarget: max(habit.dailyTarget, 1)
+                isCheckbox: habit.isCheckbox,
+                quickAddLabel: habit.isCheckbox ? "" : "+\(habit.quickAddLabel(habit.widgetQuickAmount))",
+                amountToday: habit.amount(on: .now),
+                target: habit.targetAmount
             )
         }
         return HabitsEntry(
@@ -113,9 +119,9 @@ struct HabitsProvider: TimelineProvider {
 
     private static var sample: [HabitSnapshot] {
         [
-            HabitSnapshot(id: UUID(), title: "Pít vodu", emoji: "💧", colorHex: ColorPalette.defaultHex, streak: 4, countToday: 1, dailyTarget: 3),
-            HabitSnapshot(id: UUID(), title: "Číst", emoji: "📖", colorHex: ColorPalette.defaultHex, streak: 12, countToday: 1, dailyTarget: 1),
-            HabitSnapshot(id: UUID(), title: "Protáhnout se", emoji: "🧘", colorHex: ColorPalette.defaultHex, streak: 0, countToday: 0, dailyTarget: 1),
+            HabitSnapshot(id: UUID(), title: "Pít vodu", emoji: "💧", colorHex: ColorPalette.defaultHex, streak: 4, isCheckbox: false, quickAddLabel: "+250 ml", amountToday: 1500, target: 3000),
+            HabitSnapshot(id: UUID(), title: "Číst", emoji: "📖", colorHex: ColorPalette.defaultHex, streak: 12, isCheckbox: true, quickAddLabel: "", amountToday: 1, target: 1),
+            HabitSnapshot(id: UUID(), title: "Protáhnout se", emoji: "🧘", colorHex: ColorPalette.defaultHex, streak: 0, isCheckbox: true, quickAddLabel: "", amountToday: 0, target: 1),
         ]
     }
 }
@@ -207,25 +213,32 @@ struct HabitsWidgetEntryView: View {
             }
 
             Button(intent: HabitCheckInIntent(habitID: habit.id)) {
-                ZStack {
-                    Circle()
-                        .fill(habit.isDone ? Color(hex: habit.colorHex) : Color.clear)
-                        .overlay {
-                            Circle().strokeBorder(habit.isDone ? Color(hex: habit.colorHex) : Theme.textGhost, lineWidth: 1.5)
+                if habit.isCheckbox || habit.isDone {
+                    ZStack {
+                        Circle()
+                            .fill(habit.isDone ? Color(hex: habit.colorHex) : Color.clear)
+                            .overlay {
+                                Circle().strokeBorder(habit.isDone ? Color(hex: habit.colorHex) : Theme.textGhost, lineWidth: 1.5)
+                            }
+                            .frame(width: 24, height: 24)
+                        if habit.isDone {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(Theme.onAccent)
                         }
-                        .frame(width: 24, height: 24)
-                    if habit.isDone {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(Theme.onAccent)
-                    } else if habit.dailyTarget > 1 {
-                        Text("\(habit.countToday)")
-                            .font(.system(size: 9, weight: .semibold))
-                            .monospacedDigit()
-                            .foregroundStyle(Theme.textStrong)
                     }
+                    .frame(width: 30, height: 30)
+                } else {
+                    Text(habit.quickAddLabel)
+                        .font(.system(size: 10, weight: .semibold))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .foregroundStyle(Color(hex: habit.colorHex))
+                        .padding(.horizontal, 8)
+                        .frame(height: 24)
+                        .background(Color(hex: habit.colorHex).opacity(0.16), in: .capsule)
                 }
-                .frame(width: 30, height: 30)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("a11y.habit.toggleToday"))

@@ -7,8 +7,12 @@ import Foundation
 import SwiftData
 
 /// A recurring thing you do rather than a target you reach — the daily side of the app. Shares
-/// the recurrence + streak machinery with `Goal` through `Scheduled`, but keeps its own model:
-/// no target value, no milestones, just "did it today" and how long the run is.
+/// the recurrence + streak machinery with `Goal` through `Scheduled`, but keeps its own model.
+///
+/// Two shapes, decided by `unitKey`:
+/// - **checkbox** (`.times`): one tap marks the day done.
+/// - **value** (any other unit): a daily target amount (4000 ml, 10 pages) reached with quick-add
+///   steps, exactly like a value `Goal`.
 @Model
 final class Habit {
     var id: UUID = UUID()
@@ -19,10 +23,10 @@ final class Habit {
     var createdAt: Date = Date.now
     /// Manual order in the list, lowest first. New habits go to the end.
     var sortIndex: Int = 0
-    /// How many ticks in a day count the day as done — 1 for a plain habit, more for "8 glasses".
+    /// Legacy integer target — kept so an older row still opens. New code reads `targetAmount`.
     var dailyTarget: Int = 1
-    /// The unit each tick counts in — pages, glasses, minutes… Mirrors `Goal`; `.times` means a
-    /// plain count with no noun.
+    /// The unit the habit is measured in — pages, ml, minutes… Mirrors `Goal`; `.times` means a
+    /// plain checkbox with no quantity.
     var unitKey: String = GoalUnit.times.rawValue
     var customUnitText: String?
 
@@ -33,13 +37,14 @@ final class Habit {
 
     // Stored as optionals and read through the accessors below, the same pattern `Goal` uses for
     // properties added after the first rows were written — a nil from an older row must not crash
-    // a non-optional cast. (Habit ships with these from the start, but the pattern keeps a later
-    // CloudKit migration cheap and matches the rest of the schema.)
+    // a non-optional cast, and it keeps the schema change a lightweight migration.
     private var storedIsArchived: Bool?
     private var storedIsReminderOn: Bool?
     private var reminderFrequencyRawValue: String?
     private var storedReminderTimes: [Int]?
     private var storedReminderWeekdays: [Int]?
+    private var storedTargetAmount: Double?
+    private var storedWidgetQuickAmount: Double?
 
     @Relationship(deleteRule: .cascade, inverse: \HabitEntry.habit)
     var entries: [HabitEntry] = []
@@ -51,7 +56,8 @@ final class Habit {
         emoji: String? = nil,
         colorHex: String = ColorPalette.defaultHex,
         sortIndex: Int = 0,
-        dailyTarget: Int = 1,
+        targetAmount: Double = 1,
+        widgetQuickAmount: Double? = nil,
         unitKey: String = GoalUnit.times.rawValue,
         customUnitText: String? = nil,
         recurrenceType: RecurrenceType = .daily,
@@ -71,7 +77,9 @@ final class Habit {
         self.emoji = emoji
         self.colorHex = colorHex
         self.sortIndex = sortIndex
-        self.dailyTarget = max(1, dailyTarget)
+        self.storedTargetAmount = max(1, targetAmount)
+        self.dailyTarget = Int(max(1, targetAmount).rounded())
+        self.storedWidgetQuickAmount = widgetQuickAmount
         self.unitKey = unitKey
         self.customUnitText = customUnitText
         self.recurrenceType = recurrenceType
@@ -122,10 +130,39 @@ final class Habit {
         set { storedReminderWeekdays = newValue.sorted() }
     }
 
+    /// How much counts as a full day. 1 for a checkbox habit; a real quantity for a value habit.
+    var targetAmount: Double {
+        get { max(1, storedTargetAmount ?? Double(dailyTarget)) }
+        set {
+            let clamped = max(1, newValue)
+            storedTargetAmount = clamped
+            dailyTarget = Int(clamped.rounded())
+        }
+    }
+
+    /// What one quick-add step (and one widget tap) adds, for a value habit. Falls back to the
+    /// unit's own smallest step, same as `Goal.widgetQuickAmount`.
+    var widgetQuickAmount: Double {
+        get { storedWidgetQuickAmount ?? GoalUnit(rawValue: unitKey)?.quickAddSteps.first ?? 1 }
+        set { storedWidgetQuickAmount = newValue }
+    }
+
     // MARK: - Derived
 
     var status: GoalStatus {
         isArchived ? .archived : .active
+    }
+
+    /// A checkbox habit is one with no unit — a single tap does it.
+    var isCheckbox: Bool { !hasUnit }
+
+    /// How much marks the day done: always 1 for a checkbox habit, whatever the stored target
+    /// happens to say, so a habit switched from value to checkbox still works.
+    var effectiveTarget: Double { isCheckbox ? 1 : targetAmount }
+
+    /// Whether this habit counts in a real unit (pages, ml…) rather than being a plain checkbox.
+    var hasUnit: Bool {
+        GoalUnit(rawValue: unitKey) != .times || (customUnitText?.isEmpty == false)
     }
 
     func isScheduledToday(calendar: Calendar = .current, date: Date = .now) -> Bool {
@@ -137,42 +174,51 @@ final class Habit {
         entries.first { calendar.isDate($0.date, inSameDayAs: date) }
     }
 
-    /// How many ticks are logged for `date` (0 if none).
-    func count(on date: Date, calendar: Calendar = .current) -> Int {
-        entry(on: date, calendar: calendar)?.count ?? 0
+    /// The value logged for `date` (0 if nothing).
+    func amount(on date: Date, calendar: Calendar = .current) -> Double {
+        entry(on: date, calendar: calendar)?.amount ?? 0
     }
 
-    /// Whether `date`'s ticks have reached `dailyTarget`.
+    /// 0…1 fraction of the day's target reached.
+    func progressFraction(on date: Date = .now, calendar: Calendar = .current) -> Double {
+        min(max(amount(on: date, calendar: calendar) / effectiveTarget, 0), 1)
+    }
+
+    /// Whether `date` has reached the target.
     func isDone(on date: Date, calendar: Calendar = .current) -> Bool {
-        count(on: date, calendar: calendar) >= dailyTarget
+        amount(on: date, calendar: calendar) >= effectiveTarget
     }
 
     var currentStreak: Int {
         StreakCalculator.currentStreak(for: self)
     }
 
-    /// Whether this habit counts in a real unit (pages, glasses…) rather than a bare tally.
-    var hasUnit: Bool {
-        GoalUnit(rawValue: unitKey) != .times || (customUnitText?.isEmpty == false)
+    private func format(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(0...1)))
     }
 
-    /// "3/8 glasses" for a unit habit, "3/8" for a plain one — today's ticks against the target.
+    /// The target written with its unit — "4,000 ml", "10 pages". Empty for a checkbox habit.
+    var targetText: String {
+        guard hasUnit else { return "" }
+        return GoalUnit.valueWithUnit(targetAmount, formattedValue: format(targetAmount), unitKey: unitKey, customUnitText: customUnitText)
+    }
+
+    /// "3,000/4,000 ml" for a value habit; "" for a checkbox one (its row just shows a tick).
     func progressText(on date: Date = .now, calendar: Calendar = .current) -> String {
-        let count = self.count(on: date, calendar: calendar)
-        guard hasUnit else { return "\(count)/\(dailyTarget)" }
-        let target = GoalUnit.valueWithUnit(
-            Double(dailyTarget),
-            formattedValue: "\(dailyTarget)",
-            unitKey: unitKey,
-            customUnitText: customUnitText
-        )
-        return "\(count)/\(target)"
+        guard hasUnit else { return "" }
+        return "\(format(amount(on: date, calendar: calendar)))/\(targetText)"
+    }
+
+    /// A quick-add amount rendered with its unit — "+250 ml".
+    func quickAddLabel(_ value: Double) -> String {
+        GoalUnit.valueWithUnit(value, formattedValue: format(value), unitKey: unitKey, customUnitText: customUnitText)
     }
 }
 
 extension Habit: Scheduled {
-    /// A habit counts a day as done once its ticks for that day reach `dailyTarget`.
+    /// A habit counts a day as done once that day's logged amount reaches the target.
     var scheduleDates: [Date] {
-        entries.filter { $0.count >= dailyTarget }.map(\.date)
+        let target = effectiveTarget
+        return entries.filter { $0.amount >= target }.map(\.date)
     }
 }

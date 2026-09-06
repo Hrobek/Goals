@@ -29,7 +29,11 @@ struct HabitCheckInIntent: AppIntent {
         let context = SharedStore.container.mainContext
         let descriptor = FetchDescriptor<Habit>(predicate: #Predicate { $0.id == id })
         if let habit = try? context.fetch(descriptor).first {
-            HabitLogger.toggleToday(habit, in: context)
+            if habit.isCheckbox {
+                HabitLogger.toggleToday(habit, in: context)
+            } else {
+                HabitLogger.addQuick(habit, in: context)
+            }
             try? context.save()
         }
 

@@ -15186,42 +15186,72 @@
     },
     "habit.field.dailyTarget" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Times a day"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kolikrát denně"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mal pro Tag"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Veces al día"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fois par jour"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vezes por dia"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Daily target" } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Denní cíl" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Tagesziel" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Meta diaria" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Objectif du jour" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Meta diária" } }
+      }
+    },
+    "habit.field.quickAdd" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quick-add step" } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Rychlé přidání" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Schnell-Schritt" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Incremento rápido" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Pas d’ajout rapide" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Incremento rápido" } }
+      }
+    },
+    "habit.field.tracking" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tracking" } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Sledování" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verfolgung" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Seguimiento" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Suivi" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Acompanhamento" } }
+      }
+    },
+    "habit.field.tracking.checkbox.hint" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "One tap marks the day done. Pick a unit to track an amount instead." } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Jedno ťuknutí označí den za splněný. Vyber jednotku, když chceš sledovat množství." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ein Tippen markiert den Tag als erledigt. Wähle eine Einheit, um stattdessen eine Menge zu verfolgen." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Un toque marca el día como hecho. Elige una unidad para registrar una cantidad." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Un geste marque la journée comme faite. Choisis une unité pour suivre une quantité." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Um toque marca o dia como feito. Escolha uma unidade para acompanhar uma quantidade." } }
+      }
+    },
+    "habit.field.tracking.value.hint" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reach the daily target with quick-add steps — on the card and the widget, one tap adds the step." } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Denní cíl plníš rychlými kroky — na kartě i widgetu jedno ťuknutí přidá krok." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Erreiche das Tagesziel mit Schnell-Schritten – auf der Karte und im Widget fügt ein Tippen den Schritt hinzu." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Alcanza la meta diaria con incrementos rápidos: en la tarjeta y el widget, un toque suma el incremento." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Atteins l’objectif du jour par ajouts rapides — sur la carte et le widget, un geste ajoute le pas." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Alcance a meta diária com incrementos rápidos — no cartão e no widget, um toque soma o incremento." } }
+      }
+    },
+    "habit.log.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Log today's amount" } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Zapiš dnešní hodnotu" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Heutige Menge eintragen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Registrar la cantidad de hoy" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Saisir la quantité du jour" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Registrar a quantidade de hoje" } }
+      }
+    },
+    "habit.log.exact" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Enter exact amount" } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Zadat přesnou hodnotu" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Genaue Menge eingeben" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Introducir cantidad exacta" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Saisir la quantité exacte" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Inserir quantidade exata" } }
       }
     },
     "habit.doneToday" : {

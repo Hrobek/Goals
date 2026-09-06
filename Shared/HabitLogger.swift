@@ -7,14 +7,10 @@ import Foundation
 import SwiftData
 import WidgetKit
 
-/// Single entry point for "I did this habit today", shared by the in-app row and the widget
-/// button. Keeps at most one `HabitEntry` per day; `count` carries habits that want several ticks
-/// a day ("8 glasses of water").
+/// Single entry point for "I did this habit today", shared by the in-app row/detail and the
+/// widget button. Keeps at most one `HabitEntry` per day.
 enum HabitLogger {
-    /// One tap on the habit's check-off control.
-    /// - `dailyTarget == 1`: toggles today's entry on/off.
-    /// - `dailyTarget > 1`: adds one tick, capped at the target; a fresh tap once the target is
-    ///   reached clears the day (so the control can still undo a mistake).
+    /// One tap on a **checkbox** habit's control: toggles today's entry on or off.
     @discardableResult
     static func toggleToday(
         _ habit: Habit,
@@ -22,62 +18,76 @@ enum HabitLogger {
         now: Date = .now,
         calendar: Calendar = .current
     ) -> Bool {
-        let existing = habit.entry(on: now, calendar: calendar)
-
-        if habit.dailyTarget <= 1 {
-            if let existing {
-                context.delete(existing)
-            } else {
-                insert(count: 1, for: habit, in: context, now: now)
-            }
+        if let existing = habit.entry(on: now, calendar: calendar) {
+            context.delete(existing)
         } else {
-            let current = existing?.count ?? 0
-            if current >= habit.dailyTarget {
-                if let existing { context.delete(existing) }
-            } else if let existing {
-                existing.count = current + 1
-                existing.date = now
-            } else {
-                insert(count: 1, for: habit, in: context, now: now)
-            }
+            insert(amount: 1, for: habit, in: context, now: now)
         }
-
         finish()
         return habit.isDone(on: now, calendar: calendar)
     }
 
-    /// Steps today's tick count by `delta` (clamped to 0…dailyTarget), for the stepper on
-    /// multi-tick habits. Removes the entry when it lands back on zero.
+    /// Adds `delta` (may be negative) to today's logged amount, for a **value** habit. Clamped at
+    /// zero; the day's entry is removed once it lands back on nothing.
     @discardableResult
-    static func adjustToday(
+    static func adjust(
         _ habit: Habit,
-        by delta: Int,
+        by delta: Double,
         in context: ModelContext,
         now: Date = .now,
         calendar: Calendar = .current
     ) -> Bool {
         let existing = habit.entry(on: now, calendar: calendar)
-        let current = existing?.count ?? 0
-        let updated = min(max(current + delta, 0), max(habit.dailyTarget, 1))
+        let current = existing?.amount ?? 0
+        let updated = max(current + delta, 0)
         guard updated != current else { return habit.isDone(on: now, calendar: calendar) }
 
         if updated == 0 {
             if let existing { context.delete(existing) }
         } else if let existing {
-            existing.count = updated
+            existing.amount = updated
             existing.date = now
         } else {
-            insert(count: updated, for: habit, in: context, now: now)
+            insert(amount: updated, for: habit, in: context, now: now)
         }
 
         finish()
         return habit.isDone(on: now, calendar: calendar)
     }
 
+    /// One quick-add step for a value habit — the amount configured on the habit (also what one
+    /// widget tap adds).
+    @discardableResult
+    static func addQuick(_ habit: Habit, in context: ModelContext, now: Date = .now, calendar: Calendar = .current) -> Bool {
+        adjust(habit, by: habit.widgetQuickAmount, in: context, now: now, calendar: calendar)
+    }
+
+    /// Sets today's amount to an exact value (from the "log value" field).
+    static func setAmount(
+        _ habit: Habit,
+        to value: Double,
+        in context: ModelContext,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) {
+        let clamped = max(value, 0)
+        if let existing = habit.entry(on: now, calendar: calendar) {
+            if clamped == 0 {
+                context.delete(existing)
+            } else {
+                existing.amount = clamped
+                existing.date = now
+            }
+        } else if clamped > 0 {
+            insert(amount: clamped, for: habit, in: context, now: now)
+        }
+        finish()
+    }
+
     // MARK: - Private
 
-    private static func insert(count: Int, for habit: Habit, in context: ModelContext, now: Date) {
-        context.insert(HabitEntry(ownerId: habit.ownerId, date: now, count: count, habit: habit))
+    private static func insert(amount: Double, for habit: Habit, in context: ModelContext, now: Date) {
+        context.insert(HabitEntry(ownerId: habit.ownerId, date: now, amount: amount, habit: habit))
     }
 
     private static func finish() {
