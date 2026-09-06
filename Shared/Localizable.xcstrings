@@ -16775,6 +16775,16 @@
           }
         }
       }
+    },
+    "habit.field.tracking.quota.hint" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "One check-in a day counts toward your weekly / monthly quota — set how many in the schedule above." } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Jedno odškrtnutí za den se počítá do týdenní / měsíční kvóty — kolikrát nastavíš v rozvrhu nahoře." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ein Check-in pro Tag zählt für dein Wochen- / Monatssoll — wie oft, legst du oben im Rhythmus fest." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Un registro al día cuenta para tu cuota semanal / mensual: cuántas veces se define arriba en la frecuencia." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Un pointage par jour compte pour ton quota hebdo / mensuel — le nombre se règle dans la fréquence ci-dessus." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Um check-in por dia conta para sua cota semanal / mensal — quantas vezes você define na frequência acima." } }
+      }
     }
   },
   "version" : "1.1"

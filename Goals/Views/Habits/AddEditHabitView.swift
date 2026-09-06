@@ -88,7 +88,18 @@ struct AddEditHabitView: View {
 
     /// A "times" habit with a target above one — tapped several times a day.
     private var isTimesCounter: Bool {
-        !isUnitHabit && (parsedTarget ?? 1) > 1
+        !isUnitHabit && !isQuotaSchedule && (parsedTarget ?? 1) > 1
+    }
+
+    /// Quota schedules ("3× a week / month") already say *how many* — a per-day count on top of
+    /// that just reads as a contradiction, so for a plain "times" habit we drop it.
+    private var isQuotaSchedule: Bool {
+        recurrenceType == .timesPerWeek || recurrenceType == .timesPerMonth
+    }
+
+    /// Whether the Tracking card should offer a per-day count at all.
+    private var showsTimesPerDay: Bool {
+        !isUnitHabit && !isQuotaSchedule
     }
 
     /// Integer binding for the "times a day" stepper.
@@ -114,6 +125,7 @@ struct AddEditHabitView: View {
 
     private var trackingHint: LocalizedStringKey {
         if isUnitHabit { return "habit.field.tracking.value.hint" }
+        if isQuotaSchedule { return "habit.field.tracking.quota.hint" }
         return isTimesCounter ? "habit.field.tracking.counter.hint" : "habit.field.tracking.checkbox.hint"
     }
 
@@ -152,12 +164,13 @@ struct AddEditHabitView: View {
                                 DisclosureRow(label: "goal.field.unit", value: unitSelection.displayText) {
                                     isShowingUnitPicker = true
                                 }
-                                RowDivider()
                                 if isUnitHabit {
+                                    RowDivider()
                                     TextFieldRow(label: "habit.field.dailyTarget", text: $targetAmountText, keyboard: .decimalPad, suffix: unitSelection.displayText)
                                     RowDivider()
                                     TextFieldRow(label: "habit.field.quickAdd", text: $quickAmountText, keyboard: .decimalPad, suffix: unitSelection.displayText)
-                                } else {
+                                } else if showsTimesPerDay {
+                                    RowDivider()
                                     Stepper(value: timesTargetBinding, in: 1...30) {
                                         Text("habit.field.timesPerDay \(timesTargetBinding.wrappedValue)")
                                             .font(Theme.Typo.row)
@@ -218,6 +231,13 @@ struct AddEditHabitView: View {
                     // "1" target so the field reads as empty rather than pre-filled wrong.
                     quickAmountText = Self.trimmed(Self.defaultStep(for: newUnit))
                     if oldUnit == .preset(.times) { targetAmountText = "" }
+                }
+            }
+            .onChange(of: recurrenceType) { _, newType in
+                // Moving to a quota schedule drops the per-day count — don't carry a stale "3"
+                // into a habit that's now just one check-in a day.
+                if (newType == .timesPerWeek || newType == .timesPerMonth), !isUnitHabit {
+                    targetAmountText = "1"
                 }
             }
             .onChange(of: isReminderOn) { _, isOn in
@@ -344,7 +364,9 @@ struct AddEditHabitView: View {
             return (c.hour ?? 9) * 60 + (c.minute ?? 0)
         }
 
-        let target = parsedTarget ?? 1
+        // A quota-scheduled "times" habit is a plain one-tap-a-day check-in; the "how many" is the
+        // weekly/monthly quota, not a per-day count.
+        let target = (isUnitHabit || showsTimesPerDay) ? (parsedTarget ?? 1) : 1
         let quick = isUnitHabit ? parsedQuick : 1
 
         let saved: Habit
