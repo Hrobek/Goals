@@ -91,9 +91,9 @@ struct HabitsProvider: TimelineProvider {
 
     private static func rowLimit(for family: WidgetFamily) -> Int {
         switch family {
-        case .systemSmall: 3
-        case .systemMedium: 4
-        case .systemLarge: 8
+        case .systemSmall: 4
+        case .systemMedium: 8
+        case .systemLarge: 16
         default: 1
         }
     }
@@ -143,7 +143,11 @@ struct HabitsWidgetEntryView: View {
         }
     }
 
-    // MARK: Home screen
+    // MARK: Home screen — a grid of emoji rings, nothing else
+
+    private var columns: Int {
+        family == .systemSmall ? 2 : 4
+    }
 
     @ViewBuilder
     private var homeBody: some View {
@@ -153,96 +157,49 @@ struct HabitsWidgetEntryView: View {
             WidgetMessageView(message: "habits.empty.title", systemImage: "repeat")
                 .widgetURL(GoalLink.habits)
         } else {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Text("tab.habits")
-                        .textCase(.uppercase)
-                        .tracking(0.8)
-                    Spacer(minLength: 4)
-                    Text("\(entry.doneToday)/\(entry.totalToday)")
-                        .foregroundStyle(Theme.textMuted)
-                        .monospacedDigit()
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: columns),
+                spacing: 12
+            ) {
+                ForEach(entry.habits) { habit in
+                    ring(for: habit)
+                        .aspectRatio(1, contentMode: .fit)
                 }
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(Theme.textFaint)
-
-                VStack(spacing: 7) {
-                    ForEach(entry.habits) { habit in
-                        row(for: habit)
-                    }
-                }
-                .padding(.top, 10)
-
-                Spacer(minLength: 0)
             }
+            .frame(maxHeight: .infinity, alignment: .top)
         }
     }
 
-    private func row(for habit: HabitSnapshot) -> some View {
-        HStack(spacing: 8) {
-            Link(destination: GoalLink.habit(for: habit.id)) {
-                HStack(spacing: 7) {
-                    ZStack {
-                        Circle()
-                            .fill(Color(hex: habit.colorHex).opacity(0.20))
-                        if let emoji = habit.emoji, !emoji.isEmpty {
-                            Text(emoji).font(.system(size: 13))
-                        } else {
-                            Image(systemName: "repeat")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(Color(hex: habit.colorHex))
-                        }
+    private func ring(for habit: HabitSnapshot) -> some View {
+        let color = Color(hex: habit.colorHex)
+        return Button(intent: HabitCheckInIntent(habitID: habit.id)) {
+            GeometryReader { geo in
+                let side = min(geo.size.width, geo.size.height)
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(habit.isDone ? 0.28 : 0.14))
+                    Circle()
+                        .stroke(color.opacity(0.22), lineWidth: side * 0.1)
+                    Circle()
+                        .trim(from: 0, to: max(0.001, habit.progress))
+                        .stroke(color, style: StrokeStyle(lineWidth: side * 0.1, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    if let emoji = habit.emoji, !emoji.isEmpty {
+                        Text(emoji).font(.system(size: side * 0.44))
+                    } else {
+                        Image(systemName: "repeat")
+                            .font(.system(size: side * 0.34, weight: .medium))
+                            .foregroundStyle(color)
                     }
-                    .frame(width: 24, height: 24)
-
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(habit.title)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(Theme.text)
-                            .lineLimit(1)
-                        if habit.streak > 0 {
-                            Text("\(habit.streak)")
-                                .font(.system(size: 9))
-                                .monospacedDigit()
-                                .foregroundStyle(Theme.textFaint)
-                        }
-                    }
-                    Spacer(minLength: 4)
                 }
-                .contentShape(.rect)
+                .frame(width: side, height: side)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-
-            Button(intent: HabitCheckInIntent(habitID: habit.id)) {
-                if habit.isCheckbox || habit.isDone {
-                    ZStack {
-                        Circle()
-                            .fill(habit.isDone ? Color(hex: habit.colorHex) : Color.clear)
-                            .overlay {
-                                Circle().strokeBorder(habit.isDone ? Color(hex: habit.colorHex) : Theme.textGhost, lineWidth: 1.5)
-                            }
-                            .frame(width: 24, height: 24)
-                        if habit.isDone {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(Theme.onAccent)
-                        }
-                    }
-                    .frame(width: 30, height: 30)
-                } else {
-                    Text(habit.quickAddLabel)
-                        .font(.system(size: 10, weight: .semibold))
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .foregroundStyle(Color(hex: habit.colorHex))
-                        .padding(.horizontal, 8)
-                        .frame(height: 24)
-                        .background(Color(hex: habit.colorHex).opacity(0.16), in: .capsule)
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("a11y.habit.toggleToday"))
+            .contentShape(.rect)
         }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(habit.title))
+        .accessibilityValue(Text(habit.isDone ? "a11y.today.done" : "a11y.today.notDone"))
     }
 
     // MARK: Lock Screen
