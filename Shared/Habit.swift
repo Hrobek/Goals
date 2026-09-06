@@ -153,16 +153,18 @@ final class Habit {
         isArchived ? .archived : .active
     }
 
-    /// A checkbox habit is one with no unit — a single tap does it.
-    var isCheckbox: Bool { !hasUnit }
-
-    /// How much marks the day done: always 1 for a checkbox habit, whatever the stored target
-    /// happens to say, so a habit switched from value to checkbox still works.
-    var effectiveTarget: Double { isCheckbox ? 1 : targetAmount }
-
-    /// Whether this habit counts in a real unit (pages, ml…) rather than being a plain checkbox.
+    /// Whether this habit is measured in a real unit (pages, ml…) rather than a bare "times".
     var hasUnit: Bool {
         GoalUnit(rawValue: unitKey) != .times || (customUnitText?.isEmpty == false)
+    }
+
+    /// A one-tap habit: no unit and a target of one. "Times" with a target above one is a small
+    /// counter instead ("stretch 3× a day"); a real unit is a value tracker.
+    var isCheckbox: Bool { !hasUnit && targetAmount <= 1 }
+
+    /// How much marks the day done. Rounded to a whole number for a "times" habit.
+    var effectiveTarget: Double {
+        hasUnit ? targetAmount : max(1, targetAmount.rounded())
     }
 
     func isScheduledToday(calendar: Calendar = .current, date: Date = .now) -> Bool {
@@ -197,21 +199,22 @@ final class Habit {
         value.formatted(.number.precision(.fractionLength(0...1)))
     }
 
-    /// The target written with its unit — "4,000 ml", "10 pages". Empty for a checkbox habit.
+    /// The target written out — "4,000 ml", "10 pages", or just "5" for a plain times counter.
     var targetText: String {
-        guard hasUnit else { return "" }
+        guard hasUnit else { return format(effectiveTarget) }
         return GoalUnit.valueWithUnit(targetAmount, formattedValue: format(targetAmount), unitKey: unitKey, customUnitText: customUnitText)
     }
 
-    /// "3,000/4,000 ml" for a value habit; "" for a checkbox one (its row just shows a tick).
+    /// "3,000/4,000 ml" for a value habit, "3/5" for a times counter; "" for a plain checkbox.
     func progressText(on date: Date = .now, calendar: Calendar = .current) -> String {
-        guard hasUnit else { return "" }
+        guard !isCheckbox else { return "" }
         return "\(format(amount(on: date, calendar: calendar)))/\(targetText)"
     }
 
-    /// A quick-add amount rendered with its unit — "+250 ml".
+    /// A quick-add amount rendered with its unit — "250 ml", or just "1" for a times habit.
     func quickAddLabel(_ value: Double) -> String {
-        GoalUnit.valueWithUnit(value, formattedValue: format(value), unitKey: unitKey, customUnitText: customUnitText)
+        guard hasUnit else { return format(value) }
+        return GoalUnit.valueWithUnit(value, formattedValue: format(value), unitKey: unitKey, customUnitText: customUnitText)
     }
 }
 

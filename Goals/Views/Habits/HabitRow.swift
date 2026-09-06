@@ -37,7 +37,7 @@ struct HabitRow: View {
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
 
                 HStack(spacing: 8) {
-                    if habit.hasUnit {
+                    if !habit.isCheckbox {
                         Text(habit.progressText())
                             .font(Theme.Typo.caption)
                             .monospacedDigit()
@@ -102,30 +102,41 @@ struct HabitRow: View {
         .frame(width: iconSize, height: iconSize)
     }
 
-    /// Checkbox habit → a tick circle. Value habit → a "+N" quick-add chip (or a tick once the
-    /// day's target is met).
+    /// Three shapes: a tick circle (checkbox), an "n/N" counter that +1s per tap (a "times" habit
+    /// done several times a day), or a "+step" chip (a unit habit).
     @ViewBuilder
     private var checkControl: some View {
         if habit.isCheckbox {
-            Button {
-                HabitLogger.toggleToday(habit, in: modelContext)
-                actionTick += 1
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(doneToday ? tint : Color.clear)
-                        .overlay { Circle().strokeBorder(doneToday ? tint : Theme.textGhost, lineWidth: 1.5) }
-                        .frame(width: 30, height: 30)
+            Button { toggle() } label: {
+                circle {
                     if doneToday {
                         Image(systemName: "checkmark")
                             .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(Theme.onAccent)
                     }
                 }
-                .frame(width: 44, height: 44)
-                .contentShape(.rect)
             }
             .buttonStyle(.plain)
+        } else if !habit.hasUnit {
+            Button {
+                HabitLogger.adjust(habit, by: 1, in: modelContext)
+                actionTick += 1
+            } label: {
+                circle {
+                    if doneToday {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(Theme.onAccent)
+                    } else {
+                        Text(habit.progressText())
+                            .font(.system(size: 10, weight: .semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.textStrong)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("a11y.habit.toggleToday"))
         } else {
             Button {
                 HabitLogger.addQuick(habit, in: modelContext)
@@ -149,6 +160,23 @@ struct HabitRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel(Text("a11y.quickAdd \(habit.quickAddLabel(habit.widgetQuickAmount))"))
         }
+    }
+
+    private func circle<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        ZStack {
+            Circle()
+                .fill(doneToday ? tint : Color.clear)
+                .overlay { Circle().strokeBorder(doneToday ? tint : Theme.textGhost, lineWidth: 1.5) }
+                .frame(width: 30, height: 30)
+            content()
+        }
+        .frame(width: 44, height: 44)
+        .contentShape(.rect)
+    }
+
+    private func toggle() {
+        HabitLogger.toggleToday(habit, in: modelContext)
+        actionTick += 1
     }
 
     private var accessibilityLabel: Text {

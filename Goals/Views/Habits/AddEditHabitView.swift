@@ -51,8 +51,7 @@ struct AddEditHabitView: View {
             customUnitText: habit?.customUnitText
         )
         _unitSelection = State(initialValue: unit)
-        _targetAmountText = State(initialValue: (habit?.hasUnit ?? false)
-            ? Self.trimmed(habit?.targetAmount ?? 1) : "")
+        _targetAmountText = State(initialValue: Self.trimmed(habit?.targetAmount ?? 1))
         _quickAmountText = State(initialValue: Self.trimmed(
             habit?.widgetQuickAmount ?? Self.defaultStep(for: unit)))
         _recurrenceType = State(initialValue: habit?.recurrenceType ?? .daily)
@@ -68,8 +67,8 @@ struct AddEditHabitView: View {
         _reminderWeekdays = State(initialValue: Set(habit?.reminderWeekdays ?? []))
     }
 
-    /// A habit tracks a quantity when its unit is anything other than the bare "times".
-    private var isValueHabit: Bool {
+    /// A habit measured in a real unit (ml, pages…) rather than the bare "times".
+    private var isUnitHabit: Bool {
         unitSelection != .preset(.times)
     }
 
@@ -83,9 +82,22 @@ struct AddEditHabitView: View {
         return (v ?? 0) > 0 ? v! : Self.defaultStep(for: unitSelection)
     }
 
+    /// A "times" habit with a target above one — tapped several times a day.
+    private var isTimesCounter: Bool {
+        !isUnitHabit && (parsedTarget ?? 1) > 1
+    }
+
+    /// Integer binding for the "times a day" stepper.
+    private var timesTargetBinding: Binding<Int> {
+        Binding(
+            get: { max(1, Int((Double(targetAmountText.replacingOccurrences(of: ",", with: ".")) ?? 1).rounded())) },
+            set: { targetAmountText = String($0) }
+        )
+    }
+
     private var isValid: Bool {
         guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
-        return isValueHabit ? parsedTarget != nil : true
+        return isUnitHabit ? parsedTarget != nil : true
     }
 
     private static func trimmed(_ value: Double) -> String {
@@ -94,6 +106,11 @@ struct AddEditHabitView: View {
 
     private static func defaultStep(for unit: UnitSelection) -> Double {
         GoalUnit(rawValue: unit.unitKey)?.quickAddSteps.first ?? 1
+    }
+
+    private var trackingHint: LocalizedStringKey {
+        if isUnitHabit { return "habit.field.tracking.value.hint" }
+        return isTimesCounter ? "habit.field.tracking.counter.hint" : "habit.field.tracking.checkbox.hint"
     }
 
     var body: some View {
@@ -116,14 +133,21 @@ struct AddEditHabitView: View {
                                 DisclosureRow(label: "goal.field.unit", value: unitSelection.displayText) {
                                     isShowingUnitPicker = true
                                 }
-                                if isValueHabit {
-                                    RowDivider()
+                                RowDivider()
+                                if isUnitHabit {
                                     TextFieldRow(label: "habit.field.dailyTarget", text: $targetAmountText, keyboard: .decimalPad, suffix: unitSelection.displayText)
                                     RowDivider()
                                     TextFieldRow(label: "habit.field.quickAdd", text: $quickAmountText, keyboard: .decimalPad, suffix: unitSelection.displayText)
+                                } else {
+                                    Stepper(value: timesTargetBinding, in: 1...30) {
+                                        Text("habit.field.timesPerDay \(timesTargetBinding.wrappedValue)")
+                                            .font(Theme.Typo.row)
+                                            .foregroundStyle(Theme.text)
+                                    }
+                                    .padding(.vertical, 9)
                                 }
                             }
-                            Text(isValueHabit ? "habit.field.tracking.value.hint" : "habit.field.tracking.checkbox.hint")
+                            Text(trackingHint)
                                 .font(Theme.Typo.footnote)
                                 .foregroundStyle(Theme.textGhost)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -164,12 +188,18 @@ struct AddEditHabitView: View {
                         .disabled(!isValid)
                 }
             }
-            .onChange(of: unitSelection) { _, newUnit in
-                // Switching to a real unit: seed the quick-add step from that unit if the field is
-                // empty or still on the previous unit's default.
-                guard newUnit != .preset(.times) else { return }
-                let step = Self.trimmed(Self.defaultStep(for: newUnit))
-                if quickAmountText.isEmpty { quickAmountText = step }
+            .onChange(of: unitSelection) { oldUnit, newUnit in
+                if newUnit == .preset(.times) {
+                    // Back to a plain counter: a wheel-picked "4000" makes no sense as a times target.
+                    if (Double(targetAmountText.replacingOccurrences(of: ",", with: ".")) ?? 1) > 30 {
+                        targetAmountText = "1"
+                    }
+                } else {
+                    // Switching to a real unit: seed its quick-add step, and clear a leftover
+                    // "1" target so the field reads as empty rather than pre-filled wrong.
+                    quickAmountText = Self.trimmed(Self.defaultStep(for: newUnit))
+                    if oldUnit == .preset(.times) { targetAmountText = "" }
+                }
             }
             .onChange(of: isReminderOn) { _, isOn in
                 guard isOn else { return }
@@ -295,8 +325,8 @@ struct AddEditHabitView: View {
             return (c.hour ?? 9) * 60 + (c.minute ?? 0)
         }
 
-        let target = isValueHabit ? (parsedTarget ?? 1) : 1
-        let quick = isValueHabit ? parsedQuick : 1
+        let target = parsedTarget ?? 1
+        let quick = isUnitHabit ? parsedQuick : 1
 
         let saved: Habit
         if let habit {

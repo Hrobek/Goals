@@ -15671,6 +15671,69 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Séries par habitude" } },
         "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Sequências por hábito" } }
       }
+    },
+    "habit.field.timesPerDay %lld" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld time a day" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld times a day" } }
+            }
+          }
+        },
+        "cs" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld× denně" } },
+              "few" : { "stringUnit" : { "state" : "translated", "value" : "%lld× denně" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld× denně" } }
+            }
+          }
+        },
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld Mal pro Tag" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld Mal pro Tag" } }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld vez al día" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld veces al día" } }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld fois par jour" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld fois par jour" } }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld vez por dia" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld vezes por dia" } }
+            }
+          }
+        }
+      }
+    },
+    "habit.field.tracking.counter.hint" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Each tap adds one; the day is done when you reach the target." } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Každé ťuknutí přidá jedno; den je splněný, jakmile dosáhneš cíle." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Jedes Tippen zählt eins hoch; der Tag ist erledigt, sobald du das Ziel erreichst." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cada toque suma uno; el día se completa al alcanzar la meta." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Chaque geste ajoute un ; la journée est faite une fois l’objectif atteint." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Cada toque soma um; o dia é concluído ao atingir a meta." } }
+      }
     }
   },
   "version" : "1.1"
