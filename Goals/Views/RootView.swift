@@ -120,10 +120,9 @@ struct RootView: View {
                 todayPath.append(id)
             case "habit":
                 selectedTab = .habits
-                habitsPath = []
-                if let id = UUID(uuidString: url.lastPathComponent) {
-                    habitsPath.append(id)
-                }
+                // One assignment, not clear-then-append: two mutations in a tick make SwiftUI
+                // complain that navigation updated "multiple times per frame".
+                habitsPath = UUID(uuidString: url.lastPathComponent).map { [$0] } ?? []
             case "habits":
                 selectedTab = .habits
                 habitsPath = []
