@@ -335,6 +335,14 @@ enum GoalLink {
         URL(string: "goals://goal/\(id.uuidString)") ?? URL(string: "goals://")!
     }
 
+    /// Deep link to one habit's detail.
+    static func habit(for id: UUID) -> URL {
+        URL(string: "goals://habit/\(id.uuidString)") ?? URL(string: "goals://")!
+    }
+
+    /// The Habits tab, for a widget tap that has no single habit to open.
+    static let habits = URL(string: "goals://habits")!
+
     /// Where a locked Pro widget sends you.
     static let paywall = URL(string: "goals://pro")!
 }

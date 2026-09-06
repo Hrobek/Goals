@@ -30,6 +30,7 @@ struct PaywallView: View {
     /// What Pro actually buys. Unlimited goals is the headline's own promise, so the list picks up
     /// where the subtitle leaves off — each row reusing the copy the locked feature already shows.
     private let benefits: [(symbol: String, title: LocalizedStringKey, body: LocalizedStringKey)] = [
+        ("repeat", "habits.paywall.title", "habits.paywall.locked"),
         ("chart.line.uptrend.xyaxis", "stats.trends.title", "stats.trends.locked"),
         ("sparkles", "pace.title", "pace.locked"),
         ("chart.xyaxis.line", "goalDetail.chart.title", "goalDetail.chart.locked"),

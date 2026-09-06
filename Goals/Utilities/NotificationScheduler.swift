@@ -7,12 +7,14 @@ import Foundation
 import SwiftData
 import UserNotifications
 
-/// All local notifications the app schedules. Two kinds:
+/// All local notifications the app schedules:
 /// - per-goal reminders the user configures on the goal itself,
+/// - per-habit reminders, same shape as goal reminders,
 /// - a single "we haven't seen you in a while" nudge that gets pushed further out every time the
 ///   app is opened, so it only ever fires if the user actually stops coming back.
 enum NotificationScheduler {
     private static let goalPrefix = "goal-reminder."
+    private static let habitPrefix = "habit-reminder."
     private static let inactivityPrefix = "inactivity."
     private static let welcomeIdentifier = "welcome.firstGoal"
 
@@ -33,7 +35,8 @@ enum NotificationScheduler {
     // MARK: - Syncing
 
     /// Rebuilds every scheduled notification from the current data. Cheap for a handful of goals
-    /// and idempotent, which beats trying to patch individual requests from a dozen call sites.
+    /// and habits and idempotent, which beats trying to patch individual requests from a dozen
+    /// call sites.
     @MainActor
     static func syncAll(context: ModelContext, userId: UUID) async {
         guard await authorizationStatus() == .authorized else {
@@ -41,17 +44,43 @@ enum NotificationScheduler {
             return
         }
 
-        let descriptor = FetchDescriptor<Goal>(predicate: #Predicate { $0.ownerId == userId })
-        let goals = (try? context.fetch(descriptor)) ?? []
+        let goalDescriptor = FetchDescriptor<Goal>(predicate: #Predicate { $0.ownerId == userId })
+        let goals = (try? context.fetch(goalDescriptor)) ?? []
+        let habitDescriptor = FetchDescriptor<Habit>(predicate: #Predicate { $0.ownerId == userId })
+        let habits = (try? context.fetch(habitDescriptor)) ?? []
         let center = UNUserNotificationCenter.current()
 
         let stale = await center.pendingNotificationRequests()
             .map(\.identifier)
-            .filter { $0.hasPrefix(goalPrefix) || $0.hasPrefix(inactivityPrefix) }
+            .filter { $0.hasPrefix(goalPrefix) || $0.hasPrefix(habitPrefix) || $0.hasPrefix(inactivityPrefix) }
         center.removePendingNotificationRequests(withIdentifiers: stale)
 
         for goal in goals where goal.isReminderOn && goal.status == .active {
-            for request in requests(for: goal) {
+            for request in reminderRequests(
+                prefix: goalPrefix,
+                id: goal.id,
+                title: goal.title,
+                body: String(localized: "reminder.body", defaultValue: "Time to check in on this goal.", bundle: AppLanguage.currentBundle),
+                frequency: goal.reminderFrequency,
+                times: goal.reminderTimes,
+                weekdays: goal.reminderWeekdays,
+                userInfo: ["goalID": goal.id.uuidString]
+            ) {
+                try? await center.add(request)
+            }
+        }
+
+        for habit in habits where habit.isReminderOn && habit.status == .active {
+            for request in reminderRequests(
+                prefix: habitPrefix,
+                id: habit.id,
+                title: habit.title,
+                body: String(localized: "reminder.habit.body", defaultValue: "Time for this habit.", bundle: AppLanguage.currentBundle),
+                frequency: habit.reminderFrequency,
+                times: habit.reminderTimes,
+                weekdays: habit.reminderWeekdays,
+                userInfo: ["habitID": habit.id.uuidString]
+            ) {
                 try? await center.add(request)
             }
         }
@@ -61,41 +90,48 @@ enum NotificationScheduler {
         }
     }
 
-    // MARK: - Goal reminders
+    // MARK: - Reminder requests (shared by goals and habits)
 
-    private static func requests(for goal: Goal) -> [UNNotificationRequest] {
+    /// One request per time of day, and — when weekly — per (weekday, time) pair. The index in the
+    /// identifier keeps them distinct; `syncAll` clears everything under the prefix first, so stale
+    /// ids from an earlier layout don't linger.
+    private static func reminderRequests(
+        prefix: String,
+        id: UUID,
+        title: String,
+        body: String,
+        frequency: ReminderFrequency,
+        times: [Int],
+        weekdays: [Int],
+        userInfo: [String: String]
+    ) -> [UNNotificationRequest] {
         let content = UNMutableNotificationContent()
-        content.title = goal.title
-        content.body = String(localized: "reminder.body", defaultValue: "Time to check in on this goal.", bundle: AppLanguage.currentBundle)
+        content.title = title
+        content.body = body
         content.sound = .default
-        content.userInfo = ["goalID": goal.id.uuidString]
+        content.userInfo = userInfo
 
-        // One request per time of day, and — when weekly — per (weekday, time) pair. The index in
-        // the identifier keeps them distinct; `syncAll` clears everything under `goalPrefix` first,
-        // so stale ids from an earlier layout don't linger.
-        let times = goal.reminderTimes
-
-        switch goal.reminderFrequency {
+        switch frequency {
         case .daily:
             return times.enumerated().map { index, minutes in
                 var components = DateComponents()
                 components.hour = minutes / 60
                 components.minute = minutes % 60
                 return UNNotificationRequest(
-                    identifier: "\(goalPrefix)\(goal.id.uuidString).\(index)",
+                    identifier: "\(prefix)\(id.uuidString).\(index)",
                     content: content,
                     trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
                 )
             }
         case .weekly:
-            return goal.reminderWeekdays.flatMap { weekday in
+            return weekdays.flatMap { weekday in
                 times.enumerated().map { index, minutes in
                     var components = DateComponents()
                     components.weekday = weekday
                     components.hour = minutes / 60
                     components.minute = minutes % 60
                     return UNNotificationRequest(
-                        identifier: "\(goalPrefix)\(goal.id.uuidString).\(weekday).\(index)",
+                        identifier: "\(prefix)\(id.uuidString).\(weekday).\(index)",
                         content: content,
                         trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
                     )

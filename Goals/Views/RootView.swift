@@ -116,6 +116,10 @@ struct RootView: View {
                 selectedTab = .today
                 todayPath = NavigationPath()
                 todayPath.append(id)
+            case "habit", "habits":
+                // The habit widgets open the app to the Habits tab; the per-habit deep push is a
+                // later refinement.
+                selectedTab = .habits
             case "pro":
                 paywallSource = .widget
                 isShowingPaywall = true

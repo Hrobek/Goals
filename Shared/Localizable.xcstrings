@@ -15561,6 +15561,36 @@
           }
         }
       }
+    },
+    "reminder.habit.body" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Time for this habit." } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Čas na tento návyk." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Zeit für diese Gewohnheit." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Hora de este hábito." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "C’est l’heure de cette habitude." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Hora deste hábito." } }
+      }
+    },
+    "widget.habits.displayName" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Habits" } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Návyky" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gewohnheiten" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Hábitos" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Habitudes" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Hábitos" } }
+      }
+    },
+    "widget.habits.description" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Today's habits, checked off with one tap." } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Dnešní návyky, odškrtnutí jedním ťuknutím." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Die heutigen Gewohnheiten, mit einem Tippen abgehakt." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tus hábitos de hoy, marcados con un toque." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tes habitudes du jour, cochées d'un geste." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Seus hábitos de hoje, marcados com um toque." } }
+      }
     }
   },
   "version" : "1.1"

@@ -11,6 +11,7 @@ struct GoalsWidgetBundle: WidgetBundle {
     var body: some Widget {
         GoalsWidget()
         SingleGoalWidget()
+        HabitsWidget()
         ActivityWidget()
         ProgressChartWidget()
     }
