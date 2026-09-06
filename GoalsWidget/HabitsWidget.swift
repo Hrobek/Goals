@@ -64,7 +64,17 @@ struct HabitsProvider: TimelineProvider {
 
         let today = todaysHabits()
         let limit = rowLimit(for: family)
-        let snapshots = today.prefix(limit).map(HabitSnapshot.init(habit:))
+        let snapshots = today.prefix(limit).map { habit in
+            HabitSnapshot(
+                id: habit.id,
+                title: habit.title,
+                emoji: habit.emoji,
+                colorHex: habit.colorHex,
+                streak: habit.currentStreak,
+                countToday: habit.count(on: .now),
+                dailyTarget: max(habit.dailyTarget, 1)
+            )
+        }
         return HabitsEntry(
             date: .now,
             habits: Array(snapshots),
@@ -107,21 +117,6 @@ struct HabitsProvider: TimelineProvider {
             HabitSnapshot(id: UUID(), title: "Číst", emoji: "📖", colorHex: ColorPalette.defaultHex, streak: 12, countToday: 1, dailyTarget: 1),
             HabitSnapshot(id: UUID(), title: "Protáhnout se", emoji: "🧘", colorHex: ColorPalette.defaultHex, streak: 0, countToday: 0, dailyTarget: 1),
         ]
-    }
-}
-
-@MainActor
-extension HabitSnapshot {
-    init(habit: Habit) {
-        self.init(
-            id: habit.id,
-            title: habit.title,
-            emoji: habit.emoji,
-            colorHex: habit.colorHex,
-            streak: habit.currentStreak,
-            countToday: habit.count(on: .now),
-            dailyTarget: max(habit.dailyTarget, 1)
-        )
     }
 }
 

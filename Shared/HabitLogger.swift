@@ -42,7 +42,7 @@ enum HabitLogger {
             }
         }
 
-        finish(habit)
+        finish()
         return habit.isDone(on: now, calendar: calendar)
     }
 
@@ -70,7 +70,7 @@ enum HabitLogger {
             insert(count: updated, for: habit, in: context, now: now)
         }
 
-        finish(habit)
+        finish()
         return habit.isDone(on: now, calendar: calendar)
     }
 
@@ -80,7 +80,7 @@ enum HabitLogger {
         context.insert(HabitEntry(ownerId: habit.ownerId, date: now, count: count, habit: habit))
     }
 
-    private static func finish(_ habit: Habit) {
+    private static func finish() {
         Analytics.send(.habitCheckIn)
         WidgetCenter.shared.reloadAllTimelines()
     }
