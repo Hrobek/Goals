@@ -13,7 +13,8 @@ enum SharedStore {
     static let cloudKitContainerID = "iCloud.com.hrobek.goals"
 
     static let schema = Schema([
-        Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self
+        Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self,
+        Habit.self, HabitEntry.self
     ])
 
     private static let cloudSyncKey = "Goals.cloudSyncEnabled"

@@ -155,5 +155,5 @@ struct MainTabView: View {
     MainTabView(userId: UUID(), selection: .constant(.today), todayPath: .constant(NavigationPath()), addGoalTrigger: .constant(false))
         .environment(AuthSession())
         .environment(PurchaseManager())
-        .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)
+        .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self, Habit.self, HabitEntry.self], inMemory: true)
 }

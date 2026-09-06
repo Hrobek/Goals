@@ -703,5 +703,5 @@ private struct MilestoneDraft: Identifiable, Hashable {
 #Preview {
     AddEditGoalView(goal: nil, userId: UUID())
         .environment(PurchaseManager())
-        .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)
+        .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self, Habit.self, HabitEntry.self], inMemory: true)
 }

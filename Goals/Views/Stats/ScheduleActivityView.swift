@@ -51,10 +51,11 @@ enum StatsRange: String, CaseIterable, Identifiable {
     }
 }
 
-/// Check-in squares for a single goal. Days the goal isn't scheduled for are dimmed out, so a
-/// Mondays-only goal reads as a lit column of Mondays instead of a mostly empty grid.
+/// Activity squares for anything on a schedule (a goal's check-ins, a habit's entries). Days it
+/// isn't scheduled for are dimmed out, so a Mondays-only schedule reads as a lit column of
+/// Mondays instead of a mostly empty grid.
 struct ScheduleActivityView: View {
-    let goal: Goal
+    let schedule: any Scheduled
     let range: StatsRange
     /// Which week/month/year to show — 0 is the current one, negative pages into the past.
     var offset: Int = 0
@@ -73,7 +74,7 @@ struct ScheduleActivityView: View {
     }
 
     private var checkInDays: Set<Date> {
-        Set(goal.checkIns.map { calendar.startOfDay(for: $0.date) })
+        Set(schedule.scheduleDates.map { calendar.startOfDay(for: $0) })
     }
 
     private var interval: DateInterval? {
@@ -212,7 +213,7 @@ struct ScheduleActivityView: View {
 
     private func state(for day: Date) -> DayState {
         if checkInDays.contains(calendar.startOfDay(for: day)) { return .done }
-        return Recurrence.isDayScheduled(day, for: goal, calendar: calendar) ? .scheduled : .blocked
+        return Recurrence.isDayScheduled(day, for: schedule, calendar: calendar) ? .scheduled : .blocked
     }
 
     private func cell(for day: Date, cornerRadius: CGFloat) -> some View {
@@ -253,23 +254,23 @@ struct ScheduleActivityView: View {
     /// count for the period the quota is defined over.
     @ViewBuilder
     private var quotaCaption: some View {
-        let appliesToRange: Bool = switch (goal.recurrenceType, range) {
+        let appliesToRange: Bool = switch (schedule.recurrenceType, range) {
         case (.timesPerWeek, .week), (.timesPerMonth, .month): true
         default: false
         }
 
         if appliesToRange, let interval {
-            let done = goal.checkIns.filter { interval.contains($0.date) }.count
-            Text("stats.quota \(done) \(goal.recurrenceCount)")
+            let done = schedule.scheduleDates.filter { interval.contains($0) }.count
+            Text("stats.quota \(done) \(schedule.recurrenceCount)")
                 .font(Theme.Typo.caption)
-                .foregroundStyle(done >= goal.recurrenceCount ? Theme.accentBright : Theme.textFaint)
+                .foregroundStyle(done >= schedule.recurrenceCount ? Theme.accentBright : Theme.textFaint)
         }
     }
 }
 
 #Preview {
     ScheduleActivityView(
-        goal: Goal(ownerId: UUID(), title: "Gym", recurrenceType: .specificWeekdays, recurrenceWeekdays: [2, 4, 6]),
+        schedule: Goal(ownerId: UUID(), title: "Gym", recurrenceType: .specificWeekdays, recurrenceWeekdays: [2, 4, 6]),
         range: .month
     )
     .padding()

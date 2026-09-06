@@ -39,37 +39,37 @@ enum Recurrence {
     }
 
     /// Human-readable schedule summary, e.g. "Every day", "Mon, Wed, Fri", "3×/week", "5, 20", "2×/month".
-    static func localizedSummary(for goal: Goal) -> String {
-        switch goal.recurrenceType {
+    static func localizedSummary(for schedule: some Scheduled) -> String {
+        switch schedule.recurrenceType {
         case .daily:
             return RecurrenceType.daily.localizedName
         case .specificWeekdays:
-            let names = goal.recurrenceWeekdays.sorted().map(weekdayAbbreviation)
+            let names = schedule.recurrenceWeekdays.sorted().map(weekdayAbbreviation)
             return names.isEmpty
                 ? String(localized: "recurrence.summary.noneSelected", defaultValue: "No days selected", bundle: AppLanguage.currentBundle)
                 : names.joined(separator: ", ")
         case .timesPerWeek:
-            return String(localized: "recurrence.summary.timesPerWeek \(goal.recurrenceCount)", bundle: AppLanguage.currentBundle)
+            return String(localized: "recurrence.summary.timesPerWeek \(schedule.recurrenceCount)", bundle: AppLanguage.currentBundle)
         case .specificDaysOfMonth:
-            let days = goal.recurrenceDaysOfMonth.sorted()
+            let days = schedule.recurrenceDaysOfMonth.sorted()
             return days.isEmpty
                 ? String(localized: "recurrence.summary.noneSelected", defaultValue: "No days selected", bundle: AppLanguage.currentBundle)
                 : days.map(String.init).joined(separator: ", ")
         case .timesPerMonth:
-            return String(localized: "recurrence.summary.timesPerMonth \(goal.recurrenceCount)", bundle: AppLanguage.currentBundle)
+            return String(localized: "recurrence.summary.timesPerMonth \(schedule.recurrenceCount)", bundle: AppLanguage.currentBundle)
         }
     }
 
     /// Whether `date` is a scheduled day for day-based recurrence types (daily / specific weekdays / specific days of month).
     /// Not meaningful for the quota-based types (timesPerWeek / timesPerMonth) — those are evaluated per-period instead.
-    static func isDayScheduled(_ date: Date, for goal: Goal, calendar: Calendar) -> Bool {
-        switch goal.recurrenceType {
+    static func isDayScheduled(_ date: Date, for schedule: some Scheduled, calendar: Calendar) -> Bool {
+        switch schedule.recurrenceType {
         case .daily:
             return true
         case .specificWeekdays:
-            return goal.recurrenceWeekdays.contains(calendar.component(.weekday, from: date))
+            return schedule.recurrenceWeekdays.contains(calendar.component(.weekday, from: date))
         case .specificDaysOfMonth:
-            return goal.recurrenceDaysOfMonth.contains(calendar.component(.day, from: date))
+            return schedule.recurrenceDaysOfMonth.contains(calendar.component(.day, from: date))
         case .timesPerWeek, .timesPerMonth:
             return true
         }

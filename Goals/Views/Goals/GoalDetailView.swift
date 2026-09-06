@@ -404,7 +404,7 @@ struct GoalDetailView: View {
                 SegmentStrip(options: StatsRange.allCases, selection: $activityRange, title: { $0.localizedName })
                     .onChange(of: activityRange) { activityOffset = 0 }
                 PeriodNavigator(range: activityRange, offset: $activityOffset)
-                ScheduleActivityView(goal: goal, range: activityRange, offset: activityOffset)
+                ScheduleActivityView(schedule: goal, range: activityRange, offset: activityOffset)
             }
             .cardSurface()
         }
@@ -728,5 +728,5 @@ private struct CheckInRow: View {
         GoalDetailView(goal: Goal(ownerId: UUID(), title: "Run 100 km", targetValue: 100, currentValue: 20, unitKey: GoalUnit.km.rawValue))
     }
     .environment(PurchaseManager())
-    .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)
+    .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self, Habit.self, HabitEntry.self], inMemory: true)
 }

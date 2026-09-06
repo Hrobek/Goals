@@ -151,5 +151,5 @@ struct TodayView: View {
 
 #Preview {
     TodayView(userId: UUID(), path: .constant(NavigationPath()))
-        .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)
+        .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self, Habit.self, HabitEntry.self], inMemory: true)
 }

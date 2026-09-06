@@ -306,3 +306,8 @@ final class Goal {
         GoalUnit.valueWithUnit(value, formattedValue: formattedValue, unitKey: unitKey, customUnitText: customUnitText)
     }
 }
+
+extension Goal: Scheduled {
+    /// A goal counts a day as done when it has a check-in on it.
+    var scheduleDates: [Date] { checkIns.map(\.date) }
+}
