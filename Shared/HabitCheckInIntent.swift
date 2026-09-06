@@ -22,7 +22,12 @@ struct HabitCheckInIntent: AppIntent {
     @Parameter(title: "Habit", default: "")
     var habitID: String
 
-    init() {}
+    init() {
+        // Tap-time: AppIntents re-creates the archived intent via init() then sets @Parameters.
+        // A breadcrumb here (but none from perform()) means dispatch reaches instantiation but
+        // stalls before perform().
+        WidgetDiagnostics.log("habit intent: init()")
+    }
 
     init(habitID: UUID) {
         self.habitID = habitID.uuidString
