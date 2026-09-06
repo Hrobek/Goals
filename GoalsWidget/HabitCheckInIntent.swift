@@ -32,10 +32,13 @@ struct HabitCheckInIntent: AppIntent {
             return .result()
         }
 
-        let context = SharedStore.container.mainContext
-        let descriptor = FetchDescriptor<Habit>(predicate: #Predicate { $0.id == id })
-        guard let habit = (try? context.fetch(descriptor))?.first else {
-            log.error("habit \(id, privacy: .public) not found")
+        let context = ModelContext(SharedStore.container)
+        // Filter in Swift rather than in a #Predicate — SwiftData has miscompiled equality
+        // predicates in this project before, and a check-in that silently no-ops is exactly the
+        // symptom that would hide it.
+        let all = (try? context.fetch(FetchDescriptor<Habit>())) ?? []
+        guard let habit = all.first(where: { $0.id == id }) else {
+            log.error("habit \(id, privacy: .public) not found among \(all.count) habits")
             return .result()
         }
 
@@ -44,13 +47,15 @@ struct HabitCheckInIntent: AppIntent {
         } else {
             HabitLogger.addQuick(habit, in: context)
         }
+
         do {
             try context.save()
+            log.notice("saved check-in for \(habit.title, privacy: .public)")
         } catch {
             log.error("save failed: \(error, privacy: .public)")
         }
 
-        WidgetCenter.shared.reloadAllTimelines()
+        WidgetCenter.shared.reloadTimelines(ofKind: "GoalsHabitsWidget")
         return .result()
     }
 }

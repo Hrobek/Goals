@@ -162,13 +162,16 @@ struct HabitsWidgetEntryView: View {
 
     // MARK: Home screen — a grid of emoji rings, nothing else
 
-    /// Rings-per-row: 2 on the small, 5 on the medium. They flex to fill the width; on the medium
-    /// they land proportionally smaller, which is fine.
+    /// Rings-per-row: 2 on the small, 5 on the medium.
     private var columnCount: Int { family == .systemSmall ? 2 : 5 }
 
     /// One value used for the outer inset AND the gaps between rings, so every margin — top,
-    /// bottom, left, right, and between — reads the same. A touch tighter on the small.
+    /// bottom, left, right, and between — reads the same.
     private var gap: CGFloat { family == .systemSmall ? 12 : 14 }
+
+    /// Explicit ring diameter per family — computed from the known widget widths rather than a
+    /// `GeometryReader`, so the button label always has a real, non-zero, tappable frame.
+    private var ringDiameter: CGFloat { family == .systemSmall ? 58 : 48 }
 
     @ViewBuilder
     private var homeBody: some View {
@@ -193,9 +196,10 @@ struct HabitsWidgetEntryView: View {
 
     private func ring(for habit: HabitSnapshot) -> some View {
         Button(intent: HabitCheckInIntent(habitID: habit.id)) {
-            RingShape(habit: habit, family: family)
+            RingShape(habit: habit, diameter: ringDiameter)
         }
         .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
         .accessibilityLabel(Text(habit.title))
         .accessibilityValue(Text(habit.isDone ? "a11y.today.done" : "a11y.today.notDone"))
     }
@@ -250,34 +254,32 @@ struct HabitsWidgetEntryView: View {
     }
 }
 
-/// One emoji ring. A plain, fixed-shape view with no `GeometryReader` — that combination as a
-/// `Button` label was swallowing taps in the widget.
+/// One emoji ring. A plain fixed-size view — no `GeometryReader`, no `aspectRatio` that could
+/// collapse to zero height inside the grid, so the `Button` label is always tappable.
 private struct RingShape: View {
     let habit: HabitSnapshot
-    let family: WidgetFamily
+    let diameter: CGFloat
 
     private var color: Color { Color(hex: habit.colorHex) }
-    private var lineWidth: CGFloat { family == .systemSmall ? 6 : 5 }
-    private var glyphSize: CGFloat { family == .systemSmall ? 24 : 20 }
+    private var lineWidth: CGFloat { max(4, diameter * 0.1) }
 
     var body: some View {
         ZStack {
-            Circle().fill(color.opacity(habit.isDone ? 0.28 : 0.14))
+            Circle().fill(color.opacity(habit.isDone ? 0.30 : 0.16))
             Circle().stroke(color.opacity(0.22), lineWidth: lineWidth)
             Circle()
                 .trim(from: 0, to: max(0.001, habit.progress))
                 .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
             if let emoji = habit.emoji, !emoji.isEmpty {
-                Text(emoji).font(.system(size: glyphSize))
+                Text(emoji).font(.system(size: diameter * 0.42))
             } else {
                 Image(systemName: "repeat")
-                    .font(.system(size: glyphSize * 0.8, weight: .medium))
+                    .font(.system(size: diameter * 0.34, weight: .medium))
                     .foregroundStyle(color)
             }
         }
-        .frame(maxWidth: .infinity)
-        .aspectRatio(1, contentMode: .fit)
+        .frame(width: diameter, height: diameter)
         .contentShape(.circle)
     }
 }
