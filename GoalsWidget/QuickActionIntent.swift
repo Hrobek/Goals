@@ -27,12 +27,20 @@ struct QuickActionIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        guard let id = UUID(uuidString: goalID) else { return .result() }
+        WidgetDiagnostics.log("goal tap: enter id=\(goalID.prefix(8))")
+
+        guard let id = UUID(uuidString: goalID) else {
+            WidgetDiagnostics.log("goal tap: bad id \(goalID)")
+            return .result()
+        }
 
         let context = ModelContext(SharedStore.container)
+        WidgetDiagnostics.log("goal tap: context ready")
+
         let all = (try? context.fetch(FetchDescriptor<Goal>())) ?? []
         guard let goal = all.first(where: { $0.id == id }) else {
             log.error("goal \(id, privacy: .public) not found among \(all.count)")
+            WidgetDiagnostics.log("goal tap: not found (\(all.count) goals)")
             return .result()
         }
 
@@ -40,8 +48,10 @@ struct QuickActionIntent: AppIntent {
         do {
             try context.save()
             log.notice("saved quick action for \(goal.title, privacy: .public)")
+            WidgetDiagnostics.log("goal tap: SAVED \(goal.title)")
         } catch {
             log.error("save failed: \(error, privacy: .public)")
+            WidgetDiagnostics.log("goal tap: save FAILED \(error)")
         }
 
         WidgetCenter.shared.reloadAllTimelines()

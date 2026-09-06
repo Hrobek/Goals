@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     @Environment(AuthSession.self) private var session
@@ -20,6 +21,8 @@ struct SettingsView: View {
     // Takes effect on the next launch: the store's `ModelContainer` is built once at app start,
     // so flipping this can't hot-swap CloudKit sync into an already-running container.
     @State private var isCloudSyncEnabled = SharedStore.isCloudSyncEnabled
+    // Diagnostic: the widget-extension breadcrumbs (see WidgetDiagnostics). Temporary.
+    @State private var widgetBreadcrumbs: [String] = WidgetDiagnostics.lines
 
     private var appearanceMode: Binding<AppearanceMode> {
         Binding(
@@ -47,6 +50,7 @@ struct SettingsView: View {
                         generalSection
                         supportSection
                         accountSection
+                        diagnosticsSection
                     }
                     .padding(.horizontal, Theme.Space.screen)
                 }
@@ -62,6 +66,7 @@ struct SettingsView: View {
             .onChange(of: isCloudSyncEnabled) { _, isEnabled in
                 SharedStore.isCloudSyncEnabled = isEnabled
             }
+            .onAppear { widgetBreadcrumbs = WidgetDiagnostics.lines }
             .sheet(isPresented: $isShowingPaywall) {
                 PaywallView(source: .settings)
             }
@@ -213,6 +218,44 @@ struct SettingsView: View {
                         .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
+            }
+        }
+    }
+
+    // MARK: - Diagnostics (temporary)
+
+    /// Shows the trail the widget-extension leaves in `WidgetDiagnostics` — how far a widget
+    /// button's `perform()` got. Remove once the interactive widgets are confirmed working.
+    private var diagnosticsSection: some View {
+        LabeledSection("Widget log") {
+            CardGroup {
+                if widgetBreadcrumbs.isEmpty {
+                    Text("Zatím nic — ťukni na kroužek ve widgetu a vrať se sem.")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.textMuted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 13)
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(Array(widgetBreadcrumbs.enumerated()), id: \.offset) { _, line in
+                            Text(line)
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(Theme.text)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                    .padding(.vertical, 11)
+                }
+                RowDivider()
+                HStack(spacing: 18) {
+                    Button("Obnovit") { widgetBreadcrumbs = WidgetDiagnostics.lines }
+                    Button("Kopírovat") { UIPasteboard.general.string = widgetBreadcrumbs.joined(separator: "\n") }
+                    Button("Smazat") { WidgetDiagnostics.clear(); widgetBreadcrumbs = [] }
+                        .foregroundStyle(Theme.accentText)
+                }
+                .font(.system(size: 13, weight: .medium))
+                .buttonStyle(.plain)
+                .padding(.vertical, 11)
             }
         }
     }
