@@ -11,6 +11,8 @@ enum AnalyticsEvent: String {
     case goalCreated = "goal_created"
     case goalCompleted = "goal_completed"
     case checkInLogged = "checkin_logged"
+    case habitCreated = "habit_created"
+    case habitCheckIn = "habit_checkin"
     case limitAlertShown = "limit_alert_shown"
     case paywallOpened = "paywall_opened"
     case purchaseAttempted = "purchase_attempted"

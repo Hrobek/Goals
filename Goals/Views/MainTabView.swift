@@ -7,11 +7,12 @@ import SwiftUI
 import SwiftData
 
 enum MainTab: String, Hashable, CaseIterable {
-    case today, goals, stats, settings
+    case today, habits, goals, stats, settings
 
     var title: LocalizedStringKey {
         switch self {
         case .today: "tab.today"
+        case .habits: "tab.habits"
         case .goals: "tab.goals"
         case .stats: "tab.stats"
         case .settings: "tab.settings"
@@ -23,6 +24,7 @@ enum MainTab: String, Hashable, CaseIterable {
     var symbol: String {
         switch self {
         case .today: "sun.max"
+        case .habits: "repeat"
         case .goals: "target"
         case .stats: "chart.bar"
         case .settings: "gearshape"
@@ -32,6 +34,7 @@ enum MainTab: String, Hashable, CaseIterable {
     var selectedSymbol: String {
         switch self {
         case .today: "sun.max.fill"
+        case .habits: "repeat.circle.fill"
         case .goals: "target"
         case .stats: "chart.bar.fill"
         case .settings: "gearshape.fill"
@@ -72,6 +75,7 @@ struct MainTabView: View {
 
             ZStack {
                 screen(.today) { TodayView(userId: userId, path: $todayPath) }
+                screen(.habits) { HabitsView(userId: userId) }
                 screen(.goals) { GoalsListView(userId: userId, addGoalTrigger: $addGoalTrigger) }
                 screen(.stats) { StatsView(userId: userId) }
                 screen(.settings) { SettingsView() }

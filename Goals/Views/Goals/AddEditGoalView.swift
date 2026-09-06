@@ -358,134 +358,26 @@ struct AddEditGoalView: View {
 
     private var recurrenceSection: some View {
         LabeledSection("goal.field.recurrence") {
-            CardGroup {
-                MenuRow(
-                    label: "goal.field.recurrence",
-                    options: RecurrenceType.allCases,
-                    selection: $recurrenceType.animation(),
-                    title: { $0.localizedName }
-                )
-
-                switch recurrenceType {
-                case .daily:
-                    EmptyView()
-                case .specificWeekdays:
-                    RowDivider()
-                    weekdayChips(selection: $recurrenceWeekdays)
-                        .padding(.vertical, 14)
-                case .timesPerWeek:
-                    RowDivider()
-                    Stepper(value: $recurrenceCount, in: 1...7) {
-                        Text("recurrence.timesPerWeek.count \(recurrenceCount)")
-                            .font(Theme.Typo.row)
-                            .foregroundStyle(Theme.text)
-                    }
-                    .padding(.vertical, 9)
-                case .specificDaysOfMonth:
-                    RowDivider()
-                    daysOfMonthGrid
-                        .padding(.vertical, 14)
-                case .timesPerMonth:
-                    RowDivider()
-                    Stepper(value: $recurrenceCount, in: 1...31) {
-                        Text("recurrence.timesPerMonth.count \(recurrenceCount)")
-                            .font(Theme.Typo.row)
-                            .foregroundStyle(Theme.text)
-                    }
-                    .padding(.vertical, 9)
-                }
-            }
+            RecurrenceEditor(
+                type: $recurrenceType,
+                weekdays: $recurrenceWeekdays,
+                daysOfMonth: $recurrenceDaysOfMonth,
+                count: $recurrenceCount
+            )
         }
     }
 
     private var reminderSection: some View {
         LabeledSection("reminder.title") {
-            VStack(alignment: .leading, spacing: 8) {
-                CardGroup {
-                    SwitchRow(label: "reminder.enabled", isOn: $isReminderOn.animation())
-
-                    if isReminderOn {
-                        RowDivider()
-                        MenuRow(
-                            label: "reminder.frequency",
-                            options: ReminderFrequency.allCases,
-                            selection: $reminderFrequency.animation(),
-                            title: { $0.localizedName }
-                        )
-
-                        ForEach(Array(reminderTimes.enumerated()), id: \.offset) { index, _ in
-                            RowDivider()
-                            HStack(spacing: 10) {
-                                if index == 0 {
-                                    Text(reminderTimes.count > 1 ? "reminder.times" : "reminder.time")
-                                        .font(Theme.Typo.row)
-                                        .foregroundStyle(Theme.textMuted)
-                                }
-                                Spacer(minLength: 10)
-                                DatePicker("", selection: $reminderTimes[index], displayedComponents: .hourAndMinute)
-                                    .labelsHidden()
-                                if reminderTimes.count > 1 {
-                                    Button {
-                                        withAnimation { _ = reminderTimes.remove(at: index) }
-                                    } label: {
-                                        Image(systemName: "minus.circle")
-                                            .font(.system(size: 17))
-                                            .foregroundStyle(Theme.textGhost)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .accessibilityLabel(Text("a11y.removeTime"))
-                                }
-                            }
-                            .padding(.vertical, 9)
-                        }
-
-                        if purchaseManager.isProUnlocked, reminderTimes.count < Self.maxProReminderTimes {
-                            RowDivider()
-                            Button {
-                                addReminderTime()
-                            } label: {
-                                HStack(spacing: 11) {
-                                    Image(systemName: "plus.circle")
-                                        .font(.system(size: 18))
-                                        .foregroundStyle(Theme.accent)
-                                        .accessibilityHidden(true)
-                                    Text("reminder.addTime")
-                                        .font(Theme.Typo.row)
-                                        .foregroundStyle(Theme.accentText)
-                                    Spacer(minLength: 0)
-                                }
-                                .padding(.vertical, 11)
-                            }
-                            .buttonStyle(.plain)
-                        }
-
-                        if reminderFrequency == .weekly {
-                            RowDivider()
-                            weekdayChips(selection: $reminderWeekdays)
-                                .padding(.vertical, 14)
-                        }
-                    }
-                }
-
-                if isReminderOn, !purchaseManager.isProUnlocked {
-                    ProLockedCard(title: "reminder.multiple.title", message: "reminder.multiple.locked")
-                }
-
-                if isReminderOn, reminderFrequency == .weekly, reminderWeekdays.isEmpty {
-                    Text("reminder.pickDays")
-                        .font(Theme.Typo.footnote)
-                        .foregroundStyle(Theme.accentText)
-                        .padding(.horizontal, 4)
-                }
-            }
+            ReminderEditor(
+                isOn: $isReminderOn,
+                frequency: $reminderFrequency,
+                times: $reminderTimes,
+                weekdays: $reminderWeekdays,
+                isProUnlocked: purchaseManager.isProUnlocked,
+                maxProReminderTimes: Self.maxProReminderTimes
+            )
         }
-    }
-
-    /// Appends a new reminder time an hour after the last one, clamped inside the day.
-    private func addReminderTime() {
-        let base = reminderTimes.last ?? .now
-        let next = Calendar.current.date(byAdding: .hour, value: 1, to: base) ?? base
-        withAnimation { reminderTimes.append(next) }
     }
 
     private var widgetSection: some View {
@@ -515,58 +407,6 @@ struct AddEditGoalView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 4)
                 }
-            }
-        }
-    }
-
-    // MARK: - Day pickers
-
-    private func weekdayChips(selection: Binding<Set<Int>>) -> some View {
-        HStack(spacing: 6) {
-            ForEach(1...7, id: \.self) { day in
-                let isSelected = selection.wrappedValue.contains(day)
-                Button {
-                    if isSelected {
-                        selection.wrappedValue.remove(day)
-                    } else {
-                        selection.wrappedValue.insert(day)
-                    }
-                } label: {
-                    Text(Recurrence.weekdayAbbreviation(day))
-                        .font(.system(size: 11.5, weight: isSelected ? .medium : .regular))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 32)
-                        .background(isSelected ? Theme.accent : Theme.control, in: .capsule)
-                        .foregroundStyle(isSelected ? Theme.onAccent : Theme.textMuted)
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-            }
-        }
-    }
-
-    private var daysOfMonthGrid: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
-            ForEach(1...31, id: \.self) { day in
-                let isSelected = recurrenceDaysOfMonth.contains(day)
-                Button {
-                    if isSelected {
-                        recurrenceDaysOfMonth.remove(day)
-                    } else {
-                        recurrenceDaysOfMonth.insert(day)
-                    }
-                } label: {
-                    Text("\(day)")
-                        .font(.system(size: 12, weight: isSelected ? .medium : .regular))
-                        .monospacedDigit()
-                        .frame(width: 32, height: 32)
-                        .background(isSelected ? Theme.accent : Theme.control, in: .circle)
-                        .foregroundStyle(isSelected ? Theme.onAccent : Theme.textMuted)
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
             }
         }
     }
