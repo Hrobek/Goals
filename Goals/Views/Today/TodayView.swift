@@ -8,14 +8,22 @@ import SwiftData
 
 /// Home screen: only the goals that are actually due today. A Mondays-only goal stays out of
 /// the way for the rest of the week.
+/// Wraps a habit id for navigation, kept distinct from a bare `UUID` so the Today stack can carry
+/// both goal and habit destinations without them colliding.
+struct HabitDestination: Hashable {
+    let id: UUID
+}
+
 struct TodayView: View {
     @Binding var path: NavigationPath
 
     @Query private var goals: [Goal]
+    @Query private var habits: [Habit]
 
     init(userId: UUID, path: Binding<NavigationPath>) {
         self._path = path
         _goals = Query(filter: #Predicate<Goal> { $0.ownerId == userId }, sort: \Goal.createdAt, order: .reverse)
+        _habits = Query(filter: #Predicate<Habit> { $0.ownerId == userId }, sort: [SortDescriptor(\Habit.sortIndex)])
     }
 
     private var todaysGoals: [Goal] {
@@ -30,17 +38,32 @@ struct TodayView: View {
             }
     }
 
-    private var doneCount: Int {
-        todaysGoals.filter { $0.hasCheckIn(on: .now) }.count
+    private var todaysHabits: [Habit] {
+        habits
+            .filter { !$0.isArchived && $0.isScheduledToday() }
+            .sorted { lhs, rhs in
+                let lhsDone = lhs.isDone(on: .now)
+                let rhsDone = rhs.isDone(on: .now)
+                if lhsDone != rhsDone { return !lhsDone }
+                return lhs.sortIndex < rhs.sortIndex
+            }
     }
 
-    /// The longest run going right now across everything still active — the one number worth
+    private var isEmpty: Bool { todaysGoals.isEmpty && todaysHabits.isEmpty }
+
+    private var totalCount: Int { todaysGoals.count + todaysHabits.count }
+
+    private var doneCount: Int {
+        todaysGoals.filter { $0.hasCheckIn(on: .now) }.count
+            + todaysHabits.filter { $0.isDone(on: .now) }.count
+    }
+
+    /// The longest run going right now across every active goal and habit — the one number worth
     /// carrying in the header, since it's what a missed day costs.
     private var bestStreak: Int {
-        goals
-            .filter { $0.status == .active }
-            .map { StreakCalculator.currentStreak(for: $0) }
-            .max() ?? 0
+        let goalStreaks = goals.filter { $0.status == .active }.map { StreakCalculator.currentStreak(for: $0) }
+        let habitStreaks = habits.filter { !$0.isArchived }.map(\.currentStreak)
+        return (goalStreaks + habitStreaks).max() ?? 0
     }
 
     private var todayText: String {
@@ -55,7 +78,7 @@ struct TodayView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     header
 
-                    if todaysGoals.isEmpty {
+                    if isEmpty {
                         EmptyStateView(
                             systemImage: "moon.stars",
                             title: "today.empty.title",
@@ -64,7 +87,12 @@ struct TodayView: View {
                         .padding(.top, 90)
                     } else {
                         summary
-                        goalList
+                        if !todaysGoals.isEmpty {
+                            section(title: "tab.goals", symbol: "target") { goalList }
+                        }
+                        if !todaysHabits.isEmpty {
+                            section(title: "tab.habits", symbol: "repeat") { habitList }
+                        }
                     }
                 }
                 .padding(.bottom, 24)
@@ -78,7 +106,32 @@ struct TodayView: View {
                     GoalDetailView(goal: goal)
                 }
             }
+            .navigationDestination(for: HabitDestination.self) { destination in
+                if let habit = habits.first(where: { $0.id == destination.id }) {
+                    HabitDetailView(habit: habit)
+                }
+            }
         }
+    }
+
+    /// A group heading — the one visual cue that separates "goals due today" from "habits due
+    /// today" on a screen that otherwise stacks both as cards.
+    @ViewBuilder
+    private func section<Content: View>(title: LocalizedStringKey, symbol: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Theme.textFaint)
+            Text(title)
+                .font(Theme.Typo.footnote.weight(.semibold))
+                .textCase(.uppercase)
+                .tracking(0.8)
+                .foregroundStyle(Theme.textFaint)
+        }
+        .padding(.horizontal, Theme.Space.screen)
+        .padding(.top, 26)
+
+        content()
     }
 
     private var header: some View {
@@ -115,14 +168,14 @@ struct TodayView: View {
                     .tracking(-1.2)
                     .monospacedDigit()
                     .foregroundStyle(Theme.text)
-                Text(verbatim: "/ \(todaysGoals.count)")
+                Text(verbatim: "/ \(totalCount)")
                     .font(.system(size: 15))
                     .monospacedDigit()
                     .foregroundStyle(Theme.textFaint)
             }
 
             HStack(spacing: 6) {
-                ForEach(0..<todaysGoals.count, id: \.self) { index in
+                ForEach(0..<max(totalCount, 1), id: \.self) { index in
                     Capsule()
                         .fill(index < doneCount ? Theme.accent : Theme.track)
                         .frame(height: 4)
@@ -132,7 +185,7 @@ struct TodayView: View {
         .padding(.horizontal, Theme.Space.screen)
         .padding(.top, 20)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("today.progress \(doneCount) \(todaysGoals.count)"))
+        .accessibilityLabel(Text("today.progress \(doneCount) \(totalCount)"))
     }
 
     private var goalList: some View {
@@ -145,7 +198,20 @@ struct TodayView: View {
             }
         }
         .padding(.horizontal, Theme.Space.screen)
-        .padding(.top, 24)
+        .padding(.top, 14)
+    }
+
+    private var habitList: some View {
+        LazyVStack(spacing: Theme.Space.card) {
+            ForEach(todaysHabits) { habit in
+                NavigationLink(value: HabitDestination(id: habit.id)) {
+                    HabitRow(habit: habit)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, Theme.Space.screen)
+        .padding(.top, 14)
     }
 }
 

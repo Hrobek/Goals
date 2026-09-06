@@ -182,7 +182,7 @@ struct HabitDetailView: View {
                     .font(Theme.Typo.buttonSmall)
                 if habit.dailyTarget > 1 {
                     Spacer(minLength: 0)
-                    Text("\(habit.count(on: .now))/\(habit.dailyTarget)")
+                    Text(habit.progressText())
                         .font(Theme.Typo.captionEmphasis)
                         .monospacedDigit()
                 }

@@ -20,7 +20,9 @@ struct AddEditHabitView: View {
     @State private var title: String
     @State private var emoji: String?
     @State private var colorHex: String
+    @State private var customColor: Color
     @State private var dailyTarget: Int
+    @State private var unitSelection: UnitSelection
     @State private var recurrenceType: RecurrenceType
     @State private var recurrenceWeekdays: Set<Int>
     @State private var recurrenceDaysOfMonth: Set<Int>
@@ -32,14 +34,21 @@ struct AddEditHabitView: View {
 
     @State private var isShowingPermissionAlert = false
     @State private var isShowingEmojiPicker = false
+    @State private var isShowingUnitPicker = false
 
     init(habit: Habit?, userId: UUID) {
         self.habit = habit
         self.userId = habit?.ownerId ?? userId
         _title = State(initialValue: habit?.title ?? "")
         _emoji = State(initialValue: habit?.emoji)
-        _colorHex = State(initialValue: habit?.colorHex ?? ColorPalette.defaultHex)
+        let hex = habit?.colorHex ?? ColorPalette.defaultHex
+        _colorHex = State(initialValue: hex)
+        _customColor = State(initialValue: Color(hex: hex))
         _dailyTarget = State(initialValue: habit?.dailyTarget ?? 1)
+        _unitSelection = State(initialValue: UnitSelection(
+            unitKey: habit?.unitKey ?? GoalUnit.times.rawValue,
+            customUnitText: habit?.customUnitText
+        ))
         _recurrenceType = State(initialValue: habit?.recurrenceType ?? .daily)
         _recurrenceWeekdays = State(initialValue: Set(habit?.recurrenceWeekdays ?? []))
         _recurrenceDaysOfMonth = State(initialValue: Set(habit?.recurrenceDaysOfMonth ?? []))
@@ -73,12 +82,16 @@ struct AddEditHabitView: View {
                     }
                     LabeledSection("habit.field.dailyTarget") {
                         CardGroup {
-                            Stepper(value: $dailyTarget, in: 1...20) {
+                            Stepper(value: $dailyTarget, in: 1...50) {
                                 Text("habit.field.dailyTarget.count \(dailyTarget)")
                                     .font(Theme.Typo.row)
                                     .foregroundStyle(Theme.text)
                             }
                             .padding(.vertical, 9)
+                            RowDivider()
+                            DisclosureRow(label: "goal.field.unit", value: unitSelection.displayText) {
+                                isShowingUnitPicker = true
+                            }
                         }
                     }
                     LabeledSection("reminder.title") {
@@ -140,6 +153,9 @@ struct AddEditHabitView: View {
             .sheet(isPresented: $isShowingEmojiPicker) {
                 EmojiPickerSheet(selection: $emoji)
             }
+            .sheet(isPresented: $isShowingUnitPicker) {
+                UnitPickerSheet(selection: $unitSelection, userId: userId)
+            }
         }
     }
 
@@ -181,11 +197,16 @@ struct AddEditHabitView: View {
         }
     }
 
+    /// True when the current colour is one the user dialled in themselves, not a preset.
+    private var isCustomColor: Bool {
+        !ColorPalette.hexValues.contains(colorHex.uppercased())
+    }
+
     private var colorRow: some View {
         LabeledSection("habit.field.color") {
             HStack(spacing: 10) {
                 ForEach(ColorPalette.hexValues, id: \.self) { hex in
-                    let isSelected = hex == colorHex
+                    let isSelected = hex.caseInsensitiveCompare(colorHex) == .orderedSame
                     Button {
                         colorHex = hex
                     } label: {
@@ -200,6 +221,31 @@ struct AddEditHabitView: View {
                     .accessibilityLabel(Text("habit.field.color"))
                     .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
                 }
+
+                // The wheel, as one more swatch: a ring that shows the chosen custom colour (or a
+                // neutral "+" until one is picked) and opens the system picker.
+                ZStack {
+                    Circle()
+                        .fill(isCustomColor ? Color(hex: colorHex) : Theme.control)
+                        .frame(width: 28, height: 28)
+                        .overlay {
+                            Circle().strokeBorder(Theme.text, lineWidth: isCustomColor ? 2.5 : 0)
+                        }
+                    if !isCustomColor {
+                        Image(systemName: "eyedropper")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Theme.textMuted)
+                    }
+                    ColorPicker("habit.field.color.custom", selection: $customColor, supportsOpacity: false)
+                        .labelsHidden()
+                        .opacity(0.015)          // keep it hit-testable but invisible over our swatch
+                        .frame(width: 28, height: 28)
+                }
+                .onChange(of: customColor) { _, newColor in
+                    colorHex = newColor.hexString
+                }
+                .accessibilityLabel(Text("habit.field.color.custom"))
+
                 Spacer(minLength: 0)
             }
         }
@@ -220,6 +266,8 @@ struct AddEditHabitView: View {
             habit.emoji = emoji
             habit.colorHex = colorHex
             habit.dailyTarget = dailyTarget
+            habit.unitKey = unitSelection.unitKey
+            habit.customUnitText = unitSelection.customUnitText
             habit.recurrenceType = recurrenceType
             habit.recurrenceWeekdays = sortedWeekdays
             habit.recurrenceDaysOfMonth = sortedDaysOfMonth
@@ -233,6 +281,8 @@ struct AddEditHabitView: View {
                 colorHex: colorHex,
                 sortIndex: nextSortIndex(),
                 dailyTarget: dailyTarget,
+                unitKey: unitSelection.unitKey,
+                customUnitText: unitSelection.customUnitText,
                 recurrenceType: recurrenceType,
                 recurrenceWeekdays: sortedWeekdays,
                 recurrenceDaysOfMonth: sortedDaysOfMonth,

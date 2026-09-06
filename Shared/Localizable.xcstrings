@@ -15611,6 +15611,36 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tes habitudes du jour, cochées d'un geste." } },
         "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Seus hábitos de hoje, marcados com um toque." } }
       }
+    },
+    "habit.field.color.custom" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Custom colour" } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Vlastní barva" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Eigene Farbe" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Color personalizado" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Couleur personnalisée" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Cor personalizada" } }
+      }
+    },
+    "stats.streaks.goals" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Streaks by Goal" } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Série podle cíle" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Serien nach Ziel" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Rachas por objetivo" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Séries par objectif" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Sequências por meta" } }
+      }
+    },
+    "stats.streaks.habits" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Streaks by Habit" } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Série podle návyku" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Serien nach Gewohnheit" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Rachas por hábito" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Séries par habitude" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Sequências por hábito" } }
+      }
     }
   },
   "version" : "1.1"

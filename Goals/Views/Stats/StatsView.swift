@@ -9,11 +9,28 @@ import SwiftData
 struct StatsView: View {
     @Environment(PurchaseManager.self) private var purchaseManager
     @Query private var goals: [Goal]
+    @Query private var habits: [Habit]
     @Query private var allCheckIns: [CheckIn]
 
     init(userId: UUID) {
         _goals = Query(filter: #Predicate<Goal> { $0.ownerId == userId }, sort: \Goal.createdAt, order: .reverse)
+        _habits = Query(filter: #Predicate<Habit> { $0.ownerId == userId }, sort: [SortDescriptor(\Habit.sortIndex)])
         _allCheckIns = Query(filter: #Predicate<CheckIn> { $0.ownerId == userId }, sort: \CheckIn.date)
+    }
+
+    private var trackedHabits: [Habit] {
+        habits.filter { !$0.isArchived }
+    }
+
+    /// Every active habit with its streak, longest first.
+    private var habitStreaks: [(habit: Habit, streak: Int)] {
+        trackedHabits
+            .map { ($0, $0.currentStreak) }
+            .sorted { lhs, rhs in
+                lhs.1 == rhs.1
+                    ? lhs.0.title.localizedCaseInsensitiveCompare(rhs.0.title) == .orderedAscending
+                    : lhs.1 > rhs.1
+            }
     }
 
     /// Archived goals are off the board — they'd only pad the stats with frozen streaks.
@@ -64,6 +81,10 @@ struct StatsView: View {
                             streakSection
                         }
 
+                        if !habitStreaks.isEmpty {
+                            habitStreakSection
+                        }
+
                         trendsSection
                     }
                     .padding(.horizontal, Theme.Space.screen)
@@ -77,6 +98,11 @@ struct StatsView: View {
             .navigationDestination(for: UUID.self) { id in
                 if let goal = goals.first(where: { $0.id == id }) {
                     GoalDetailView(goal: goal)
+                }
+            }
+            .navigationDestination(for: HabitDestination.self) { destination in
+                if let habit = habits.first(where: { $0.id == destination.id }) {
+                    HabitDetailView(habit: habit)
                 }
             }
         }
@@ -97,12 +123,26 @@ struct StatsView: View {
     }
 
     private var streakSection: some View {
-        LabeledSection("stats.streaks.title") {
+        LabeledSection("stats.streaks.goals") {
             CardGroup {
                 ForEach(Array(streaks.enumerated()), id: \.element.goal.id) { index, entry in
                     if index > 0 { RowDivider() }
                     NavigationLink(value: entry.goal.id) {
                         GoalStreakRow(goal: entry.goal, streak: entry.streak)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private var habitStreakSection: some View {
+        LabeledSection("stats.streaks.habits") {
+            CardGroup {
+                ForEach(Array(habitStreaks.enumerated()), id: \.element.habit.id) { index, entry in
+                    if index > 0 { RowDivider() }
+                    NavigationLink(value: HabitDestination(id: entry.habit.id)) {
+                        HabitStreakRow(habit: entry.habit, streak: entry.streak)
                     }
                     .buttonStyle(.plain)
                 }
@@ -128,6 +168,53 @@ struct StatsView: View {
         }
     }
 
+}
+
+/// One line per habit — colour badge, name, schedule and streak. The habit counterpart of
+/// `GoalStreakRow`; the coloured `repeat` badge is what tells the two lists apart at a glance.
+private struct HabitStreakRow: View {
+    let habit: Habit
+    let streak: Int
+
+    private var tint: Color { Color(hex: habit.colorHex) }
+
+    var body: some View {
+        HStack(spacing: 11) {
+            ZStack {
+                Circle().fill(tint.opacity(0.20))
+                if let emoji = habit.emoji, !emoji.isEmpty {
+                    Text(emoji).font(.system(size: 14))
+                } else {
+                    Image(systemName: "repeat").font(.system(size: 13, weight: .medium)).foregroundStyle(tint)
+                }
+            }
+            .frame(width: 30, height: 30)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(habit.title)
+                    .font(Theme.Typo.body)
+                    .foregroundStyle(Theme.text)
+                    .lineLimit(1)
+                Text(Recurrence.localizedSummary(for: habit))
+                    .font(Theme.Typo.footnote)
+                    .foregroundStyle(Theme.textFaint)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 4) {
+                Image(systemName: streak > 0 ? "flame.fill" : "flame")
+                    .font(.system(size: 13))
+                Text("\(streak)")
+                    .font(.system(size: 14, weight: .medium))
+                    .monospacedDigit()
+            }
+            .foregroundStyle(streak > 0 ? Theme.accentBright : Theme.textFaint)
+        }
+        .padding(.vertical, 12)
+        .contentShape(.rect)
+    }
 }
 
 /// One line per goal — icon, name, schedule and streak. The detailed calendar grid used to live

@@ -21,6 +21,10 @@ final class Habit {
     var sortIndex: Int = 0
     /// How many ticks in a day count the day as done — 1 for a plain habit, more for "8 glasses".
     var dailyTarget: Int = 1
+    /// The unit each tick counts in — pages, glasses, minutes… Mirrors `Goal`; `.times` means a
+    /// plain count with no noun.
+    var unitKey: String = GoalUnit.times.rawValue
+    var customUnitText: String?
 
     var recurrenceType: RecurrenceType = RecurrenceType.daily
     var recurrenceWeekdays: [Int] = []
@@ -48,6 +52,8 @@ final class Habit {
         colorHex: String = ColorPalette.defaultHex,
         sortIndex: Int = 0,
         dailyTarget: Int = 1,
+        unitKey: String = GoalUnit.times.rawValue,
+        customUnitText: String? = nil,
         recurrenceType: RecurrenceType = .daily,
         recurrenceWeekdays: [Int] = [],
         recurrenceDaysOfMonth: [Int] = [],
@@ -66,6 +72,8 @@ final class Habit {
         self.colorHex = colorHex
         self.sortIndex = sortIndex
         self.dailyTarget = max(1, dailyTarget)
+        self.unitKey = unitKey
+        self.customUnitText = customUnitText
         self.recurrenceType = recurrenceType
         self.recurrenceWeekdays = recurrenceWeekdays
         self.recurrenceDaysOfMonth = recurrenceDaysOfMonth
@@ -141,6 +149,24 @@ final class Habit {
 
     var currentStreak: Int {
         StreakCalculator.currentStreak(for: self)
+    }
+
+    /// Whether this habit counts in a real unit (pages, glasses…) rather than a bare tally.
+    var hasUnit: Bool {
+        GoalUnit(rawValue: unitKey) != .times || (customUnitText?.isEmpty == false)
+    }
+
+    /// "3/8 glasses" for a unit habit, "3/8" for a plain one — today's ticks against the target.
+    func progressText(on date: Date = .now, calendar: Calendar = .current) -> String {
+        let count = self.count(on: date, calendar: calendar)
+        guard hasUnit else { return "\(count)/\(dailyTarget)" }
+        let target = GoalUnit.valueWithUnit(
+            Double(dailyTarget),
+            formattedValue: "\(dailyTarget)",
+            unitKey: unitKey,
+            customUnitText: customUnitText
+        )
+        return "\(count)/\(target)"
     }
 }
 

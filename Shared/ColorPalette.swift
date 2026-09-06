@@ -28,4 +28,23 @@ extension Color {
 
         self.init(red: r, green: g, blue: b)
     }
+
+    /// `#RRGGBB` for the color, clamped to sRGB — the form stores a hex string, so a colour
+    /// picked from the wheel has to round-trip back through one.
+    var hexString: String {
+        let resolved = UIColor(self).cgColor.converted(
+            to: CGColorSpace(name: CGColorSpace.sRGB)!, intent: .defaultIntent, options: nil
+        ) ?? UIColor(self).cgColor
+        let comps = resolved.components ?? [0, 0, 0, 1]
+        let r = Int((comps[safe: 0] ?? 0) * 255 + 0.5)
+        let g = Int((comps[safe: 1] ?? 0) * 255 + 0.5)
+        let b = Int((comps[safe: 2] ?? 0) * 255 + 0.5)
+        return String(format: "#%02X%02X%02X", min(max(r, 0), 255), min(max(g, 0), 255), min(max(b, 0), 255))
+    }
+}
+
+private extension Array where Element == CGFloat {
+    subscript(safe index: Int) -> CGFloat? {
+        indices.contains(index) ? self[index] : nil
+    }
 }

@@ -38,6 +38,12 @@ struct HabitRow: View {
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
 
                 HStack(spacing: 8) {
+                    if habit.dailyTarget > 1 {
+                        Text(habit.progressText())
+                            .font(Theme.Typo.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.textStrong)
+                    }
                     Text(Recurrence.localizedSummary(for: habit))
                         .font(Theme.Typo.caption)
                         .foregroundStyle(Theme.textFaint)
