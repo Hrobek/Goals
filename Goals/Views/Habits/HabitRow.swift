@@ -78,7 +78,9 @@ struct HabitRow: View {
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(Text(doneToday ? "a11y.today.done" : "a11y.today.notDone"))
         .accessibilityAction(named: Text("a11y.habit.toggleToday")) {
-            if habit.isCheckbox {
+            if habit.widgetAction == .complete {
+                HabitLogger.completeOccurrence(habit, in: modelContext)
+            } else if habit.isCheckbox {
                 HabitLogger.toggleToday(habit, in: modelContext)
             } else if habit.hasUnit {
                 HabitLogger.addQuick(habit, in: modelContext)
@@ -105,11 +107,27 @@ struct HabitRow: View {
         .frame(width: iconSize, height: iconSize)
     }
 
-    /// Three shapes: a tick circle (checkbox), an "n/N" counter that +1s per tap (a "times" habit
-    /// done several times a day), or a "+step" chip (a unit habit).
+    /// Shapes: a "complete" tick that finishes the occurrence, a tick circle (checkbox), an "n/N"
+    /// counter that +1s per tap (a "times" habit done several times a day), or a "+step" chip
+    /// (a unit habit).
     @ViewBuilder
     private var checkControl: some View {
-        if habit.isCheckbox {
+        if habit.widgetAction == .complete {
+            Button {
+                HabitLogger.completeOccurrence(habit, in: modelContext)
+                actionTick += 1
+            } label: {
+                circle {
+                    if doneToday {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Theme.onAccent)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("a11y.habit.toggleToday"))
+        } else if habit.isCheckbox {
             Button { toggle() } label: {
                 circle {
                     if doneToday {

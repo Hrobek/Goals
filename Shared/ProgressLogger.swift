@@ -19,6 +19,13 @@ enum ProgressLogger {
         now: Date = .now,
         calendar: Calendar = .current
     ) -> Bool {
+        if goal.widgetAction == .complete {
+            guard !goal.isCompleted else { return false }
+            markCompleted(goal)
+            WidgetCenter.shared.reloadAllTimelines()
+            return true
+        }
+
         switch goal.trackingMode {
         case .value:
             let delta = goal.isLowerBetter ? -goal.widgetQuickAmount : goal.widgetQuickAmount

@@ -62,6 +62,32 @@ enum HabitLogger {
         adjust(habit, by: habit.widgetQuickAmount, in: context, now: now, calendar: calendar)
     }
 
+    /// The "complete" tap. Finishes the current occurrence in one go — today for a day-based
+    /// habit, the week/month tally for a quota schedule; tapping again when it's already done
+    /// clears today's contribution, so a stray tap is easy to take back.
+    static func completeOccurrence(
+        _ habit: Habit,
+        in context: ModelContext,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) {
+        if habit.isDone(on: now, calendar: calendar) {
+            if let today = habit.entry(on: now, calendar: calendar) {
+                context.delete(today)
+                finish()
+            }
+            return
+        }
+
+        if habit.isQuota {
+            let remaining = habit.quotaTarget - habit.periodCount(on: now, calendar: calendar)
+            guard remaining > 0 else { return }
+            adjust(habit, by: Double(remaining), in: context, now: now, calendar: calendar)
+        } else {
+            setAmount(habit, to: habit.effectiveTarget, in: context, now: now, calendar: calendar)
+        }
+    }
+
     /// Sets today's amount to an exact value (from the "log value" field).
     static func setAmount(
         _ habit: Habit,

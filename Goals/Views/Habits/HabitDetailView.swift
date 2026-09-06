@@ -189,7 +189,9 @@ struct HabitDetailView: View {
 
     @ViewBuilder
     private var todayControl: some View {
-        if habit.isCheckbox {
+        if habit.widgetAction == .complete {
+            completeButton
+        } else if habit.isCheckbox {
             checkboxButton
         } else if habit.isQuota {
             VStack(spacing: Theme.Space.card) {
@@ -243,6 +245,27 @@ struct HabitDetailView: View {
     private var checkboxButton: some View {
         Button {
             HabitLogger.toggleToday(habit, in: modelContext)
+            checkTick += 1
+        } label: {
+            HStack(spacing: 9) {
+                Image(systemName: doneToday ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 18))
+                Text(doneToday ? "habit.doneToday" : "habit.markToday")
+                    .font(Theme.Typo.button)
+            }
+            .foregroundStyle(Theme.onAccent)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(tint.opacity(doneToday ? 1 : 0.9), in: .rect(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// The "complete" action: one tap finishes the whole occurrence (the day, or the week/month
+    /// quota). Not a toggle — undo from the quick-add chips or the log sheet instead.
+    private var completeButton: some View {
+        Button {
+            HabitLogger.completeOccurrence(habit, in: modelContext)
             checkTick += 1
         } label: {
             HStack(spacing: 9) {

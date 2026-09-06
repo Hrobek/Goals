@@ -47,6 +47,7 @@ final class Habit {
     private var storedReminderWeekdays: [Int]?
     private var storedTargetAmount: Double?
     private var storedWidgetQuickAmount: Double?
+    private var widgetActionRawValue: String?
 
     // Stored optional for CloudKit; read through the non-optional accessor below.
     @Relationship(deleteRule: .cascade, originalName: "entries", inverse: \HabitEntry.habit)
@@ -67,6 +68,7 @@ final class Habit {
         sortIndex: Int = 0,
         targetAmount: Double = 1,
         widgetQuickAmount: Double? = nil,
+        widgetAction: HabitWidgetAction = .checkOff,
         unitKey: String = GoalUnit.times.rawValue,
         customUnitText: String? = nil,
         recurrenceType: RecurrenceType = .daily,
@@ -90,6 +92,7 @@ final class Habit {
         self.storedTargetAmount = max(1, targetAmount)
         self.dailyTarget = Int(max(1, targetAmount).rounded())
         self.storedWidgetQuickAmount = widgetQuickAmount
+        self.widgetActionRawValue = widgetAction.rawValue
         self.unitKey = unitKey
         self.customUnitText = customUnitText
         self.recurrenceType = recurrenceType
@@ -155,6 +158,12 @@ final class Habit {
     var widgetQuickAmount: Double {
         get { storedWidgetQuickAmount ?? GoalUnit(rawValue: unitKey)?.quickAddSteps.first ?? 1 }
         set { storedWidgetQuickAmount = newValue }
+    }
+
+    /// What a tap does — a normal check-off, or finishing the whole occurrence at once.
+    var widgetAction: HabitWidgetAction {
+        get { widgetActionRawValue.flatMap(HabitWidgetAction.init(rawValue:)) ?? .checkOff }
+        set { widgetActionRawValue = newValue.rawValue }
     }
 
     // MARK: - Derived

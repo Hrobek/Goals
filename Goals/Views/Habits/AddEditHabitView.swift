@@ -26,6 +26,7 @@ struct AddEditHabitView: View {
     /// Only meaningful for a value habit (one with a unit); a checkbox habit ignores both.
     @State private var targetAmountText: String
     @State private var quickAmountText: String
+    @State private var widgetAction: HabitWidgetAction
     @State private var unitSelection: UnitSelection
     @State private var recurrenceType: RecurrenceType
     @State private var recurrenceWeekdays: Set<Int>
@@ -58,6 +59,7 @@ struct AddEditHabitView: View {
         _targetAmountText = State(initialValue: Self.trimmed(habit?.targetAmount ?? 1))
         _quickAmountText = State(initialValue: Self.trimmed(
             habit?.widgetQuickAmount ?? Self.defaultStep(for: unit)))
+        _widgetAction = State(initialValue: habit?.widgetAction ?? .checkOff)
         _recurrenceType = State(initialValue: habit?.recurrenceType ?? .daily)
         _recurrenceWeekdays = State(initialValue: Set(habit?.recurrenceWeekdays ?? []))
         _recurrenceDaysOfMonth = State(initialValue: Set(habit?.recurrenceDaysOfMonth ?? []))
@@ -180,6 +182,20 @@ struct AddEditHabitView: View {
                                 }
                             }
                             Text(trackingHint)
+                                .font(Theme.Typo.footnote)
+                                .foregroundStyle(Theme.textGhost)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.horizontal, 4)
+                        }
+                    }
+                    LabeledSection("widget.title") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            SegmentStrip(
+                                options: HabitWidgetAction.allCases,
+                                selection: $widgetAction.animation(),
+                                title: { $0.localizedName }
+                            )
+                            Text(widgetAction == .complete ? "habit.action.complete.hint" : "habit.action.checkOff.hint")
                                 .font(Theme.Typo.footnote)
                                 .foregroundStyle(Theme.textGhost)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -379,6 +395,7 @@ struct AddEditHabitView: View {
             habit.customUnitText = unitSelection.customUnitText
             habit.targetAmount = target
             habit.widgetQuickAmount = quick
+            habit.widgetAction = widgetAction
             habit.recurrenceType = recurrenceType
             habit.recurrenceWeekdays = sortedWeekdays
             habit.recurrenceDaysOfMonth = sortedDaysOfMonth
@@ -394,6 +411,7 @@ struct AddEditHabitView: View {
                 sortIndex: nextSortIndex(),
                 targetAmount: target,
                 widgetQuickAmount: quick,
+                widgetAction: widgetAction,
                 unitKey: unitSelection.unitKey,
                 customUnitText: unitSelection.customUnitText,
                 recurrenceType: recurrenceType,

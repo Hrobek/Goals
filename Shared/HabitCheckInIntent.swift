@@ -44,13 +44,18 @@ struct HabitCheckInIntent: AppIntent {
             return .result()
         }
 
-        if habit.isCheckbox {
-            HabitLogger.toggleToday(habit, in: context)
-        } else if habit.hasUnit {
-            HabitLogger.addQuick(habit, in: context)
-        } else {
-            // A "times" counter or a quota schedule: one tap is one more tick.
-            HabitLogger.adjust(habit, by: 1, in: context)
+        switch habit.widgetAction {
+        case .complete:
+            HabitLogger.completeOccurrence(habit, in: context)
+        case .checkOff:
+            if habit.isCheckbox {
+                HabitLogger.toggleToday(habit, in: context)
+            } else if habit.hasUnit {
+                HabitLogger.addQuick(habit, in: context)
+            } else {
+                // A "times" counter or a quota schedule: one tap is one more tick.
+                HabitLogger.adjust(habit, by: 1, in: context)
+            }
         }
 
         do {

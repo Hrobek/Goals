@@ -19,8 +19,10 @@ struct GoalSnapshot: Identifiable, Hashable {
     let colorHex: String
     let progress: Double
     let detail: String
-    /// `nil` when the goal is set to just open in the app.
+    /// `nil` when the goal is set to just open in the app, or when a "complete" goal is already done.
     let actionLabel: String?
+    /// The button marks the whole goal complete rather than logging progress.
+    var actionCompletes = false
     let isDoneToday: Bool
 }
 
@@ -124,24 +126,34 @@ extension GoalSnapshot {
     @MainActor
     init(goal: Goal) {
         let showsAction = goal.widgetAction == .quickAction
+        let completes = goal.widgetAction == .complete
 
+        var resolvedLabel: String?
         switch goal.trackingMode {
         case .value:
             let sign = goal.isLowerBetter ? "−" : "+"
             detail = "\(Self.formatted(goal.currentValue))/\(goal.valueWithUnit(goal.targetValue, formattedValue: Self.formatted(goal.targetValue)))"
-            actionLabel = showsAction ? sign + Self.formatted(goal.widgetQuickAmount) : nil
+            resolvedLabel = showsAction ? sign + Self.formatted(goal.widgetQuickAmount) : nil
         case .milestones:
             let unit = String(localized: "milestone.unit.count \(goal.milestones.count)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
             detail = "\(goal.completedMilestoneCount)/\(unit)"
-            actionLabel = showsAction ? goal.nextMilestone?.title : nil
+            resolvedLabel = showsAction ? goal.nextMilestone?.title : nil
         }
+
+        // A "complete" goal shows a done-it button (a check glyph — the button is too narrow for a
+        // word) until it's actually done.
+        actionCompletes = completes
+        if completes {
+            resolvedLabel = goal.isCompleted ? nil : "✓"
+        }
+        actionLabel = resolvedLabel
 
         id = goal.id
         title = goal.title
         emoji = goal.emoji
         colorHex = goal.colorHex
         progress = goal.progressFraction
-        isDoneToday = goal.hasCheckIn(on: .now)
+        isDoneToday = goal.hasCheckIn(on: .now) || (completes && goal.isCompleted)
     }
 
     private static func formatted(_ value: Double) -> String {
@@ -277,7 +289,7 @@ private struct GoalRowView: View {
             }
 
             if let label = goal.actionLabel {
-                QuickActionButton(goalID: goal.id, title: goal.title, label: label, width: isCompact ? 32 : 42)
+                QuickActionButton(goalID: goal.id, title: goal.title, label: label, completes: goal.actionCompletes, width: isCompact ? 32 : 42)
             } else if goal.isDoneToday {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.caption2)
@@ -309,6 +321,7 @@ private struct QuickActionButton: View {
     let goalID: UUID
     let title: String
     let label: String
+    var completes = false
     let width: CGFloat
 
     var body: some View {
@@ -326,7 +339,7 @@ private struct QuickActionButton: View {
         }
         .buttonStyle(.plain)
         // On a home screen full of these, "+250" alone doesn't say which goal it belongs to.
-        .accessibilityLabel(Text("a11y.widget.quickAction \(title)"))
+        .accessibilityLabel(Text(completes ? "a11y.widget.complete \(title)" : "a11y.widget.quickAction \(title)"))
     }
 }
 
