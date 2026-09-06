@@ -229,6 +229,12 @@ struct SettingsView: View {
     private var diagnosticsSection: some View {
         LabeledSection("Widget log") {
             CardGroup {
+                Text("Build \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"))")
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(Theme.textMuted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 9)
+                RowDivider()
                 if widgetBreadcrumbs.isEmpty {
                     Text("Zatím nic — ťukni na kroužek ve widgetu a vrať se sem.")
                         .font(.system(size: 13))
