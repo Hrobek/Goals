@@ -16,7 +16,10 @@ struct HabitCheckInIntent: AppIntent {
     static var title: LocalizedStringResource { "Check off habit" }
     static var description: IntentDescription { "Marks the habit done for today, or adds one tick." }
 
-    @Parameter(title: "Habit")
+    // A default value matters: a non-optional @Parameter with no default is not reliably archived
+    // into a widget `Button(intent:)`, so the tap reaches the system ("Starting to run action")
+    // but AppIntents can't rebuild the parameter and never calls `perform()`.
+    @Parameter(title: "Habit", default: "")
     var habitID: String
 
     init() {}

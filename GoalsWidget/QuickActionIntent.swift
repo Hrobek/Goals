@@ -16,7 +16,9 @@ struct QuickActionIntent: AppIntent {
     static var title: LocalizedStringResource { "Log progress" }
     static var description: IntentDescription { "Adds the goal's quick amount, or ticks off its next subtask." }
 
-    @Parameter(title: "Goal")
+    // Needs a default: a non-optional @Parameter with none is not reliably archived into a widget
+    // `Button(intent:)`, so `perform()` is never called on tap.
+    @Parameter(title: "Goal", default: "")
     var goalID: String
 
     init() {}

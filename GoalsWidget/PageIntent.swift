@@ -13,18 +13,21 @@ struct PageIntent: AppIntent {
     static var title: LocalizedStringResource { "Show other goals" }
     static var description: IntentDescription { "Pages the widget through the goals that don't fit on it." }
 
+    // Defaults matter: a non-optional @Parameter with none is not reliably archived into a widget
+    // `Button(intent:)`, so the tap never reaches `perform()`.
+
     /// Widget kind, so only the widgets that actually changed get rebuilt.
-    @Parameter(title: "Kind")
+    @Parameter(title: "Kind", default: "")
     var kind: String
 
     /// Page-store key — the kind plus the widget's size.
-    @Parameter(title: "Scope")
+    @Parameter(title: "Scope", default: "")
     var scope: String
 
-    @Parameter(title: "Step")
+    @Parameter(title: "Step", default: 0)
     var step: Int
 
-    @Parameter(title: "Pages")
+    @Parameter(title: "Pages", default: 1)
     var pageCount: Int
 
     init() {}
