@@ -40,14 +40,12 @@ struct HabitsEntry: TimelineEntry {
 
 struct HabitsProvider: TimelineProvider {
     func placeholder(in context: Context) -> HabitsEntry {
-        HabitsEntry(date: .now, habits: Self.sample, doneToday: 1, totalToday: 3)
+        Self.sampleEntry(for: context.family)
     }
 
     @MainActor
     func getSnapshot(in context: Context, completion: @escaping (HabitsEntry) -> Void) {
-        completion(context.isPreview
-            ? HabitsEntry(date: .now, habits: Self.sample, doneToday: 1, totalToday: 3)
-            : Self.entry(for: context.family))
+        completion(context.isPreview ? Self.sampleEntry(for: context.family) : Self.entry(for: context.family))
     }
 
     @MainActor
@@ -130,6 +128,18 @@ struct HabitsProvider: TimelineProvider {
             s("Vitamíny", "💊", "#EE5A9E", 1, 1),
             s("Kliky", "💪", "#5F27CD", 20, 50),
         ]
+    }
+
+    /// Gallery/placeholder entry — the sample list trimmed to what the family actually shows,
+    /// so the small preview isn't crammed with more rings than a placed widget would hold.
+    private static func sampleEntry(for family: WidgetFamily) -> HabitsEntry {
+        let capped = Array(sample.prefix(rowLimit(for: family)))
+        return HabitsEntry(
+            date: .now,
+            habits: capped,
+            doneToday: capped.filter(\.isDone).count,
+            totalToday: capped.count
+        )
     }
 }
 
