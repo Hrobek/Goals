@@ -36,14 +36,18 @@ enum SharedStore {
     ///   3. a fresh store with the old file moved aside as a `.bak`, if it's corrupt or can't
     ///      migrate,
     ///   4. in-memory, so the app still runs even if the disk is the problem.
+    /// Standing up `NSPersistentCloudKitContainer` in a fresh widget-intent process can overrun
+    /// the intent's short time budget, so the tap appears to do nothing. The widget writes to the
+    /// plain local store instead; the app's synced container observes that write through Core
+    /// Data persistent history and mirrors it up.
+    private static var isAppExtension: Bool {
+        Bundle.main.bundleURL.pathExtension == "appex"
+    }
+
     static let container: ModelContainer = {
         migrateLocalStoreIfNeeded()
 
-        // Both the app and the widget extension open the store the same way — a CloudKit-mirrored
-        // store rejects writes from a process that opened it plain, which is why a widget-button
-        // check-in "did nothing" once sync was on. The widget target must carry the matching
-        // iCloud/CloudKit capability (see GoalsWidgetExtension.entitlements).
-        let wantsCloudKit = isCloudSyncEnabled
+        let wantsCloudKit = isCloudSyncEnabled && !isAppExtension
 
         if let container = makeContainer(cloudKit: wantsCloudKit ? .private(cloudKitContainerID) : .none) {
             return container
