@@ -48,8 +48,14 @@ final class Habit {
     private var storedTargetAmount: Double?
     private var storedWidgetQuickAmount: Double?
 
-    @Relationship(deleteRule: .cascade, inverse: \HabitEntry.habit)
-    var entries: [HabitEntry] = []
+    // Stored optional for CloudKit; read through the non-optional accessor below.
+    @Relationship(deleteRule: .cascade, originalName: "entries", inverse: \HabitEntry.habit)
+    private var storedEntries: [HabitEntry]?
+
+    var entries: [HabitEntry] {
+        get { storedEntries ?? [] }
+        set { storedEntries = newValue }
+    }
 
     init(
         id: UUID = UUID(),

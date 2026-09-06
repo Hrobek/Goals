@@ -9,6 +9,12 @@
 	     the app ever encrypts data itself. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- CloudKit (SwiftData sync) delivers change notifications as silent pushes; without this
+	     the store only pulls remote changes on launch. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

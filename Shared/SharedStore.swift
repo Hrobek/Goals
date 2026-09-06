@@ -21,29 +21,32 @@ enum SharedStore {
     private static let log = Logger(subsystem: "com.hrobek.goals", category: "SharedStore")
     private static let cloudSyncKey = "Goals.cloudSyncEnabled"
 
-    /// CloudKit sync is **off** for now: the current models aren't CloudKit-ready (relationships
-    /// without inverses / not optional), so a synced `ModelContainer` fails to load and used to
-    /// crash the app on launch. The Settings toggle has been removed until the schema is prepared
-    /// for it; this stays a stored value only so a tester who flipped the old toggle gets it
-    /// cleared on the next launch.
+    /// Whether the store syncs through CloudKit. Read once, at `container`'s first access — flipping
+    /// it from Settings takes effect on the next launch, not live (swapping a running container's
+    /// `cloudKitDatabase` would invalidate every `@Query` and context bound to it).
     static var isCloudSyncEnabled: Bool {
-        get { false }
+        get { UserDefaults(suiteName: appGroupID)?.bool(forKey: cloudSyncKey) ?? false }
         set { UserDefaults(suiteName: appGroupID)?.set(newValue, forKey: cloudSyncKey) }
     }
 
     /// The container, built defensively: a store that won't open must never crash-loop the app
     /// on every launch. The ladder is
-    ///   1. as configured (CloudKit if the user asked for it),
+    ///   1. as configured (CloudKit when the user asked for it),
     ///   2. local-only, in case CloudKit is the thing it can't satisfy,
     ///   3. a fresh store with the old file moved aside as a `.bak`, if it's corrupt or can't
     ///      migrate,
     ///   4. in-memory, so the app still runs even if the disk is the problem.
     static let container: ModelContainer = {
         migrateLocalStoreIfNeeded()
-        // Clear any stale "sync on" left by the removed Settings toggle.
-        UserDefaults(suiteName: appGroupID)?.removeObject(forKey: cloudSyncKey)
 
-        if let container = makeContainer(cloudKit: .none) {
+        let wantsCloudKit = isCloudSyncEnabled
+
+        if let container = makeContainer(cloudKit: wantsCloudKit ? .private(cloudKitContainerID) : .none) {
+            return container
+        }
+
+        if wantsCloudKit, let container = makeContainer(cloudKit: .none) {
+            log.error("Opened the store without CloudKit after the synced configuration failed.")
             return container
         }
 

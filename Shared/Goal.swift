@@ -193,11 +193,24 @@ final class Goal {
     var recurrenceDaysOfMonth: [Int] = []
     var recurrenceCount: Int = 3
 
-    @Relationship(deleteRule: .cascade, inverse: \Milestone.goal)
-    var milestones: [Milestone] = []
+    // Stored optional for CloudKit (which requires every relationship to be optional); read
+    // through the non-optional accessors below so call sites stay unchanged. `originalName`
+    // keeps the pre-CloudKit `milestones` / `checkIns` relationships mapped across the rename.
+    @Relationship(deleteRule: .cascade, originalName: "milestones", inverse: \Milestone.goal)
+    private var storedMilestones: [Milestone]?
 
-    @Relationship(deleteRule: .cascade, inverse: \CheckIn.goal)
-    var checkIns: [CheckIn] = []
+    @Relationship(deleteRule: .cascade, originalName: "checkIns", inverse: \CheckIn.goal)
+    private var storedCheckIns: [CheckIn]?
+
+    var milestones: [Milestone] {
+        get { storedMilestones ?? [] }
+        set { storedMilestones = newValue }
+    }
+
+    var checkIns: [CheckIn] {
+        get { storedCheckIns ?? [] }
+        set { storedCheckIns = newValue }
+    }
 
     init(
         id: UUID = UUID(),

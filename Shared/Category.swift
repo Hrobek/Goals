@@ -18,6 +18,11 @@ final class Category {
     /// user-created categories, whose `name` is the only source of truth.
     var defaultKey: String?
 
+    /// Exists only to give `Goal.category` the inverse CloudKit requires — the app reads the link
+    /// from the goal's side, never from here.
+    @Relationship(deleteRule: .nullify, inverse: \Goal.category)
+    private var goals: [Goal]?
+
     init(id: UUID = UUID(), ownerId: UUID, name: String, createdAt: Date = .now, defaultKey: String? = nil) {
         self.id = id
         self.ownerId = ownerId
