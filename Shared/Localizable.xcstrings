@@ -7050,37 +7050,37 @@
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odemkni neomezený počet aktivních cílů a všechny Pro funkce. Vyber si plán, který ti sedí."
+            "value" : "Odemkni neomezený počet cílů i návyků a všechny Pro funkce. Vyber si plán, který ti sedí."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schalte unbegrenzt aktive Ziele und alle Pro-Funktionen frei. Wähle den Plan, der zu dir passt."
+            "value" : "Schalte unbegrenzt Ziele und Gewohnheiten sowie alle Pro-Funktionen frei. Wähle den Plan, der zu dir passt."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unlock unlimited active goals and every Pro feature. Pick the plan that suits you."
+            "value" : "Unlock unlimited goals and habits, and every Pro feature. Pick the plan that suits you."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desbloquea objetivos activos ilimitados y todas las funciones Pro. Elige el plan que prefieras."
+            "value" : "Desbloquea objetivos y hábitos ilimitados y todas las funciones Pro. Elige el plan que prefieras."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Débloque un nombre illimité d’objectifs actifs et toutes les fonctions Pro. Choisis le plan qui te convient."
+            "value" : "Débloque un nombre illimité d’objectifs et d’habitudes, et toutes les fonctions Pro. Choisis le plan qui te convient."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desbloqueie objetivos ativos ilimitados e todos os recursos Pro. Escolha o plano ideal."
+            "value" : "Desbloqueie objetivos e hábitos ilimitados e todos os recursos Pro. Escolha o plano ideal."
           }
         }
       }
@@ -14929,7 +14929,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Habits, unlimited"
+            "value" : "Unlimited habits"
           }
         },
         "cs" : {
@@ -14941,25 +14941,25 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gewohnheiten, unbegrenzt"
+            "value" : "Unbegrenzte Gewohnheiten"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hábitos, sin límite"
+            "value" : "Hábitos ilimitados"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Habitudes, sans limite"
+            "value" : "Habitudes illimitées"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hábitos, sem limite"
+            "value" : "Hábitos ilimitados"
           }
         }
       }
@@ -15002,6 +15002,26 @@
             "value" : "Mais de 3 hábitos, com visão do ano e estatísticas de sequências."
           }
         }
+      }
+    },
+    "goals.paywall.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unlimited goals" } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Neomezené cíle" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unbegrenzte Ziele" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Objetivos ilimitados" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Objectifs illimités" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Objetivos ilimitados" } }
+      }
+    },
+    "goals.paywall.locked" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Track more than 3 active goals at once." } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Sleduj víc než 3 aktivní cíle najednou." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verfolge mehr als 3 aktive Ziele gleichzeitig." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Registra más de 3 objetivos activos a la vez." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Suis plus de 3 objectifs actifs à la fois." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Acompanhe mais de 3 objetivos ativos ao mesmo tempo." } }
       }
     },
     "habit.new.title" : {

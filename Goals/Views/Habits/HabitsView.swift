@@ -16,8 +16,9 @@ struct HabitsView: View {
     @Query private var habits: [Habit]
 
     let userId: UUID
+    /// Owned by `RootView` so a habit-widget tap can push a habit's detail here.
+    @Binding private var path: [UUID]
 
-    @State private var path: [UUID] = []
     @State private var editMode: EditMode = .inactive
     @State private var isShowingLimitAlert = false
     @State private var isShowingPaywall = false
@@ -27,8 +28,9 @@ struct HabitsView: View {
         let id = UUID()
     }
 
-    init(userId: UUID) {
+    init(userId: UUID, path: Binding<[UUID]> = .constant([])) {
         self.userId = userId
+        self._path = path
         _habits = Query(
             filter: #Predicate<Habit> { $0.ownerId == userId },
             sort: [SortDescriptor(\Habit.sortIndex), SortDescriptor(\Habit.createdAt)]

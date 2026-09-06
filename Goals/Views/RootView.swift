@@ -20,6 +20,8 @@ struct RootView: View {
     @State private var selectedTab: MainTab = .today
     /// Owned here so a widget tap can push a goal onto the Today stack.
     @State private var todayPath = NavigationPath()
+    /// Same, for the Habits tab — a habit widget tap pushes that habit's detail.
+    @State private var habitsPath: [UUID] = []
     /// Raised by the locked Pro widgets, which link here rather than dropping you on a screen that
     /// doesn't explain what they were showing — and by the occasional promo.
     @State private var isShowingPaywall = false
@@ -40,7 +42,7 @@ struct RootView: View {
     var body: some View {
         Group {
             if let userId = session.currentUser?.id {
-                MainTabView(userId: userId, selection: $selectedTab, todayPath: $todayPath, addGoalTrigger: $addGoalTrigger)
+                MainTabView(userId: userId, selection: $selectedTab, todayPath: $todayPath, habitsPath: $habitsPath, addGoalTrigger: $addGoalTrigger)
             } else {
                 WelcomeView()
             }
@@ -116,10 +118,15 @@ struct RootView: View {
                 selectedTab = .today
                 todayPath = NavigationPath()
                 todayPath.append(id)
-            case "habit", "habits":
-                // The habit widgets open the app to the Habits tab; the per-habit deep push is a
-                // later refinement.
+            case "habit":
                 selectedTab = .habits
+                habitsPath = []
+                if let id = UUID(uuidString: url.lastPathComponent) {
+                    habitsPath.append(id)
+                }
+            case "habits":
+                selectedTab = .habits
+                habitsPath = []
             case "pro":
                 paywallSource = .widget
                 isShowingPaywall = true

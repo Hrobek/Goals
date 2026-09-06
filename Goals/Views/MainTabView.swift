@@ -7,13 +7,13 @@ import SwiftUI
 import SwiftData
 
 enum MainTab: String, Hashable, CaseIterable {
-    case today, habits, goals, stats, settings
+    case today, goals, habits, stats, settings
 
     var title: LocalizedStringKey {
         switch self {
         case .today: "tab.today"
-        case .habits: "tab.habits"
         case .goals: "tab.goals"
+        case .habits: "tab.habits"
         case .stats: "tab.stats"
         case .settings: "tab.settings"
         }
@@ -24,8 +24,8 @@ enum MainTab: String, Hashable, CaseIterable {
     var symbol: String {
         switch self {
         case .today: "sun.max"
-        case .habits: "repeat"
         case .goals: "target"
+        case .habits: "repeat"
         case .stats: "chart.bar"
         case .settings: "gearshape"
         }
@@ -34,8 +34,8 @@ enum MainTab: String, Hashable, CaseIterable {
     var selectedSymbol: String {
         switch self {
         case .today: "sun.max.fill"
-        case .habits: "repeat.circle.fill"
         case .goals: "target"
+        case .habits: "repeat.circle.fill"
         case .stats: "chart.bar.fill"
         case .settings: "gearshape.fill"
         }
@@ -62,6 +62,8 @@ struct MainTabView: View {
     /// Owned by `RootView` so the tab survives the rebuild that applies a language change.
     @Binding var selection: MainTab
     @Binding var todayPath: NavigationPath
+    /// Owned by `RootView` too, so a habit-widget tap can push a habit's detail onto this stack.
+    @Binding var habitsPath: [UUID]
     /// Owned by `RootView`, flipped to drop a brand-new user straight into Add Goal.
     @Binding var addGoalTrigger: Bool
 
@@ -75,8 +77,8 @@ struct MainTabView: View {
 
             ZStack {
                 screen(.today) { TodayView(userId: userId, path: $todayPath) }
-                screen(.habits) { HabitsView(userId: userId) }
                 screen(.goals) { GoalsListView(userId: userId, addGoalTrigger: $addGoalTrigger) }
+                screen(.habits) { HabitsView(userId: userId, path: $habitsPath) }
                 screen(.stats) { StatsView(userId: userId) }
                 screen(.settings) { SettingsView() }
             }
@@ -110,8 +112,8 @@ struct MainTabView: View {
                     selection = tab
                 } label: {
                     VStack(spacing: 3) {
-                        // Goals gets the app's own mark rather than a symbol — it's the tab the
-                        // whole app is named after.
+                        // Goals keeps the app's own mark rather than a symbol — it's the tab the
+                        // whole app is named after. Habits sits right next to it as an equal.
                         if tab == .goals {
                             GoalsMark(
                                 size: 21,
@@ -156,7 +158,7 @@ struct MainTabView: View {
 }
 
 #Preview {
-    MainTabView(userId: UUID(), selection: .constant(.today), todayPath: .constant(NavigationPath()), addGoalTrigger: .constant(false))
+    MainTabView(userId: UUID(), selection: .constant(.today), todayPath: .constant(NavigationPath()), habitsPath: .constant([]), addGoalTrigger: .constant(false))
         .environment(AuthSession())
         .environment(PurchaseManager())
         .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self, Habit.self, HabitEntry.self], inMemory: true)
