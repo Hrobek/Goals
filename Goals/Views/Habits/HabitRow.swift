@@ -80,8 +80,10 @@ struct HabitRow: View {
         .accessibilityAction(named: Text("a11y.habit.toggleToday")) {
             if habit.isCheckbox {
                 HabitLogger.toggleToday(habit, in: modelContext)
-            } else {
+            } else if habit.hasUnit {
                 HabitLogger.addQuick(habit, in: modelContext)
+            } else {
+                HabitLogger.adjust(habit, by: 1, in: modelContext)
             }
             actionTick += 1
         }

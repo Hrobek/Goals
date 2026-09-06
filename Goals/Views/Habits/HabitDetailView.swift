@@ -191,12 +191,52 @@ struct HabitDetailView: View {
     private var todayControl: some View {
         if habit.isCheckbox {
             checkboxButton
+        } else if habit.isQuota {
+            VStack(spacing: Theme.Space.card) {
+                progressPanel
+                quotaButtons
+            }
         } else {
             VStack(spacing: Theme.Space.card) {
                 progressPanel
                 quickAddChips
                 logValueButton
             }
+        }
+    }
+
+    /// A quota schedule is a running tally toward the period's target — one prominent `+1` and a
+    /// small `−` to undo, no exact-amount prompt.
+    private var quotaButtons: some View {
+        HStack(spacing: 8) {
+            Button {
+                HabitLogger.adjust(habit, by: 1, in: modelContext)
+                checkTick += 1
+            } label: {
+                Label { Text(verbatim: "+1") } icon: { Image(systemName: "plus.circle") }
+                    .font(Theme.Typo.button)
+                    .foregroundStyle(Theme.onAccent)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(tint, in: .rect(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                HabitLogger.adjust(habit, by: -1, in: modelContext)
+                checkTick += 1
+            } label: {
+                Image(systemName: "minus")
+                    .font(.system(size: 16, weight: .semibold))
+                    .frame(width: 50, height: 50)
+                    .foregroundStyle(Theme.textMuted)
+                    .background(Theme.control, in: .rect(cornerRadius: 12))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.textGhost, lineWidth: 1)
+                    }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("a11y.removeTime"))
         }
     }
 
@@ -229,17 +269,17 @@ struct HabitDetailView: View {
             VStack(alignment: .leading, spacing: 0) {
                 SectionLabel("goalDetail.progress")
                 HStack(alignment: .lastTextBaseline, spacing: 6) {
-                    Text(habit.numberOnly(habit.amount(on: .now)))
+                    Text(progressReadoutValue)
                         .font(Theme.Typo.statLarge)
                         .foregroundStyle(Theme.text)
-                    Text(verbatim: "/ \(habit.targetText)")
+                    Text(verbatim: "/ \(progressReadoutTarget)")
                         .font(.system(size: 15))
                         .foregroundStyle(Theme.textFaint)
                 }
                 .monospacedDigit()
                 .padding(.top, 6)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(Text("a11y.progress \(habit.numberOnly(habit.amount(on: .now))) \(habit.targetText)"))
+                .accessibilityLabel(Text("a11y.progress \(progressReadoutValue) \(progressReadoutTarget)"))
 
                 HStack(spacing: 7) {
                     Image(systemName: "flame.fill")
@@ -320,6 +360,16 @@ struct HabitDetailView: View {
 
     private var quickSteps: [Double] {
         GoalUnit(rawValue: habit.unitKey)?.quickAddSteps ?? [1, 2, 5, 10]
+    }
+
+    /// The big number in the progress panel — the period tally for a quota schedule, today's
+    /// logged amount otherwise.
+    private var progressReadoutValue: String {
+        habit.isQuota ? "\(habit.periodCount())" : habit.numberOnly(habit.amount(on: .now))
+    }
+
+    private var progressReadoutTarget: String {
+        habit.isQuota ? "\(habit.quotaTarget)" : habit.targetText
     }
 
     private var activitySection: some View {

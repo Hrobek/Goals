@@ -46,8 +46,11 @@ struct HabitCheckInIntent: AppIntent {
 
         if habit.isCheckbox {
             HabitLogger.toggleToday(habit, in: context)
-        } else {
+        } else if habit.hasUnit {
             HabitLogger.addQuick(habit, in: context)
+        } else {
+            // A "times" counter or a quota schedule: one tap is one more tick.
+            HabitLogger.adjust(habit, by: 1, in: context)
         }
 
         do {

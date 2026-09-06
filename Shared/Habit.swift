@@ -168,9 +168,17 @@ final class Habit {
         GoalUnit(rawValue: unitKey) != .times || (customUnitText?.isEmpty == false)
     }
 
+    /// On a "times per week / month" schedule the target isn't a daily amount — it's a running
+    /// tally of check-ins across the period (5×/week met however you like, twice in one day counts
+    /// twice).
+    var isQuota: Bool {
+        recurrenceType == .timesPerWeek || recurrenceType == .timesPerMonth
+    }
+
     /// A one-tap habit: no unit and a target of one. "Times" with a target above one is a small
-    /// counter instead ("stretch 3× a day"); a real unit is a value tracker.
-    var isCheckbox: Bool { !hasUnit && targetAmount <= 1 }
+    /// counter instead ("stretch 3× a day"); a real unit is a value tracker; a quota schedule is a
+    /// per-period counter.
+    var isCheckbox: Bool { !hasUnit && targetAmount <= 1 && !isQuota }
 
     /// How much marks the day done. Rounded to a whole number for a "times" habit.
     var effectiveTarget: Double {
@@ -191,14 +199,41 @@ final class Habit {
         entry(on: date, calendar: calendar)?.amount ?? 0
     }
 
-    /// 0…1 fraction of the day's target reached.
-    func progressFraction(on date: Date = .now, calendar: Calendar = .current) -> Double {
-        min(max(amount(on: date, calendar: calendar) / effectiveTarget, 0), 1)
+    // MARK: Quota period
+
+    /// The week or month that `date` falls in — the window a quota schedule is measured over.
+    func quotaInterval(containing date: Date = .now, calendar: Calendar = .current) -> DateInterval? {
+        let component: Calendar.Component = recurrenceType == .timesPerMonth ? .month : .weekOfYear
+        return calendar.dateInterval(of: component, for: date)
     }
 
-    /// Whether `date` has reached the target.
+    /// How many check-ins are logged in the quota period `date` sits in (each day's entry can hold
+    /// more than one). Only meaningful when `isQuota`.
+    func periodCount(on date: Date = .now, calendar: Calendar = .current) -> Int {
+        guard let interval = quotaInterval(containing: date, calendar: calendar) else { return 0 }
+        return entries
+            .filter { interval.contains($0.date) }
+            .reduce(0) { $0 + max(0, Int($1.amount.rounded())) }
+    }
+
+    /// The quota itself — the "5" in "5× per week".
+    var quotaTarget: Int { max(1, recurrenceCount) }
+
+    /// 0…1 fraction of the target reached — the day's target normally, the period's quota for a
+    /// quota schedule.
+    func progressFraction(on date: Date = .now, calendar: Calendar = .current) -> Double {
+        if isQuota {
+            return min(max(Double(periodCount(on: date, calendar: calendar)) / Double(quotaTarget), 0), 1)
+        }
+        return min(max(amount(on: date, calendar: calendar) / effectiveTarget, 0), 1)
+    }
+
+    /// Whether the target is met: the day's amount normally, the period's quota for a quota schedule.
     func isDone(on date: Date, calendar: Calendar = .current) -> Bool {
-        amount(on: date, calendar: calendar) >= effectiveTarget
+        if isQuota {
+            return periodCount(on: date, calendar: calendar) >= quotaTarget
+        }
+        return amount(on: date, calendar: calendar) >= effectiveTarget
     }
 
     var currentStreak: Int {
@@ -218,9 +253,13 @@ final class Habit {
         return GoalUnit.valueWithUnit(targetAmount, formattedValue: format(targetAmount), unitKey: unitKey, customUnitText: customUnitText)
     }
 
-    /// "3,000/4,000 ml" for a value habit, "3/5" for a times counter; "" for a plain checkbox.
+    /// "3,000/4,000 ml" for a value habit, "3/5" for a times counter, "2/5" for a weekly quota;
+    /// "" for a plain checkbox.
     func progressText(on date: Date = .now, calendar: Calendar = .current) -> String {
         guard !isCheckbox else { return "" }
+        if isQuota {
+            return "\(periodCount(on: date, calendar: calendar))/\(quotaTarget)"
+        }
         return "\(format(amount(on: date, calendar: calendar)))/\(targetText)"
     }
 
@@ -232,8 +271,18 @@ final class Habit {
 }
 
 extension Habit: Scheduled {
-    /// A habit counts a day as done once that day's logged amount reaches the target.
+    /// The dates that feed the streak and the activity heatmap.
+    ///
+    /// - Day-based habit: one date per day whose logged amount reached the target.
+    /// - Quota habit: each day's date repeated once per check-in, so a period's total (which is
+    ///   what the quota is measured against) is just a count of these — and the heatmap, which
+    ///   maps them to distinct days, still lights each day once.
     var scheduleDates: [Date] {
+        if isQuota {
+            return entries.flatMap { entry in
+                Array(repeating: entry.date, count: max(0, Int(entry.amount.rounded())))
+            }
+        }
         let target = effectiveTarget
         return entries.filter { $0.amount >= target }.map(\.date)
     }

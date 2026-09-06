@@ -67,7 +67,10 @@ struct HabitsProvider: TimelineProvider {
         let today = todaysHabits()
         let limit = rowLimit(for: family)
         let snapshots = today.prefix(limit).map { habit in
-            HabitSnapshot(
+            // A quota habit's ring tracks the week/month tally against the quota, not today.
+            let amount = habit.isQuota ? Double(habit.periodCount()) : habit.amount(on: .now)
+            let target = habit.isQuota ? Double(habit.quotaTarget) : habit.targetAmount
+            return HabitSnapshot(
                 id: habit.id,
                 title: habit.title,
                 emoji: habit.emoji,
@@ -75,8 +78,8 @@ struct HabitsProvider: TimelineProvider {
                 streak: habit.currentStreak,
                 isCheckbox: habit.isCheckbox,
                 quickAddLabel: habit.isCheckbox ? "" : "+\(habit.numberOnly(habit.widgetQuickAmount))",
-                amountToday: habit.amount(on: .now),
-                target: habit.targetAmount
+                amountToday: amount,
+                target: target
             )
         }
         return HabitsEntry(
