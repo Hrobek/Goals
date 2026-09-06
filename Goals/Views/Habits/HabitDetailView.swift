@@ -168,27 +168,27 @@ struct HabitDetailView: View {
                     .tracking(Theme.Typo.pageTitleTracking)
                     .foregroundStyle(Theme.text)
                     .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: 7) {
-                    Image(systemName: "flame.fill")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Theme.accentBright)
-                    Text("\(habit.currentStreak) · \(Recurrence.localizedSummary(for: habit))")
-                        .font(Theme.Typo.caption)
-                        .foregroundStyle(Theme.textStrong)
-                        .lineLimit(2)
-                }
+                Text(Recurrence.localizedSummary(for: habit))
+                    .font(Theme.Typo.caption)
+                    .foregroundStyle(Theme.textFaint)
             }
             Spacer(minLength: 0)
         }
         .padding(.top, 4)
     }
 
+    // MARK: - Today (mirrors the value-goal detail layout)
+
     @ViewBuilder
     private var todayControl: some View {
         if habit.isCheckbox {
             checkboxButton
         } else {
-            valuePanel
+            VStack(spacing: Theme.Space.card) {
+                progressPanel
+                quickAddChips
+                logValueButton
+            }
         }
     }
 
@@ -201,89 +201,113 @@ struct HabitDetailView: View {
                 Image(systemName: doneToday ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 18))
                 Text(doneToday ? "habit.doneToday" : "habit.markToday")
-                    .font(Theme.Typo.buttonSmall)
+                    .font(Theme.Typo.button)
             }
-            .foregroundStyle(doneToday ? Theme.onAccent : Theme.accentText)
+            .foregroundStyle(Theme.onAccent)
             .frame(maxWidth: .infinity)
-            .frame(height: 48)
-            .padding(.horizontal, 16)
-            .background(doneToday ? tint : Theme.accentWell, in: .rect(cornerRadius: Theme.Radius.card))
-            .overlay {
-                RoundedRectangle(cornerRadius: Theme.Radius.card)
-                    .strokeBorder(doneToday ? Color.clear : Theme.accentWellBorder, lineWidth: 1)
-            }
+            .frame(height: 50)
+            .background(tint.opacity(doneToday ? 1 : 0.9), in: .rect(cornerRadius: 12))
         }
         .buttonStyle(.plain)
     }
 
-    /// Today's amount against the target, a progress bar, and the unit's quick-add steps — the
-    /// same shape as a value goal's detail.
-    private var valuePanel: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .lastTextBaseline, spacing: 6) {
-                Text(habit.progressText())
-                    .font(Theme.Typo.statMedium)
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.text)
-                Spacer(minLength: 0)
-                if doneToday {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 18))
-                        .foregroundStyle(tint)
-                        .accessibilityLabel(Text("a11y.today.done"))
+    /// The ring + progress readout + streak, in a panel — the same shape as `GoalDetailView`'s
+    /// `progressPanel`, just tinted in the habit's colour.
+    private var progressPanel: some View {
+        HStack(spacing: 18) {
+            ProgressRingTinted(progress: habit.progressFraction(), tint: tint)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 0) {
+                SectionLabel("goalDetail.progress")
+                HStack(alignment: .lastTextBaseline, spacing: 6) {
+                    Text(habit.numberOnly(habit.amount(on: .now)))
+                        .font(Theme.Typo.statLarge)
+                        .foregroundStyle(Theme.text)
+                    Text(verbatim: "/ \(habit.targetText)")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Theme.textFaint)
                 }
+                .monospacedDigit()
+                .padding(.top, 6)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text("a11y.progress \(habit.numberOnly(habit.amount(on: .now))) \(habit.targetText)"))
+
+                HStack(spacing: 7) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.accentBright)
+                    Text("\(habit.currentStreak) · \(Recurrence.localizedSummary(for: habit))")
+                        .font(Theme.Typo.caption)
+                        .foregroundStyle(Theme.textStrong)
+                        .lineLimit(2)
+                }
+                .padding(.top, 12)
             }
+            Spacer(minLength: 0)
+        }
+        .cardSurface(radius: Theme.Radius.panel, padding: 18)
+    }
 
-            ThinBar(progress: habit.progressFraction(), color: tint)
-
-            HStack(spacing: 8) {
-                ForEach(quickSteps, id: \.self) { step in
-                    Button {
-                        HabitLogger.adjust(habit, by: step, in: modelContext)
-                        checkTick += 1
-                    } label: {
-                        Text("+\(habit.quickAddLabel(step))")
-                            .font(.system(size: 14, weight: .medium))
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 40)
-                            .background(Theme.control, in: .rect(cornerRadius: Theme.Radius.control))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: Theme.Radius.control)
-                                    .strokeBorder(Theme.textGhost, lineWidth: 1)
-                            }
-                            .foregroundStyle(Theme.text)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Text("a11y.quickAdd \(habit.quickAddLabel(step))"))
-                }
-
+    /// Bare row of `+N` steps and a `−`, exactly like `GoalDetailView.quickAddChips`.
+    private var quickAddChips: some View {
+        HStack(spacing: 8) {
+            ForEach(quickSteps, id: \.self) { step in
                 Button {
-                    HabitLogger.adjust(habit, by: -habit.widgetQuickAmount, in: modelContext)
+                    HabitLogger.adjust(habit, by: step, in: modelContext)
                     checkTick += 1
                 } label: {
-                    Image(systemName: "minus")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 40, height: 40)
+                    Text("+\(habit.numberOnly(step))")
+                        .font(.system(size: 14, weight: .medium))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 40)
                         .background(Theme.control, in: .rect(cornerRadius: Theme.Radius.control))
                         .overlay {
                             RoundedRectangle(cornerRadius: Theme.Radius.control)
                                 .strokeBorder(Theme.textGhost, lineWidth: 1)
                         }
-                        .foregroundStyle(Theme.textMuted)
+                        .foregroundStyle(Theme.text)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(Text("a11y.removeTime"))
+                .accessibilityLabel(Text("a11y.quickAdd \(habit.quickAddLabel(step))"))
             }
 
-            Button("habit.log.exact") { isShowingLogPrompt = true }
-                .font(Theme.Typo.captionEmphasis)
-                .foregroundStyle(Theme.textMuted)
-                .buttonStyle(.plain)
+            Button {
+                HabitLogger.adjust(habit, by: -habit.widgetQuickAmount, in: modelContext)
+                checkTick += 1
+            } label: {
+                Image(systemName: "minus")
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(width: 40, height: 40)
+                    .background(Theme.control, in: .rect(cornerRadius: Theme.Radius.control))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Theme.Radius.control)
+                            .strokeBorder(Theme.textGhost, lineWidth: 1)
+                    }
+                    .foregroundStyle(Theme.textMuted)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("a11y.removeTime"))
         }
-        .cardSurface(radius: Theme.Radius.panel, padding: 18)
+    }
+
+    /// Full-width primary button, like the goal detail's "Log Value".
+    private var logValueButton: some View {
+        Button {
+            logAmountText = ""
+            isShowingLogPrompt = true
+        } label: {
+            Label("goalDetail.logValue", systemImage: "plus.circle")
+                .font(Theme.Typo.button)
+                .foregroundStyle(Theme.onAccent)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(tint, in: .rect(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
     }
 
     private var quickSteps: [Double] {
@@ -335,5 +359,31 @@ struct HabitDetailView: View {
         let context = modelContext
         let userId = habit.ownerId
         Task { await NotificationScheduler.syncAll(context: context, userId: userId) }
+    }
+}
+
+/// `ProgressRing` from DesignKit, but stroked in an arbitrary colour so a habit's ring can wear
+/// its own colour instead of the app accent.
+private struct ProgressRingTinted: View {
+    let progress: Double
+    let tint: Color
+    var size: CGFloat = 96
+    var lineWidth: CGFloat = 7
+
+    private var clamped: Double { min(max(progress, 0), 1) }
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(Theme.track, lineWidth: lineWidth)
+            Circle()
+                .trim(from: 0, to: clamped)
+                .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Text(clamped.formatted(.percent.precision(.fractionLength(0))))
+                .font(.system(size: size * 0.2, weight: .medium).monospacedDigit())
+                .foregroundStyle(Theme.text)
+        }
+        .frame(width: size, height: size)
+        .animation(.snappy, value: clamped)
     }
 }

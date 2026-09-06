@@ -76,7 +76,7 @@ struct HabitsProvider: TimelineProvider {
                 colorHex: habit.colorHex,
                 streak: habit.currentStreak,
                 isCheckbox: habit.isCheckbox,
-                quickAddLabel: habit.isCheckbox ? "" : "+\(habit.quickAddLabel(habit.widgetQuickAmount))",
+                quickAddLabel: habit.isCheckbox ? "" : "+\(habit.numberOnly(habit.widgetQuickAmount))",
                 amountToday: habit.amount(on: .now),
                 target: habit.targetAmount
             )
@@ -119,7 +119,7 @@ struct HabitsProvider: TimelineProvider {
 
     private static var sample: [HabitSnapshot] {
         [
-            HabitSnapshot(id: UUID(), title: "Pít vodu", emoji: "💧", colorHex: ColorPalette.defaultHex, streak: 4, isCheckbox: false, quickAddLabel: "+250 ml", amountToday: 1500, target: 3000),
+            HabitSnapshot(id: UUID(), title: "Pít vodu", emoji: "💧", colorHex: ColorPalette.defaultHex, streak: 4, isCheckbox: false, quickAddLabel: "+250", amountToday: 1500, target: 3000),
             HabitSnapshot(id: UUID(), title: "Číst", emoji: "📖", colorHex: ColorPalette.defaultHex, streak: 12, isCheckbox: true, quickAddLabel: "", amountToday: 1, target: 1),
             HabitSnapshot(id: UUID(), title: "Protáhnout se", emoji: "🧘", colorHex: ColorPalette.defaultHex, streak: 0, isCheckbox: true, quickAddLabel: "", amountToday: 0, target: 1),
         ]

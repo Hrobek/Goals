@@ -66,12 +66,13 @@ struct HabitRow: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 13)
-        .background(doneToday ? Theme.surfaceMuted : Theme.surface, in: .rect(cornerRadius: Theme.Radius.card))
+        // The card carries the habit's colour — a faint wash on the surface and a matching hairline.
+        .background(tint.opacity(doneToday ? 0.06 : 0.12), in: .rect(cornerRadius: Theme.Radius.card))
         .overlay {
             RoundedRectangle(cornerRadius: Theme.Radius.card)
-                .strokeBorder(doneToday ? Theme.hairlineSoft : Theme.hairline, lineWidth: 1)
+                .strokeBorder(tint.opacity(doneToday ? 0.16 : 0.3), lineWidth: 1)
         }
-        .opacity(doneToday ? 0.78 : 1)
+        .opacity(doneToday ? 0.82 : 1)
         .sensoryFeedback(.success, trigger: actionTick)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
@@ -145,7 +146,7 @@ struct HabitRow: View {
                 HStack(spacing: 5) {
                     Image(systemName: doneToday ? "checkmark" : "plus")
                         .font(.system(size: 11, weight: .bold))
-                    Text(habit.quickAddLabel(habit.widgetQuickAmount))
+                    Text(habit.numberOnly(habit.widgetQuickAmount))
                         .font(Theme.Typo.captionEmphasis)
                         .monospacedDigit()
                         .lineLimit(1)

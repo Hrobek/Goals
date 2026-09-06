@@ -199,6 +199,9 @@ final class Habit {
         value.formatted(.number.precision(.fractionLength(0...1)))
     }
 
+    /// Just the number, no unit — for the "+" quick-add chips, which read cleaner bare.
+    func numberOnly(_ value: Double) -> String { format(value) }
+
     /// The target written out — "4,000 ml", "10 pages", or just "5" for a plain times counter.
     var targetText: String {
         guard hasUnit else { return format(effectiveTarget) }
