@@ -91,9 +91,9 @@ struct HabitsProvider: TimelineProvider {
 
     private static func rowLimit(for family: WidgetFamily) -> Int {
         switch family {
-        case .systemSmall: 4
-        case .systemMedium: 8
-        case .systemLarge: 16
+        case .systemSmall: 4     // 2 per row, 2 rows
+        case .systemMedium: 10   // 5 per row, 2 rows
+        case .systemLarge: 25    // 5 per row, ~5 rows
         default: 1
         }
     }
@@ -118,10 +118,17 @@ struct HabitsProvider: TimelineProvider {
     }
 
     private static var sample: [HabitSnapshot] {
-        [
-            HabitSnapshot(id: UUID(), title: "Pít vodu", emoji: "💧", colorHex: ColorPalette.defaultHex, streak: 4, isCheckbox: false, quickAddLabel: "+250", amountToday: 1500, target: 3000),
-            HabitSnapshot(id: UUID(), title: "Číst", emoji: "📖", colorHex: ColorPalette.defaultHex, streak: 12, isCheckbox: true, quickAddLabel: "", amountToday: 1, target: 1),
-            HabitSnapshot(id: UUID(), title: "Protáhnout se", emoji: "🧘", colorHex: ColorPalette.defaultHex, streak: 0, isCheckbox: true, quickAddLabel: "", amountToday: 0, target: 1),
+        func s(_ title: String, _ emoji: String, _ hex: String, _ amt: Double, _ tgt: Double) -> HabitSnapshot {
+            HabitSnapshot(id: UUID(), title: title, emoji: emoji, colorHex: hex, streak: 3,
+                          isCheckbox: tgt == 1, quickAddLabel: "", amountToday: amt, target: tgt)
+        }
+        return [
+            s("Voda", "💧", "#54A0FF", 1500, 3000),
+            s("Číst", "📖", "#1DD1A1", 1, 1),
+            s("Meditace", "🧘", "#FECA57", 0, 1),
+            s("Kroky", "🚶", "#FF9F43", 7000, 10000),
+            s("Vitamíny", "💊", "#EE5A9E", 1, 1),
+            s("Kliky", "💪", "#5F27CD", 20, 50),
         ]
     }
 }
@@ -145,9 +152,10 @@ struct HabitsWidgetEntryView: View {
 
     // MARK: Home screen — a grid of emoji rings, nothing else
 
-    private var columns: Int {
-        family == .systemSmall ? 2 : 4
-    }
+    /// One fixed ring size for every home widget, so a ring on the medium widget looks exactly
+    /// like one on the small — the bigger widget just fits more of them per row (5 across a
+    /// medium, 2 across a small).
+    private let ringSize: CGFloat = 54
 
     @ViewBuilder
     private var homeBody: some View {
@@ -158,44 +166,40 @@ struct HabitsWidgetEntryView: View {
                 .widgetURL(GoalLink.habits)
         } else {
             LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: columns),
+                columns: [GridItem(.adaptive(minimum: ringSize, maximum: ringSize), spacing: 10)],
                 spacing: 12
             ) {
                 ForEach(entry.habits) { habit in
                     ring(for: habit)
-                        .aspectRatio(1, contentMode: .fit)
                 }
             }
-            .frame(maxHeight: .infinity, alignment: .top)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 
     private func ring(for habit: HabitSnapshot) -> some View {
         let color = Color(hex: habit.colorHex)
+        let lineWidth = ringSize * 0.1
         return Button(intent: HabitCheckInIntent(habitID: habit.id)) {
-            GeometryReader { geo in
-                let side = min(geo.size.width, geo.size.height)
-                ZStack {
-                    Circle()
-                        .fill(color.opacity(habit.isDone ? 0.28 : 0.14))
-                    Circle()
-                        .stroke(color.opacity(0.22), lineWidth: side * 0.1)
-                    Circle()
-                        .trim(from: 0, to: max(0.001, habit.progress))
-                        .stroke(color, style: StrokeStyle(lineWidth: side * 0.1, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                    if let emoji = habit.emoji, !emoji.isEmpty {
-                        Text(emoji).font(.system(size: side * 0.44))
-                    } else {
-                        Image(systemName: "repeat")
-                            .font(.system(size: side * 0.34, weight: .medium))
-                            .foregroundStyle(color)
-                    }
+            ZStack {
+                Circle()
+                    .fill(color.opacity(habit.isDone ? 0.28 : 0.14))
+                Circle()
+                    .stroke(color.opacity(0.22), lineWidth: lineWidth)
+                Circle()
+                    .trim(from: 0, to: max(0.001, habit.progress))
+                    .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                if let emoji = habit.emoji, !emoji.isEmpty {
+                    Text(emoji).font(.system(size: ringSize * 0.44))
+                } else {
+                    Image(systemName: "repeat")
+                        .font(.system(size: ringSize * 0.34, weight: .medium))
+                        .foregroundStyle(color)
                 }
-                .frame(width: side, height: side)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .contentShape(.rect)
+            .frame(width: ringSize, height: ringSize)
+            .contentShape(.circle)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(habit.title))
