@@ -58,6 +58,7 @@ struct StatsView: View {
 
                     VStack(alignment: .leading, spacing: Theme.Space.section) {
                         tiles
+                        weeklySummary
 
                         if !streaks.isEmpty {
                             streakSection
@@ -89,6 +90,10 @@ struct StatsView: View {
             StatTile(value: "\(completedCount)", label: "stats.completedGoals")
             StatTile(value: "\(currentStreak)", label: "stats.currentStreak", accent: true)
         }
+    }
+
+    private var weeklySummary: some View {
+        WeeklySummaryCard(checkIns: trackedCheckIns)
     }
 
     private var streakSection: some View {
@@ -161,6 +166,71 @@ private struct GoalStreakRow: View {
         }
         .padding(.vertical, 12)
         .contentShape(.rect)
+    }
+}
+
+/// Free, one-glance version of the Pro month-over-month row in `TrendsSection` — just the current
+/// week against the one before it, so there's a reason to open Stats before the week is even over.
+private struct WeeklySummaryCard: View {
+    let checkIns: [CheckIn]
+
+    private let calendar = Calendar.current
+
+    private var thisWeekCount: Int {
+        guard let interval = calendar.dateInterval(of: .weekOfYear, for: .now) else { return 0 }
+        return checkIns.filter { interval.contains($0.date) }.count
+    }
+
+    private var lastWeekCount: Int {
+        guard let thisWeek = calendar.dateInterval(of: .weekOfYear, for: .now),
+              let previousAnchor = calendar.date(byAdding: .weekOfYear, value: -1, to: thisWeek.start),
+              let interval = calendar.dateInterval(of: .weekOfYear, for: previousAnchor) else { return 0 }
+        return checkIns.filter { interval.contains($0.date) }.count
+    }
+
+    private var delta: Int { thisWeekCount - lastWeekCount }
+
+    var body: some View {
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("stats.weekly.title")
+                    .font(Theme.Typo.footnote)
+                    .foregroundStyle(Theme.textFaint)
+                Text("\(thisWeekCount)")
+                    .font(Theme.Typo.statMedium)
+                    .foregroundStyle(Theme.text)
+            }
+
+            Spacer()
+
+            if lastWeekCount > 0 || thisWeekCount > 0 {
+                HStack(spacing: 5) {
+                    Image(systemName: delta >= 0 ? "arrow.up.right" : "arrow.down.right")
+                        .font(.system(size: 13))
+                        .accessibilityHidden(true)
+                    Text(deltaText)
+                        .monospacedDigit()
+                }
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(delta >= 0 ? Theme.accentBright : Theme.textMuted)
+            }
+        }
+        .cardSurface(padding: 16)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("stats.weekly.title"))
+        .accessibilityValue(Text(accessibilityValue))
+    }
+
+    private var deltaText: String {
+        delta > 0 ? "+\(delta)" : "\(delta)"
+    }
+
+    /// "12 check-ins, +3" — the plural count spoken properly, the delta read the same way the badge
+    /// shows it (a signed number reads fine either way, and it's what `MonthComparisonRow` does too).
+    private var accessibilityValue: String {
+        let countPhrase = String(localized: "stats.weekly.checkIns \(thisWeekCount)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+        guard lastWeekCount > 0 || thisWeekCount > 0 else { return countPhrase }
+        return "\(countPhrase), \(deltaText)"
     }
 }
 

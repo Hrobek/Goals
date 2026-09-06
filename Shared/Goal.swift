@@ -96,6 +96,9 @@ final class Goal {
     private var storedReminderHour: Int?
     private var storedReminderMinute: Int?
     private var storedReminderWeekdays: [Int]?
+    /// Extra reminder times as minutes since midnight, on top of the single `reminderHour`/
+    /// `reminderMinute` pair. Nil for goals saved before more than one time was possible.
+    private var storedReminderTimes: [Int]?
     private var widgetActionRawValue: String?
     private var storedWidgetQuickAmount: Double?
 
@@ -138,6 +141,26 @@ final class Goal {
     var reminderMinute: Int {
         get { storedReminderMinute ?? 0 }
         set { storedReminderMinute = newValue }
+    }
+
+    /// Every time of day the reminder fires, as minutes since midnight, sorted and de-duplicated.
+    /// Always has at least one entry: it falls back to the legacy `reminderHour`/`reminderMinute`
+    /// pair for goals saved before multiple times existed. The setter keeps that pair pointed at
+    /// the earliest time, so anything still reading it stays correct.
+    var reminderTimes: [Int] {
+        get {
+            let stored = (storedReminderTimes ?? []).filter { (0..<24 * 60).contains($0) }
+            guard stored.isEmpty else { return Array(Set(stored)).sorted() }
+            return [reminderHour * 60 + reminderMinute]
+        }
+        set {
+            let cleaned = Array(Set(newValue.filter { (0..<24 * 60).contains($0) })).sorted()
+            storedReminderTimes = cleaned
+            if let first = cleaned.first {
+                reminderHour = first / 60
+                reminderMinute = first % 60
+            }
+        }
     }
 
     /// Calendar weekday numbers (1 = Sunday), used when the frequency is weekly.

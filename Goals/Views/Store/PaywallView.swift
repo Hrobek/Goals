@@ -33,6 +33,7 @@ struct PaywallView: View {
         ("chart.line.uptrend.xyaxis", "stats.trends.title", "stats.trends.locked"),
         ("sparkles", "pace.title", "pace.locked"),
         ("chart.xyaxis.line", "goalDetail.chart.title", "goalDetail.chart.locked"),
+        ("bell.badge", "reminder.multiple.title", "reminder.multiple.locked"),
         ("square.grid.2x2", "widget.activity.displayName", "widget.activity.description")
     ]
 
@@ -43,7 +44,7 @@ struct PaywallView: View {
                     VStack(alignment: .leading, spacing: 26) {
                         headline
                         planPicker
-                        benefitList
+                        LabeledSection("paywall.included") { benefitList }
                     }
                     .padding(.horizontal, 22)
                     .padding(.top, 14)
@@ -53,8 +54,7 @@ struct PaywallView: View {
 
                 footer
             }
-            // The one screen in the app allowed to be a little theatrical.
-            .background { BloomBackground.paywall }
+            .background(Theme.ground.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {

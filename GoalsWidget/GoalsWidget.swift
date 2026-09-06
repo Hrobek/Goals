@@ -82,6 +82,7 @@ struct GoalsProvider: TimelineProvider {
         case .systemSmall: 3
         case .systemMedium: 4
         case .systemLarge: 9
+        case .accessoryRectangular: 3
         default: 3
         }
     }
@@ -157,7 +158,9 @@ struct GoalsWidgetEntryView: View {
     var entry: GoalsEntry
 
     var body: some View {
-        if entry.goals.isEmpty {
+        if family == .accessoryRectangular {
+            accessoryRings
+        } else if entry.goals.isEmpty {
             emptyState
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
@@ -194,6 +197,31 @@ struct GoalsWidgetEntryView: View {
                 .font(.caption)
                 .foregroundStyle(Theme.textFaint)
                 .multilineTextAlignment(.center)
+        }
+    }
+
+    // MARK: - Lock Screen
+
+    /// Today's top few goals as a row of small progress rings on the Lock Screen — each an emoji
+    /// in its ring, tapping through to that goal.
+    @ViewBuilder
+    private var accessoryRings: some View {
+        if entry.goals.isEmpty {
+            Label(entry.isSignedIn ? "today.empty.title" : "widget.notSignedIn", systemImage: "target")
+        } else {
+            HStack(spacing: 8) {
+                ForEach(entry.goals.prefix(3)) { goal in
+                    Link(destination: GoalLink.url(for: goal.id)) {
+                        MiniGoalRing(progress: goal.progress, emoji: goal.emoji)
+                    }
+                    .accessibilityLabel(Text(goal.title))
+                    .accessibilityValue(Text(goal.detail))
+                }
+                if entry.goals.count < 3 {
+                    Spacer(minLength: 0)
+                }
+            }
+            .frame(maxHeight: .infinity)
         }
     }
 }
@@ -319,13 +347,13 @@ struct GoalsWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: GoalsProvider()) { entry in
             GoalsWidgetEntryView(entry: entry)
-                .containerBackground(Theme.ground, for: .widget)
+                .containerBackground(for: .widget) { WidgetContainerBackground() }
                 // Follows the in-app language override, the same way `RootView` applies it: `Text`
                 // resolves its key against this locale, not the device's.
                 .environment(\.locale, AppLanguage.current.locale)
         }
         .configurationDisplayName("widget.displayName")
         .description("widget.description")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular])
     }
 }

@@ -31,21 +31,25 @@ enum ProgressLogger {
         }
     }
 
-    /// Reverses the goal's one-tap action — the exact inverse of `performQuickAction`, for
-    /// correcting a stray tap on the Today row or widget button. Unlike a normal log, this never
-    /// establishes a fresh streak day on its own: if undoing brings today's value back down to (or
-    /// below) whatever it stood at before today, today's check-in is retracted too, so an
-    /// add-then-undo within the same day leaves no streak credit behind.
+    /// Reverses a logged amount — by default the goal's one-tap action (the exact inverse of
+    /// `performQuickAction`, for correcting a stray tap on the Today row or widget button), or a
+    /// specific `delta` a caller knows it needs to back out instead — a bigger quick-add chip
+    /// tapped by mistake in the detail view, say, rather than the widget's own configured step.
+    /// Unlike a normal log, this never establishes a fresh streak day on its own: if undoing
+    /// brings today's value back down to (or below) whatever it stood at before today, today's
+    /// check-in is retracted too, so an add-then-undo within the same day leaves no streak credit
+    /// behind.
     @discardableResult
     static func undoQuickAction(
         on goal: Goal,
+        delta: Double? = nil,
         in context: ModelContext,
         now: Date = .now,
         calendar: Calendar = .current
     ) -> Bool {
         guard goal.trackingMode == .value else { return false }
 
-        let delta = goal.isLowerBetter ? goal.widgetQuickAmount : -goal.widgetQuickAmount
+        let delta = delta ?? (goal.isLowerBetter ? goal.widgetQuickAmount : -goal.widgetQuickAmount)
         let newValue = max(goal.currentValue + delta, 0)
         guard newValue != goal.currentValue else { return false }
 

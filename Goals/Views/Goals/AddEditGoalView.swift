@@ -7,8 +7,12 @@ import SwiftUI
 import SwiftData
 
 struct AddEditGoalView: View {
+    /// Free goals get one reminder time; Pro unlocks up to this many.
+    private static let maxProReminderTimes = 4
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(PurchaseManager.self) private var purchaseManager
 
     private let goal: Goal?
     private let userId: UUID
@@ -40,7 +44,8 @@ struct AddEditGoalView: View {
     @State private var recurrenceCount: Int
     @State private var isReminderOn: Bool
     @State private var reminderFrequency: ReminderFrequency
-    @State private var reminderTime: Date
+    /// One entry per time of day; only the hour and minute are read back on save.
+    @State private var reminderTimes: [Date]
     @State private var reminderWeekdays: Set<Int>
     @State private var widgetAction: WidgetAction
     @State private var widgetAmountText: String
@@ -90,12 +95,10 @@ struct AddEditGoalView: View {
         _recurrenceCount = State(initialValue: goal?.recurrenceCount ?? template?.recurrenceCount ?? 3)
         _isReminderOn = State(initialValue: goal?.isReminderOn ?? false)
         _reminderFrequency = State(initialValue: goal?.reminderFrequency ?? .daily)
-        _reminderTime = State(initialValue: Calendar.current.date(
-            bySettingHour: goal?.reminderHour ?? 9,
-            minute: goal?.reminderMinute ?? 0,
-            second: 0,
-            of: .now
-        ) ?? .now)
+        let minutes = goal?.reminderTimes ?? [9 * 60]
+        _reminderTimes = State(initialValue: minutes.map { total in
+            Calendar.current.date(bySettingHour: total / 60, minute: total % 60, second: 0, of: .now) ?? .now
+        })
         _reminderWeekdays = State(initialValue: Set(goal?.reminderWeekdays ?? []))
         _widgetAction = State(initialValue: goal?.widgetAction ?? .quickAction)
         _widgetAmountText = State(initialValue: String(format: "%g", goal?.widgetQuickAmount
@@ -409,16 +412,52 @@ struct AddEditGoalView: View {
                             selection: $reminderFrequency.animation(),
                             title: { $0.localizedName }
                         )
-                        RowDivider()
-                        HStack {
-                            Text("reminder.time")
-                                .font(Theme.Typo.row)
-                                .foregroundStyle(Theme.textMuted)
-                            Spacer(minLength: 10)
-                            DatePicker("reminder.time", selection: $reminderTime, displayedComponents: .hourAndMinute)
-                                .labelsHidden()
+
+                        ForEach(Array(reminderTimes.enumerated()), id: \.offset) { index, _ in
+                            RowDivider()
+                            HStack(spacing: 10) {
+                                if index == 0 {
+                                    Text(reminderTimes.count > 1 ? "reminder.times" : "reminder.time")
+                                        .font(Theme.Typo.row)
+                                        .foregroundStyle(Theme.textMuted)
+                                }
+                                Spacer(minLength: 10)
+                                DatePicker("", selection: $reminderTimes[index], displayedComponents: .hourAndMinute)
+                                    .labelsHidden()
+                                if reminderTimes.count > 1 {
+                                    Button {
+                                        withAnimation { _ = reminderTimes.remove(at: index) }
+                                    } label: {
+                                        Image(systemName: "minus.circle")
+                                            .font(.system(size: 17))
+                                            .foregroundStyle(Theme.textGhost)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel(Text("a11y.removeTime"))
+                                }
+                            }
+                            .padding(.vertical, 9)
                         }
-                        .padding(.vertical, 9)
+
+                        if purchaseManager.isProUnlocked, reminderTimes.count < Self.maxProReminderTimes {
+                            RowDivider()
+                            Button {
+                                addReminderTime()
+                            } label: {
+                                HStack(spacing: 11) {
+                                    Image(systemName: "plus.circle")
+                                        .font(.system(size: 18))
+                                        .foregroundStyle(Theme.accent)
+                                        .accessibilityHidden(true)
+                                    Text("reminder.addTime")
+                                        .font(Theme.Typo.row)
+                                        .foregroundStyle(Theme.accentText)
+                                    Spacer(minLength: 0)
+                                }
+                                .padding(.vertical, 11)
+                            }
+                            .buttonStyle(.plain)
+                        }
 
                         if reminderFrequency == .weekly {
                             RowDivider()
@@ -426,6 +465,10 @@ struct AddEditGoalView: View {
                                 .padding(.vertical, 14)
                         }
                     }
+                }
+
+                if isReminderOn, !purchaseManager.isProUnlocked {
+                    ProLockedCard(title: "reminder.multiple.title", message: "reminder.multiple.locked")
                 }
 
                 if isReminderOn, reminderFrequency == .weekly, reminderWeekdays.isEmpty {
@@ -436,6 +479,13 @@ struct AddEditGoalView: View {
                 }
             }
         }
+    }
+
+    /// Appends a new reminder time an hour after the last one, clamped inside the day.
+    private func addReminderTime() {
+        let base = reminderTimes.last ?? .now
+        let next = Calendar.current.date(byAdding: .hour, value: 1, to: base) ?? base
+        withAnimation { reminderTimes.append(next) }
     }
 
     private var widgetSection: some View {
@@ -592,11 +642,13 @@ struct AddEditGoalView: View {
             ])
         }
 
-        let time = Calendar.current.dateComponents([.hour, .minute], from: reminderTime)
         saved.isReminderOn = isReminderOn
         saved.reminderFrequency = reminderFrequency
-        saved.reminderHour = time.hour ?? 9
-        saved.reminderMinute = time.minute ?? 0
+        let minutes = reminderTimes.map { date -> Int in
+            let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+            return (c.hour ?? 9) * 60 + (c.minute ?? 0)
+        }
+        saved.reminderTimes = minutes.isEmpty ? [9 * 60] : minutes
         saved.reminderWeekdays = Array(reminderWeekdays)
         saved.widgetAction = widgetAction
         if let amount = Double(widgetAmountText.replacingOccurrences(of: ",", with: ".")), amount > 0 {
@@ -650,5 +702,6 @@ private struct MilestoneDraft: Identifiable, Hashable {
 
 #Preview {
     AddEditGoalView(goal: nil, userId: UUID())
+        .environment(PurchaseManager())
         .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self], inMemory: true)
 }

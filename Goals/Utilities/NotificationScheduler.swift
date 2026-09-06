@@ -70,29 +70,36 @@ enum NotificationScheduler {
         content.sound = .default
         content.userInfo = ["goalID": goal.id.uuidString]
 
+        // One request per time of day, and — when weekly — per (weekday, time) pair. The index in
+        // the identifier keeps them distinct; `syncAll` clears everything under `goalPrefix` first,
+        // so stale ids from an earlier layout don't linger.
+        let times = goal.reminderTimes
+
         switch goal.reminderFrequency {
         case .daily:
-            var components = DateComponents()
-            components.hour = goal.reminderHour
-            components.minute = goal.reminderMinute
-            return [
-                UNNotificationRequest(
-                    identifier: "\(goalPrefix)\(goal.id.uuidString)",
-                    content: content,
-                    trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
-                )
-            ]
-        case .weekly:
-            return goal.reminderWeekdays.map { weekday in
+            return times.enumerated().map { index, minutes in
                 var components = DateComponents()
-                components.weekday = weekday
-                components.hour = goal.reminderHour
-                components.minute = goal.reminderMinute
+                components.hour = minutes / 60
+                components.minute = minutes % 60
                 return UNNotificationRequest(
-                    identifier: "\(goalPrefix)\(goal.id.uuidString).\(weekday)",
+                    identifier: "\(goalPrefix)\(goal.id.uuidString).\(index)",
                     content: content,
                     trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
                 )
+            }
+        case .weekly:
+            return goal.reminderWeekdays.flatMap { weekday in
+                times.enumerated().map { index, minutes in
+                    var components = DateComponents()
+                    components.weekday = weekday
+                    components.hour = minutes / 60
+                    components.minute = minutes % 60
+                    return UNNotificationRequest(
+                        identifier: "\(goalPrefix)\(goal.id.uuidString).\(weekday).\(index)",
+                        content: content,
+                        trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+                    )
+                }
             }
         }
     }

@@ -156,6 +156,77 @@ struct WidgetMessageView: View {
     }
 }
 
+/// The widget's container fill, chosen by family: the app's own ground on the home screen, the
+/// system's translucent disc behind a Lock Screen circular, and nothing at all behind the
+/// rectangular/inline ones, which sit straight on the wallpaper.
+struct WidgetContainerBackground: View {
+    @Environment(\.widgetFamily) private var family
+
+    var body: some View {
+        switch family {
+        case .accessoryCircular:
+            AccessoryWidgetBackground()
+        case .accessoryRectangular, .accessoryInline:
+            Color.clear
+        default:
+            Theme.ground
+        }
+    }
+}
+
+/// The one-tap check-in button as it appears on a Lock Screen widget — a small outlined capsule
+/// that runs `QuickActionIntent` in the background without unlocking the phone, exactly like the
+/// home-screen widgets' buttons. `icon` is spelled out only where there's width for it (the
+/// single-goal widget); the multi-goal rows pass just the label.
+struct AccessoryQuickButton: View {
+    let goalID: UUID
+    let goalTitle: String
+    let label: String
+    var icon: String?
+
+    var body: some View {
+        Button(intent: QuickActionIntent(goalID: goalID)) {
+            HStack(spacing: 3) {
+                if let icon {
+                    Image(systemName: icon)
+                }
+                Text(label)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+            .font(.system(size: 11, weight: .semibold))
+            .padding(.horizontal, 8)
+            .frame(minWidth: 26, minHeight: 22)
+            .background {
+                Capsule().strokeBorder(.primary.opacity(0.4), lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text("a11y.widget.quickAction \(goalTitle)"))
+    }
+}
+
+/// A small progress ring with the goal's emoji in it — the unit the multi-goal Lock Screen
+/// widget is built from, a few of these in a row. The exact same `Gauge` the single-goal
+/// circular widget uses, just dropped into a smaller box, so the two read as one family.
+struct MiniGoalRing: View {
+    let progress: Double
+    let emoji: String?
+
+    var body: some View {
+        Gauge(value: progress) {
+            EmptyView()
+        } currentValueLabel: {
+            if let emoji, !emoji.isEmpty {
+                Text(emoji)
+            } else {
+                Image(systemName: "target")
+            }
+        }
+        .gaugeStyle(.accessoryCircularCapacity)
+    }
+}
+
 /// Emoji, title and a trailing detail — the top line of both single-goal widgets, tapping through
 /// to the goal itself.
 struct WidgetGoalHeader: View {

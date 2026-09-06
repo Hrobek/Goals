@@ -167,19 +167,108 @@ struct SingleGoalProvider: AppIntentTimelineProvider {
 
 // MARK: - View
 
-/// One goal, chosen in "Edit Widget", drawn large: a header tallying today's overall progress,
-/// then the goal's own title, progress bar, detail and one-tap action.
+/// One goal, chosen in "Edit Widget". On the home screen: a header tallying today's overall
+/// progress, then the goal's title, progress bar, detail and one-tap action. On the Lock Screen
+/// (the accessory families): the same goal, pared down to a ring, a bar or a line of text that
+/// taps through to the goal.
 struct SingleGoalWidgetEntryView: View {
+    @Environment(\.widgetFamily) private var family
     var entry: SingleGoalEntry
 
+    private var isAccessory: Bool {
+        switch family {
+        case .accessoryCircular, .accessoryRectangular, .accessoryInline: true
+        default: false
+        }
+    }
+
     var body: some View {
-        if !entry.isSignedIn {
+        if isAccessory {
+            accessoryBody
+        } else if !entry.isSignedIn {
             WidgetMessageView(message: "widget.notSignedIn", systemImage: "person.crop.circle.badge.questionmark")
         } else if let goal = entry.goal {
             content(for: goal)
                 .widgetURL(GoalLink.url(for: goal.id))
         } else {
             WidgetMessageView(message: "widget.empty.noGoals")
+        }
+    }
+
+    // MARK: - Lock Screen
+
+    @ViewBuilder
+    private var accessoryBody: some View {
+        if let goal = entry.goal {
+            accessoryContent(for: goal)
+                .widgetURL(GoalLink.url(for: goal.id))
+        } else {
+            accessoryFallback
+        }
+    }
+
+    @ViewBuilder
+    private func accessoryContent(for goal: GoalSnapshot) -> some View {
+        switch family {
+        case .accessoryCircular:
+            // The emoji sits in the ring rather than a bare percentage — the ring already carries
+            // the number, and the emoji is what says *which* goal at a glance. Same component the
+            // multi-goal widget stacks in a row, so the two match.
+            MiniGoalRing(progress: goal.progress, emoji: goal.emoji)
+                .accessibilityLabel(Text(goal.title))
+                .accessibilityValue(Text(goal.detail))
+
+        case .accessoryRectangular:
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 4) {
+                        if let emoji = goal.emoji, !emoji.isEmpty {
+                            Text(emoji)
+                        }
+                        Text(goal.title)
+                            .font(.headline)
+                            .lineLimit(1)
+                    }
+                    Gauge(value: goal.progress) { EmptyView() }
+                        .gaugeStyle(.accessoryLinearCapacity)
+                    Text(goal.detail)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                // The button, when present, stays its own VoiceOver element — so the glance text
+                // is combined but the action isn't swallowed with it.
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(Text(goal.title))
+                .accessibilityValue(Text(goal.detail))
+
+                if let action = entry.action {
+                    AccessoryQuickButton(goalID: goal.id, goalTitle: goal.title, label: action.text, icon: action.icon)
+                } else if goal.isDoneToday {
+                    Image(systemName: "checkmark.circle.fill")
+                        .accessibilityLabel(Text("a11y.today.done"))
+                }
+            }
+
+        case .accessoryInline:
+            Label(goal.detail, systemImage: "target")
+
+        default:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private var accessoryFallback: some View {
+        switch family {
+        case .accessoryCircular:
+            Image(systemName: "target")
+                .font(.title3)
+        case .accessoryInline:
+            Label("widget.single.displayName", systemImage: "target")
+        default:
+            Text("widget.empty.noGoals")
+                .font(.caption)
         }
     }
 
@@ -263,11 +352,11 @@ struct SingleGoalWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: kind, intent: SelectGoalIntent.self, provider: SingleGoalProvider()) { entry in
             SingleGoalWidgetEntryView(entry: entry)
-                .containerBackground(Theme.ground, for: .widget)
+                .containerBackground(for: .widget) { WidgetContainerBackground() }
                 .environment(\.locale, AppLanguage.current.locale)
         }
         .configurationDisplayName("widget.single.displayName")
         .description("widget.single.description")
-        .supportedFamilies([.systemSmall])
+        .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }

@@ -5,7 +5,6 @@
 
 import SwiftUI
 import SwiftData
-import StoreKit
 import WidgetKit
 
 struct RootView: View {
@@ -13,7 +12,6 @@ struct RootView: View {
     @Environment(PurchaseManager.self) private var purchaseManager
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.requestReview) private var requestReview
     @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.default.rawValue
     @AppStorage(AppLanguage.storageKey) private var languageRaw = AppLanguage.deviceDefault.rawValue
 
@@ -96,10 +94,10 @@ struct RootView: View {
                 if let userId = session.currentUser?.id {
                     Task { await NotificationScheduler.syncAll(context: modelContext, userId: userId) }
                 }
-                // One after the other: whichever of the two goes first, the second one sees it on
-                // screen and stands down rather than stacking a second sheet on top.
+                // The rating prompt itself no longer lives here — it fires from the moment a goal
+                // is finished (see `GoalDetailView.requestReviewIfEarned`), right after the
+                // celebration overlay, rather than on any old app launch.
                 Task {
-                    await requestReviewIfEarned()
                     await showProPromoIfEarned()
                 }
             case .background:
@@ -149,24 +147,6 @@ struct RootView: View {
         ProPromoPrompt.recordShown()
         paywallSource = .promo
         isShowingPaywall = true
-    }
-
-    /// The rating prompt only makes sense on top of the app itself, so it waits out the welcome
-    /// sheet and the paywall — and gives the launch a couple of seconds so it doesn't land while
-    /// the first screen is still drawing.
-    private func requestReviewIfEarned() async {
-        guard session.isAuthenticated, !isShowingFirstRunWelcome, !isShowingPaywall else { return }
-
-        guard let userId = session.currentUser?.id else { return }
-        let checkInDescriptor = FetchDescriptor<CheckIn>(predicate: #Predicate { $0.ownerId == userId })
-        let checkInCount = (try? modelContext.fetchCount(checkInDescriptor)) ?? 0
-        guard AppReviewPrompt.shouldRequest(checkInCount: checkInCount) else { return }
-
-        try? await Task.sleep(for: .seconds(2))
-        guard scenePhase == .active, !isShowingFirstRunWelcome, !isShowingPaywall else { return }
-
-        AppReviewPrompt.recordRequest()
-        requestReview()
     }
 }
 

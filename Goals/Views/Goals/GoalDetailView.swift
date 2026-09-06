@@ -5,12 +5,14 @@
 
 import SwiftUI
 import SwiftData
+import StoreKit
 
 struct GoalDetailView: View {
     @Bindable var goal: Goal
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.requestReview) private var requestReview
     @Environment(PurchaseManager.self) private var purchaseManager
 
     @State private var isShowingEdit = false
@@ -24,6 +26,58 @@ struct GoalDetailView: View {
     /// Bumped on every logged amount. The goal's own value can't drive the haptic — editing the
     /// goal changes it too, and that shouldn't feel like progress.
     @State private var logTick = 0
+    /// The one-off overlay shown when a check-in finishes the goal or lands on a streak milestone.
+    @State private var celebration: GoalCelebration?
+    /// Completion + streak state captured when the check-in sheet opens, so its callback can tell
+    /// whether the log that just happened crossed a line.
+    @State private var checkInSheetSnapshot: (wasCompleted: Bool, streak: Int)?
+    /// The amount the most recently tapped quick-add chip actually applied, so "undo" reverses
+    /// *that* — not always the widget's own configured step, which is a different number and
+    /// would otherwise turn one stray tap on a big chip into a hunt of tiny corrections.
+    /// Cleared once used, and by anything that logs progress a different way.
+    @State private var lastLoggedDelta: Double?
+    /// A long press on "undo" opens this instead of firing the smart default — for correcting by
+    /// an amount that's neither the last chip nor the widget's own step.
+    @State private var isShowingSubtractPrompt = false
+    @State private var subtractAmountText = ""
+
+    /// Runs a check-in mutation and raises the celebration overlay if it finished the goal or hit
+    /// a streak milestone. The snapshot has to be taken before `action` runs.
+    private func loggingCheckIn(_ action: () -> Void) {
+        let wasCompleted = goal.isCompleted
+        let previousStreak = StreakCalculator.currentStreak(for: goal)
+        action()
+        logTick += 1
+        if let event = GoalCelebration.afterCheckIn(goal: goal, wasCompleted: wasCompleted, previousStreak: previousStreak) {
+            celebration = event
+        }
+    }
+
+    /// Clears the overlay, then — only for an actual finish, not a streak milestone — asks
+    /// `AppReviewPrompt` whether this is one of the rare turns it gets to bring up the rating
+    /// prompt. Right after watching the goal you've been working on get checked off is the best
+    /// mood the app is ever going to catch someone in; a prompt at random app launch never was.
+    private func dismissCelebration() {
+        let isCompletion = celebration?.isCompletion ?? false
+        celebration = nil
+        if isCompletion {
+            requestReviewIfEarned()
+        }
+    }
+
+    private func requestReviewIfEarned() {
+        Task {
+            let ownerId = goal.ownerId
+            let descriptor = FetchDescriptor<CheckIn>(predicate: #Predicate<CheckIn> { $0.ownerId == ownerId })
+            let checkInCount = (try? modelContext.fetchCount(descriptor)) ?? 0
+            guard AppReviewPrompt.shouldRequest(checkInCount: checkInCount) else { return }
+
+            // A beat after the celebration has actually cleared the screen, not on top of it.
+            try? await Task.sleep(for: .seconds(0.4))
+            AppReviewPrompt.recordRequest()
+            requestReview()
+        }
+    }
 
     private var sortedMilestones: [Milestone] {
         goal.sortedMilestones
@@ -72,18 +126,32 @@ struct GoalDetailView: View {
         .hidesTabBar()
         .toolbar(.hidden, for: .navigationBar)
         .safeAreaInset(edge: .top, spacing: 0) { navBar }
-        // Two different moments, two different feelings: logging something is a light tap, finally
-        // reaching the target is the success pattern. Completion is checked as a transition so it
-        // fires when the goal is finished, not every time a completed goal is opened.
+        // Logging something is a light tap; finishing the goal or hitting a streak milestone gets
+        // the celebration overlay (which brings its own success haptic). Both completion and the
+        // streak count are watched as transitions, so they fire on the check-in that crosses the
+        // line — not every time a finished goal is opened.
         .sensoryFeedback(.impact(weight: .light), trigger: logTick)
-        .sensoryFeedback(trigger: goal.isCompleted) { wasCompleted, isCompleted in
-            !wasCompleted && isCompleted ? .success : nil
+        .overlay {
+            if let celebration {
+                GoalCelebrationView(celebration: celebration) { dismissCelebration() }
+                    .transition(.opacity)
+            }
         }
+        .animation(.easeInOut(duration: 0.25), value: celebration)
         .sheet(isPresented: $isShowingEdit) {
             AddEditGoalView(goal: goal, userId: goal.ownerId)
         }
-        .sheet(isPresented: $isShowingCheckIn) {
-            CheckInSheetView(goal: goal) { logTick += 1 }
+        .sheet(isPresented: $isShowingCheckIn, onDismiss: { checkInSheetSnapshot = nil }) {
+            CheckInSheetView(goal: goal) {
+                logTick += 1
+                // An explicit typed-in value replaces whatever a chip last added — "undo" should
+                // go back to correcting the widget's own step, not this now-stale amount.
+                lastLoggedDelta = nil
+                if let snapshot = checkInSheetSnapshot,
+                   let event = GoalCelebration.afterCheckIn(goal: goal, wasCompleted: snapshot.wasCompleted, previousStreak: snapshot.streak) {
+                    celebration = event
+                }
+            }
         }
         .confirmationDialog("goalDetail.deleteConfirm.title", isPresented: $isShowingDeleteConfirmation, titleVisibility: .visible) {
             Button("action.delete", role: .destructive) {
@@ -239,6 +307,7 @@ struct GoalDetailView: View {
 
     private var logButton: some View {
         Button {
+            checkInSheetSnapshot = (goal.isCompleted, StreakCalculator.currentStreak(for: goal))
             isShowingCheckIn = true
         } label: {
             Label(logButtonTitle, systemImage: goal.trackingMode == .value ? "plus.circle" : "checkmark.circle")
@@ -253,7 +322,17 @@ struct GoalDetailView: View {
     private var completedToggle: some View {
         CardGroup {
             SwitchRow(label: "goalDetail.markCompleted", isOn: $goal.isCompleted)
-                .onChange(of: goal.isCompleted) { syncReminders() }
+                .onChange(of: goal.isCompleted) { wasCompleted, isCompleted in
+                    syncReminders()
+                    if !wasCompleted, isCompleted {
+                        celebration = .completed(
+                            days: Calendar.current.dateComponents(
+                                [.day], from: Calendar.current.startOfDay(for: goal.createdAt), to: .now
+                            ).day ?? 0,
+                            streak: StreakCalculator.currentStreak(for: goal)
+                        )
+                    }
+                }
         }
     }
 
@@ -349,7 +428,7 @@ struct GoalDetailView: View {
                 if goal.isReminderOn {
                     ValueRow("reminder.frequency", value: goal.reminderFrequency.localizedName)
                     RowDivider()
-                    ValueRow("reminder.time", value: reminderTimeText)
+                    ValueRow(goal.reminderTimes.count > 1 ? "reminder.times" : "reminder.time", value: reminderTimeText)
                     if goal.reminderFrequency == .weekly {
                         RowDivider()
                         ValueRow("reminder.weekdays", value: reminderWeekdaysText)
@@ -362,9 +441,12 @@ struct GoalDetailView: View {
     }
 
     private var reminderTimeText: String {
-        let components = DateComponents(hour: goal.reminderHour, minute: goal.reminderMinute)
-        let time = Calendar.current.date(from: components) ?? .now
-        return time.formatted(date: .omitted, time: .shortened)
+        goal.reminderTimes
+            .map { minutes in
+                let date = Calendar.current.date(from: DateComponents(hour: minutes / 60, minute: minutes % 60)) ?? .now
+                return date.formatted(date: .omitted, time: .shortened)
+            }
+            .joined(separator: ", ")
     }
 
     private var reminderWeekdaysText: String {
@@ -377,7 +459,7 @@ struct GoalDetailView: View {
         LabeledSection("goalDetail.milestones") {
             CardGroup {
                 ForEach(sortedMilestones) { milestone in
-                    MilestoneRow(milestone: milestone, goal: goal, modelContext: modelContext)
+                    MilestoneRow(milestone: milestone, goal: goal, modelContext: modelContext) { celebration = $0 }
                         // The card isn't a List any more, so the swipe that used to remove a
                         // milestone becomes a long press instead.
                         .contextMenu {
@@ -459,10 +541,13 @@ struct GoalDetailView: View {
         }
     }
 
-    /// Reverses whatever a stray tap on the Today row or widget button just logged — those two
-    /// surfaces only ever apply `widgetQuickAmount` in one direction, so this is its exact inverse.
+    /// What the next tap of "undo" reverses: whichever quick-add chip was tapped last in this
+    /// session, or — before any chip has been, or after a typed-in check-in — the same step the
+    /// Today row and widget button apply. Without this, tapping a big chip by mistake meant
+    /// undoing it one small `widgetQuickAmount` at a time.
     private var undoQuickActionDelta: Double {
-        goal.isLowerBetter ? goal.widgetQuickAmount : -goal.widgetQuickAmount
+        if let lastLoggedDelta { return -lastLoggedDelta }
+        return goal.isLowerBetter ? goal.widgetQuickAmount : -goal.widgetQuickAmount
     }
 
     /// False once the floor clamp at 0 would swallow the tap — e.g. at 0/50 there's nothing left
@@ -471,27 +556,63 @@ struct GoalDetailView: View {
         max(goal.currentValue + undoQuickActionDelta, 0) != goal.currentValue
     }
 
+    /// Not a `Button` — a `Button`'s own tap gesture wins a race against `.onLongPressGesture`
+    /// bolted onto it, so a hold fired the short-tap action too. Plain tap/long-press gestures on
+    /// the image itself keep the two properly distinct: a tap fires the smart default straight
+    /// away (the fast path for "oops, wrong chip"), a long press opens a prompt to type the
+    /// amount instead, for anything that default doesn't cover.
     private var undoQuickActionButton: some View {
-        Button {
-            // Doesn't go through `logDelta`/`record` — a correction tap shouldn't blindly touch
-            // today's check-in the way a real log does. See `ProgressLogger.undoQuickAction`.
-            if ProgressLogger.undoQuickAction(on: goal, in: modelContext) {
-                logTick += 1
+        Image(systemName: "minus")
+            .font(.system(size: 14, weight: .semibold))
+            .frame(width: 40, height: 40)
+            .background(Theme.control, in: .rect(cornerRadius: Theme.Radius.control))
+            .overlay {
+                RoundedRectangle(cornerRadius: Theme.Radius.control)
+                    .strokeBorder(Theme.textGhost, lineWidth: 1)
             }
-        } label: {
-            Image(systemName: "minus")
-                .font(.system(size: 14, weight: .semibold))
-                .frame(width: 40, height: 40)
-                .background(Theme.control, in: .rect(cornerRadius: Theme.Radius.control))
-                .overlay {
-                    RoundedRectangle(cornerRadius: Theme.Radius.control)
-                        .strokeBorder(Theme.textGhost, lineWidth: 1)
-                }
-                .foregroundStyle(canUndoQuickAction ? Theme.textMuted : Theme.textGhost)
+            .foregroundStyle(canUndoQuickAction ? Theme.textMuted : Theme.textGhost)
+            .contentShape(.rect)
+            .onTapGesture {
+                guard canUndoQuickAction else { return }
+                performUndo(delta: undoQuickActionDelta)
+            }
+            .onLongPressGesture(minimumDuration: 0.5) {
+                guard canUndoQuickAction else { return }
+                openSubtractPrompt()
+            }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel(quickAddLabel(for: undoQuickActionDelta))
+            .accessibilityAction(named: Text("goalDetail.subtractCustom.action")) { openSubtractPrompt() }
+            .alert("goalDetail.subtractAmount.title", isPresented: $isShowingSubtractPrompt) {
+                TextField("goalDetail.subtractAmount.placeholder", text: $subtractAmountText)
+                    .keyboardType(.decimalPad)
+                Button("action.cancel", role: .cancel) {}
+                Button("goalDetail.subtractAmount.confirm") { confirmSubtractPrompt() }
+            } message: {
+                Text(goal.unitDisplayText)
+            }
+    }
+
+    /// Doesn't go through `logDelta`/`record` — a correction shouldn't blindly touch today's
+    /// check-in the way a real log does. See `ProgressLogger.undoQuickAction`.
+    private func performUndo(delta: Double) {
+        if ProgressLogger.undoQuickAction(on: goal, delta: delta, in: modelContext) {
+            logTick += 1
+            // One correction consumed; the next tap falls back to the widget's own step.
+            lastLoggedDelta = nil
         }
-        .buttonStyle(.plain)
-        .disabled(!canUndoQuickAction)
-        .accessibilityLabel(quickAddLabel(for: undoQuickActionDelta))
+    }
+
+    /// Pre-fills with the same amount the quick tap would have used, so confirming without
+    /// changing anything behaves exactly like the short-press default.
+    private func openSubtractPrompt() {
+        subtractAmountText = formattedValue(abs(undoQuickActionDelta))
+        isShowingSubtractPrompt = true
+    }
+
+    private func confirmSubtractPrompt() {
+        guard let magnitude = Double(subtractAmountText.replacingOccurrences(of: ",", with: ".")), magnitude > 0 else { return }
+        performUndo(delta: goal.isLowerBetter ? magnitude : -magnitude)
     }
 
     private func quickAddLabel(for delta: Double) -> Text {
@@ -505,8 +626,13 @@ struct GoalDetailView: View {
     }
 
     private func logDelta(_ delta: Double) {
-        ProgressLogger.record(value: max(goal.currentValue + delta, 0), for: goal, in: modelContext)
-        logTick += 1
+        let previousValue = goal.currentValue
+        loggingCheckIn {
+            ProgressLogger.record(value: max(goal.currentValue + delta, 0), for: goal, in: modelContext)
+        }
+        // The floor clamp at 0 can make the applied delta smaller than the chip's own number —
+        // recording what actually happened, not what was asked for, keeps undo exact.
+        lastLoggedDelta = goal.currentValue - previousValue
     }
 
     private func formattedValue(_ value: Double) -> String {
@@ -533,10 +659,18 @@ private struct MilestoneRow: View {
     @Bindable var milestone: Milestone
     let goal: Goal
     let modelContext: ModelContext
+    /// Called with a celebration to show when ticking this milestone finishes the goal or lands
+    /// on a streak milestone.
+    var celebrate: (GoalCelebration) -> Void = { _ in }
 
     var body: some View {
         Button {
+            let wasCompleted = goal.isCompleted
+            let previousStreak = StreakCalculator.currentStreak(for: goal)
             ProgressLogger.toggleMilestone(milestone, on: goal, in: modelContext)
+            if let event = GoalCelebration.afterCheckIn(goal: goal, wasCompleted: wasCompleted, previousStreak: previousStreak) {
+                celebrate(event)
+            }
         } label: {
             HStack(spacing: 11) {
                 Image(systemName: milestone.isCompleted ? "checkmark.circle.fill" : "circle")
