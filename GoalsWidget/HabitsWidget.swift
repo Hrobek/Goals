@@ -169,9 +169,9 @@ struct HabitsWidgetEntryView: View {
     /// bottom, left, right, and between — reads the same.
     private var gap: CGFloat { family == .systemSmall ? 12 : 14 }
 
-    /// Explicit ring diameter per family — computed from the known widget widths rather than a
-    /// `GeometryReader`, so the button label always has a real, non-zero, tappable frame.
-    private var ringDiameter: CGFloat { family == .systemSmall ? 58 : 48 }
+    /// Floor for the ring size, so a full grid on the small widget still gives a comfortable
+    /// tap target even on the narrowest device.
+    private var minRingDiameter: CGFloat { 44 }
 
     @ViewBuilder
     private var homeBody: some View {
@@ -181,25 +181,34 @@ struct HabitsWidgetEntryView: View {
             WidgetMessageView(message: "habits.empty.title", systemImage: "repeat")
                 .widgetURL(GoalLink.habits)
         } else {
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: gap), count: columnCount),
-                spacing: gap
-            ) {
-                ForEach(entry.habits) { habit in
-                    ring(for: habit)
+            // Size the rings to the actual space: fill each grid cell in whichever dimension is
+            // tighter, so they're as large as 5-per-row allows and the leftover height is split
+            // evenly top and bottom. A partial last row still fills from the leading edge.
+            GeometryReader { geo in
+                let columns = CGFloat(columnCount)
+                let rowCount = max(1, Int((Double(entry.habits.count) / Double(columnCount)).rounded(.up)))
+                let cellWidth = (geo.size.width - gap * (columns - 1)) / columns
+                let cellHeight = (geo.size.height - gap * CGFloat(rowCount - 1)) / CGFloat(rowCount)
+                let diameter = max(minRingDiameter, min(cellWidth, cellHeight))
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.fixed(diameter), spacing: gap), count: columnCount),
+                    spacing: gap
+                ) {
+                    ForEach(entry.habits) { habit in
+                        ring(for: habit, diameter: diameter)
+                    }
                 }
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(gap)
         }
     }
 
-    private func ring(for habit: HabitSnapshot) -> some View {
+    private func ring(for habit: HabitSnapshot, diameter: CGFloat) -> some View {
         Button(intent: HabitCheckInIntent(habitID: habit.id)) {
-            RingShape(habit: habit, diameter: ringDiameter)
+            RingShape(habit: habit, diameter: diameter)
         }
         .buttonStyle(.plain)
-        .frame(maxWidth: .infinity)
         .accessibilityLabel(Text(habit.title))
         .accessibilityValue(Text(habit.isDone ? "a11y.today.done" : "a11y.today.notDone"))
     }
