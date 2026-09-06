@@ -27,7 +27,8 @@ struct QuickActionIntent: AppIntent {
         self.goalID = goalID.uuidString
     }
 
-    @MainActor
+    // Deliberately NOT @MainActor — see the note in HabitCheckInIntent: a main-actor hop here can
+    // leave the intent dispatched but never executed in the widget-extension process.
     func perform() async throws -> some IntentResult {
         WidgetDiagnostics.log("goal tap: enter id=\(goalID.prefix(8))")
 

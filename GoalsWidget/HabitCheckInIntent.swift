@@ -28,7 +28,10 @@ struct HabitCheckInIntent: AppIntent {
         self.habitID = habitID.uuidString
     }
 
-    @MainActor
+    // Deliberately NOT @MainActor: when AppIntents runs a widget button's intent, hopping to the
+    // main actor here could wait on a runloop the short-lived extension process isn't pumping, so
+    // `perform()` would be dispatched ("Starting to run action") yet never actually execute. A
+    // fresh ModelContext works fine off the main actor for a one-shot write.
     func perform() async throws -> some IntentResult {
         WidgetDiagnostics.log("habit tap: enter id=\(habitID.prefix(8))")
 
