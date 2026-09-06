@@ -9,11 +9,17 @@
 	     the app ever encrypts data itself. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
-	<!-- CloudKit (SwiftData sync) delivers change notifications as silent pushes; without this
-	     the store only pulls remote changes on launch. -->
+	<!-- CloudKit (SwiftData sync): 'remote-notification' delivers change pushes, 'processing'
+	     lets NSPersistentCloudKitContainer run its scheduled export/import in the background.
+	     Without the permitted-identifier below it logs "BGSystemTaskSchedulerErrorDomain Code=3". -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.apple.coredata.cloudkit.activity</string>
 	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
