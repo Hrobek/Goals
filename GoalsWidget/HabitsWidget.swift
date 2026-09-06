@@ -60,7 +60,6 @@ struct HabitsProvider: TimelineProvider {
 
     @MainActor
     private static func entry(for family: WidgetFamily) -> HabitsEntry {
-        WidgetDiagnostics.log("render: habits timeline (\(family))")
         guard WidgetGoals.isSignedIn else {
             return HabitsEntry(date: .now, habits: [], doneToday: 0, totalToday: 0, isSignedIn: false)
         }

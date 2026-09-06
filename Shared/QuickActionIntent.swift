@@ -1,6 +1,9 @@
 //
 //  QuickActionIntent.swift
-//  GoalsWidget
+//  Goals
+//
+//  Shared by the app and the widget extension: an interactive widget button only dispatches to
+//  a `perform()` that actually runs when the App Intent is in code both targets compile.
 //
 
 import AppIntents
@@ -8,16 +11,16 @@ import SwiftData
 import WidgetKit
 import os
 
-private let log = Logger(subsystem: "com.hrobek.goals.GoalsWidget", category: "QuickAction")
+private let log = Logger(subsystem: "com.hrobek.goals", category: "QuickAction")
 
-/// The widget's one-tap button. Runs inside the widget process, writes straight into the shared
-/// store through the same code path the app uses, then asks WidgetKit to redraw.
+/// The Goals widget's one-tap button. Runs in the widget-extension process, writes straight into
+/// the shared store through the same code path the app uses, then asks WidgetKit to redraw.
 struct QuickActionIntent: AppIntent {
     static var title: LocalizedStringResource { "Log progress" }
     static var description: IntentDescription { "Adds the goal's quick amount, or ticks off its next subtask." }
 
-    // Needs a default: a non-optional @Parameter with none is not reliably archived into a widget
-    // `Button(intent:)`, so `perform()` is never called on tap.
+    // A non-optional @Parameter needs an explicit `default:` — without one it isn't reliably
+    // archived into a widget `Button(intent:)`, and the tap never reaches `perform()`.
     @Parameter(title: "Goal", default: "")
     var goalID: String
 
@@ -27,34 +30,21 @@ struct QuickActionIntent: AppIntent {
         self.goalID = goalID.uuidString
     }
 
-    // Deliberately NOT @MainActor — see the note in HabitCheckInIntent: a main-actor hop here can
-    // leave the intent dispatched but never executed in the widget-extension process.
     func perform() async throws -> some IntentResult {
-        WidgetDiagnostics.log("goal tap: enter id=\(goalID.prefix(8))")
-
-        guard let id = UUID(uuidString: goalID) else {
-            WidgetDiagnostics.log("goal tap: bad id \(goalID)")
-            return .result()
-        }
+        guard let id = UUID(uuidString: goalID) else { return .result() }
 
         let context = ModelContext(SharedStore.container)
-        WidgetDiagnostics.log("goal tap: context ready")
-
         let all = (try? context.fetch(FetchDescriptor<Goal>())) ?? []
         guard let goal = all.first(where: { $0.id == id }) else {
             log.error("goal \(id, privacy: .public) not found among \(all.count)")
-            WidgetDiagnostics.log("goal tap: not found (\(all.count) goals)")
             return .result()
         }
 
         ProgressLogger.performQuickAction(on: goal, in: context)
         do {
             try context.save()
-            log.notice("saved quick action for \(goal.title, privacy: .public)")
-            WidgetDiagnostics.log("goal tap: SAVED \(goal.title)")
         } catch {
             log.error("save failed: \(error, privacy: .public)")
-            WidgetDiagnostics.log("goal tap: save FAILED \(error)")
         }
 
         WidgetCenter.shared.reloadAllTimelines()
