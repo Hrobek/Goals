@@ -36,18 +36,13 @@ enum SharedStore {
     ///   3. a fresh store with the old file moved aside as a `.bak`, if it's corrupt or can't
     ///      migrate,
     ///   4. in-memory, so the app still runs even if the disk is the problem.
-    /// Widgets read the local store the app keeps mirrored — they don't (and can't, without the
-    /// entitlement) drive CloudKit themselves, and standing up `NSPersistentCloudKitContainer` in
-    /// a short-lived, memory-tight extension only risks a hang that shows the placeholder instead
-    /// of real data. So CloudKit is the app process's job.
-    private static var isAppExtension: Bool {
-        Bundle.main.bundleURL.pathExtension == "appex"
-    }
-
     static let container: ModelContainer = {
         migrateLocalStoreIfNeeded()
 
-        let wantsCloudKit = isCloudSyncEnabled && !isAppExtension
+        // The widget extension carries the same CloudKit entitlement as the app, so both open the
+        // store the same way — a write from the widget button is then a first-class CloudKit
+        // change, not a plain-SQLite write the synced app might miss.
+        let wantsCloudKit = isCloudSyncEnabled
 
         if let container = makeContainer(cloudKit: wantsCloudKit ? .private(cloudKitContainerID) : .none) {
             return container

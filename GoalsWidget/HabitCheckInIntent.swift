@@ -6,6 +6,9 @@
 import AppIntents
 import SwiftData
 import WidgetKit
+import os
+
+private let log = Logger(subsystem: "com.hrobek.goals.GoalsWidget", category: "HabitCheckIn")
 
 /// The habit widget's one-tap button. Runs inside the widget process, logs today's tick through
 /// the same code path the app uses, then asks WidgetKit to redraw.
@@ -24,17 +27,27 @@ struct HabitCheckInIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        guard let id = UUID(uuidString: habitID) else { return .result() }
+        guard let id = UUID(uuidString: habitID) else {
+            log.error("bad habitID \(habitID, privacy: .public)")
+            return .result()
+        }
 
         let context = SharedStore.container.mainContext
         let descriptor = FetchDescriptor<Habit>(predicate: #Predicate { $0.id == id })
-        if let habit = try? context.fetch(descriptor).first {
-            if habit.isCheckbox {
-                HabitLogger.toggleToday(habit, in: context)
-            } else {
-                HabitLogger.addQuick(habit, in: context)
-            }
-            try? context.save()
+        guard let habit = (try? context.fetch(descriptor))?.first else {
+            log.error("habit \(id, privacy: .public) not found")
+            return .result()
+        }
+
+        if habit.isCheckbox {
+            HabitLogger.toggleToday(habit, in: context)
+        } else {
+            HabitLogger.addQuick(habit, in: context)
+        }
+        do {
+            try context.save()
+        } catch {
+            log.error("save failed: \(error, privacy: .public)")
         }
 
         WidgetCenter.shared.reloadAllTimelines()

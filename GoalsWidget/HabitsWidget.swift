@@ -162,10 +162,9 @@ struct HabitsWidgetEntryView: View {
 
     // MARK: Home screen — a grid of emoji rings, nothing else
 
-    /// One fixed ring size for every home widget, so a ring on the medium widget looks exactly
-    /// like one on the small — the bigger widget just fits more of them per row (5 across a
-    /// medium, 2 across a small).
-    private let ringSize: CGFloat = 54
+    /// Rings-per-row: 2 on the small, 5 on the medium. They flex to fill the width, so on the
+    /// medium they land proportionally smaller — that's fine, the point is they run edge to edge.
+    private var columnCount: Int { family == .systemSmall ? 2 : 5 }
 
     @ViewBuilder
     private var homeBody: some View {
@@ -176,40 +175,44 @@ struct HabitsWidgetEntryView: View {
                 .widgetURL(GoalLink.habits)
         } else {
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: ringSize, maximum: ringSize), spacing: 10)],
-                spacing: 12
+                columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: columnCount),
+                spacing: 8
             ) {
                 ForEach(entry.habits) { habit in
                     ring(for: habit)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .padding(6)
         }
     }
 
     private func ring(for habit: HabitSnapshot) -> some View {
         let color = Color(hex: habit.colorHex)
-        let lineWidth = ringSize * 0.1
         return Button(intent: HabitCheckInIntent(habitID: habit.id)) {
-            ZStack {
-                Circle()
-                    .fill(color.opacity(habit.isDone ? 0.28 : 0.14))
-                Circle()
-                    .stroke(color.opacity(0.22), lineWidth: lineWidth)
-                Circle()
-                    .trim(from: 0, to: max(0.001, habit.progress))
-                    .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                if let emoji = habit.emoji, !emoji.isEmpty {
-                    Text(emoji).font(.system(size: ringSize * 0.44))
-                } else {
-                    Image(systemName: "repeat")
-                        .font(.system(size: ringSize * 0.34, weight: .medium))
-                        .foregroundStyle(color)
+            GeometryReader { geo in
+                let side = min(geo.size.width, geo.size.height)
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(habit.isDone ? 0.28 : 0.14))
+                    Circle()
+                        .stroke(color.opacity(0.22), lineWidth: side * 0.1)
+                    Circle()
+                        .trim(from: 0, to: max(0.001, habit.progress))
+                        .stroke(color, style: StrokeStyle(lineWidth: side * 0.1, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    if let emoji = habit.emoji, !emoji.isEmpty {
+                        Text(emoji).font(.system(size: side * 0.44))
+                    } else {
+                        Image(systemName: "repeat")
+                            .font(.system(size: side * 0.34, weight: .medium))
+                            .foregroundStyle(color)
+                    }
                 }
+                .frame(width: side, height: side)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(width: ringSize, height: ringSize)
-            .contentShape(.circle)
+            .aspectRatio(1, contentMode: .fit)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(habit.title))
@@ -280,5 +283,7 @@ struct HabitsWidget: Widget {
         .configurationDisplayName("widget.habits.displayName")
         .description("widget.habits.description")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular, .accessoryRectangular])
+        // The grid runs to the edges; the default ~16pt content margin would waste that space.
+        .contentMarginsDisabled()
     }
 }
