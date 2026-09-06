@@ -63,8 +63,15 @@ struct StatsView: View {
             }
     }
 
+    /// The longest run going right now across both goals and habits — a missed day on either
+    /// costs it, so the tile should reflect both.
     private var currentStreak: Int {
-        streaks.first?.streak ?? 0
+        max(streaks.first?.streak ?? 0, habitStreaks.first?.streak ?? 0)
+    }
+
+    /// Every day a habit was done, for the weekly summary.
+    private var habitDoneDates: [Date] {
+        trackedHabits.flatMap(\.scheduleDates)
     }
 
     var body: some View {
@@ -112,14 +119,14 @@ struct StatsView: View {
     /// by doing nothing.
     private var tiles: some View {
         HStack(spacing: Theme.Space.card) {
-            StatTile(value: "\(trackedGoals.count)", label: "stats.totalGoals")
+            StatTile(value: "\(trackedGoals.count + trackedHabits.count)", label: "stats.tracking")
             StatTile(value: "\(completedCount)", label: "stats.completedGoals")
             StatTile(value: "\(currentStreak)", label: "stats.currentStreak", accent: true)
         }
     }
 
     private var weeklySummary: some View {
-        WeeklySummaryCard(checkIns: trackedCheckIns)
+        WeeklySummaryCard(checkInDates: trackedCheckIns.map(\.date) + habitDoneDates)
     }
 
     private var streakSection: some View {
@@ -210,7 +217,7 @@ private struct HabitStreakRow: View {
                     .font(.system(size: 14, weight: .medium))
                     .monospacedDigit()
             }
-            .foregroundStyle(streak > 0 ? Theme.accentBright : Theme.textFaint)
+            .foregroundStyle(streak > 0 ? tint : Theme.textFaint)
         }
         .padding(.vertical, 12)
         .contentShape(.rect)
@@ -259,20 +266,21 @@ private struct GoalStreakRow: View {
 /// Free, one-glance version of the Pro month-over-month row in `TrendsSection` — just the current
 /// week against the one before it, so there's a reason to open Stats before the week is even over.
 private struct WeeklySummaryCard: View {
-    let checkIns: [CheckIn]
+    /// Every check-in / habit-done date; the card just counts how many land in each week.
+    let checkInDates: [Date]
 
     private let calendar = Calendar.current
 
     private var thisWeekCount: Int {
         guard let interval = calendar.dateInterval(of: .weekOfYear, for: .now) else { return 0 }
-        return checkIns.filter { interval.contains($0.date) }.count
+        return checkInDates.filter { interval.contains($0) }.count
     }
 
     private var lastWeekCount: Int {
         guard let thisWeek = calendar.dateInterval(of: .weekOfYear, for: .now),
               let previousAnchor = calendar.date(byAdding: .weekOfYear, value: -1, to: thisWeek.start),
               let interval = calendar.dateInterval(of: .weekOfYear, for: previousAnchor) else { return 0 }
-        return checkIns.filter { interval.contains($0.date) }.count
+        return checkInDates.filter { interval.contains($0) }.count
     }
 
     private var delta: Int { thisWeekCount - lastWeekCount }

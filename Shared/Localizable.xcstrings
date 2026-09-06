@@ -15734,6 +15734,16 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Chaque geste ajoute un ; la journée est faite une fois l’objectif atteint." } },
         "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Cada toque soma um; o dia é concluído ao atingir a meta." } }
       }
+    },
+    "stats.tracking" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tracking" } },
+        "cs" : { "stringUnit" : { "state" : "translated", "value" : "Sleduji" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verfolgt" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "En seguimiento" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Suivis" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Em acompanhamento" } }
+      }
     }
   },
   "version" : "1.1"

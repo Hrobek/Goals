@@ -168,13 +168,21 @@ struct HabitDetailView: View {
                     .tracking(Theme.Typo.pageTitleTracking)
                     .foregroundStyle(Theme.text)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(Recurrence.localizedSummary(for: habit))
+                Text(subtitleText)
                     .font(Theme.Typo.caption)
                     .foregroundStyle(Theme.textFaint)
             }
             Spacer(minLength: 0)
         }
         .padding(.top, 4)
+    }
+
+    private var subtitleText: String {
+        var parts = [Recurrence.localizedSummary(for: habit)]
+        if let deadline = habit.deadline {
+            parts.append(deadline.formatted(date: .abbreviated, time: .omitted))
+        }
+        return parts.joined(separator: " · ")
     }
 
     // MARK: - Today (mirrors the value-goal detail layout)
@@ -236,7 +244,7 @@ struct HabitDetailView: View {
                 HStack(spacing: 7) {
                     Image(systemName: "flame.fill")
                         .font(.system(size: 13))
-                        .foregroundStyle(Theme.accentBright)
+                        .foregroundStyle(tint)
                     Text("\(habit.currentStreak) · \(Recurrence.localizedSummary(for: habit))")
                         .font(Theme.Typo.caption)
                         .foregroundStyle(Theme.textStrong)
@@ -320,7 +328,7 @@ struct HabitDetailView: View {
                 SegmentStrip(options: availableRanges, selection: $activityRange, title: { $0.localizedName })
                     .onChange(of: activityRange) { activityOffset = 0 }
                 PeriodNavigator(range: activityRange, offset: $activityOffset)
-                ScheduleActivityView(schedule: habit, range: activityRange, offset: activityOffset)
+                ScheduleActivityView(schedule: habit, range: activityRange, offset: activityOffset, doneTint: tint)
             }
             .cardSurface()
         }

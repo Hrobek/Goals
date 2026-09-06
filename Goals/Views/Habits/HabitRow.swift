@@ -55,7 +55,7 @@ struct HabitRow: View {
                         } icon: {
                             Image(systemName: "flame.fill").font(.system(size: 10))
                         }
-                        .foregroundStyle(Theme.accentText)
+                        .foregroundStyle(tint)
                     }
                 }
             }

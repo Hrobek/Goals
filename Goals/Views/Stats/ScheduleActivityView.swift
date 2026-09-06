@@ -59,6 +59,9 @@ struct ScheduleActivityView: View {
     let range: StatsRange
     /// Which week/month/year to show — 0 is the current one, negative pages into the past.
     var offset: Int = 0
+    /// Fill for a done day — the app accent for goals, the habit's own colour when a habit passes
+    /// one in.
+    var doneTint: Color = Theme.accent
 
     private let calendar = Calendar.current
 
@@ -242,7 +245,7 @@ struct ScheduleActivityView: View {
 
     private func fill(for day: Date) -> Color {
         switch state(for: day) {
-        case .done: Theme.accent
+        case .done: doneTint
         case .scheduled: Theme.cellScheduled
         case .blocked: Theme.cellBlocked
         }
@@ -263,7 +266,7 @@ struct ScheduleActivityView: View {
             let done = schedule.scheduleDates.filter { interval.contains($0) }.count
             Text("stats.quota \(done) \(schedule.recurrenceCount)")
                 .font(Theme.Typo.caption)
-                .foregroundStyle(done >= schedule.recurrenceCount ? Theme.accentBright : Theme.textFaint)
+                .foregroundStyle(done >= schedule.recurrenceCount ? doneTint : Theme.textFaint)
         }
     }
 }

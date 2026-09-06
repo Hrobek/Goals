@@ -21,6 +21,8 @@ final class Habit {
     var emoji: String?
     var colorHex: String = ColorPalette.defaultHex
     var createdAt: Date = Date.now
+    /// Optional "keep this up until" date — a habit you mean to run for a season, not forever.
+    var deadline: Date?
     /// Manual order in the list, lowest first. New habits go to the end.
     var sortIndex: Int = 0
     /// Legacy integer target — kept so an older row still opens. New code reads `targetAmount`.
@@ -55,6 +57,7 @@ final class Habit {
         title: String,
         emoji: String? = nil,
         colorHex: String = ColorPalette.defaultHex,
+        deadline: Date? = nil,
         sortIndex: Int = 0,
         targetAmount: Double = 1,
         widgetQuickAmount: Double? = nil,
@@ -76,6 +79,7 @@ final class Habit {
         self.title = title
         self.emoji = emoji
         self.colorHex = colorHex
+        self.deadline = deadline
         self.sortIndex = sortIndex
         self.storedTargetAmount = max(1, targetAmount)
         self.dailyTarget = Int(max(1, targetAmount).rounded())

@@ -21,6 +21,8 @@ struct AddEditHabitView: View {
     @State private var emoji: String?
     @State private var colorHex: String
     @State private var customColor: Color
+    @State private var hasDeadline: Bool
+    @State private var deadline: Date
     /// Only meaningful for a value habit (one with a unit); a checkbox habit ignores both.
     @State private var targetAmountText: String
     @State private var quickAmountText: String
@@ -46,6 +48,8 @@ struct AddEditHabitView: View {
         let hex = habit?.colorHex ?? ColorPalette.defaultHex
         _colorHex = State(initialValue: hex)
         _customColor = State(initialValue: Color(hex: hex))
+        _hasDeadline = State(initialValue: habit?.deadline != nil)
+        _deadline = State(initialValue: habit?.deadline ?? Date().addingTimeInterval(30 * 24 * 3600))
         let unit = UnitSelection(
             unitKey: habit?.unitKey ?? GoalUnit.times.rawValue,
             customUnitText: habit?.customUnitText
@@ -119,6 +123,21 @@ struct AddEditHabitView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.section) {
                     identityRow
                     colorRow
+                    CardGroup {
+                        SwitchRow(label: "goal.field.hasDeadline", isOn: $hasDeadline.animation())
+                        if hasDeadline {
+                            RowDivider()
+                            HStack {
+                                Text("goal.field.deadline")
+                                    .font(Theme.Typo.row)
+                                    .foregroundStyle(Theme.textMuted)
+                                Spacer(minLength: 10)
+                                DatePicker("goal.field.deadline", selection: $deadline, displayedComponents: .date)
+                                    .labelsHidden()
+                            }
+                            .padding(.vertical, 9)
+                        }
+                    }
                     LabeledSection("goal.field.recurrence") {
                         RecurrenceEditor(
                             type: $recurrenceType,
@@ -333,6 +352,7 @@ struct AddEditHabitView: View {
             habit.title = trimmedTitle
             habit.emoji = emoji
             habit.colorHex = colorHex
+            habit.deadline = hasDeadline ? deadline : nil
             habit.unitKey = unitSelection.unitKey
             habit.customUnitText = unitSelection.customUnitText
             habit.targetAmount = target
@@ -348,6 +368,7 @@ struct AddEditHabitView: View {
                 title: trimmedTitle,
                 emoji: emoji,
                 colorHex: colorHex,
+                deadline: hasDeadline ? deadline : nil,
                 sortIndex: nextSortIndex(),
                 targetAmount: target,
                 widgetQuickAmount: quick,
