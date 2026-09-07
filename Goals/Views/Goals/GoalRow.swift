@@ -168,8 +168,10 @@ struct GoalRow: View {
             actionTick += 1
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: quickButtonIcon)
-                    .font(.system(size: 12, weight: .semibold))
+                if goal.widgetAction == .complete {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                 Text(quickButtonLabel)
                     .font(Theme.Typo.captionEmphasis)
                     .monospacedDigit()
@@ -186,17 +188,14 @@ struct GoalRow: View {
         .accessibilityLabel(quickButtonA11y)
     }
 
-    /// `−` for a lower-is-better goal, a check for a "complete" goal, `+` otherwise.
-    private var quickButtonIcon: String {
-        if goal.widgetAction == .complete { return "checkmark" }
-        return goal.isLowerBetter ? "minus" : "plus"
-    }
-
+    /// "Complete" for a complete-action goal; otherwise the signed step glued to the amount —
+    /// "+250 ml" / "-1 kg", no space, plain hyphen.
     private var quickButtonLabel: String {
         if goal.widgetAction == .complete {
             return String(localized: "widget.action.complete", bundle: AppLanguage.currentBundle)
         }
-        return goal.valueWithUnit(goal.widgetQuickAmount, formattedValue: formatted(goal.widgetQuickAmount))
+        let sign = goal.isLowerBetter ? "-" : "+"
+        return sign + goal.valueWithUnit(goal.widgetQuickAmount, formattedValue: formatted(goal.widgetQuickAmount))
     }
 
     private var quickButtonA11y: Text {

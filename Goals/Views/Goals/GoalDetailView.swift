@@ -621,7 +621,7 @@ struct GoalDetailView: View {
     }
 
     private func signedLabel(for delta: Double) -> String {
-        let sign = delta < 0 ? "−" : "+"
+        let sign = delta < 0 ? "-" : "+"
         return sign + formattedValue(abs(delta))
     }
 

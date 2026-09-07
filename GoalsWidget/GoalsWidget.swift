@@ -131,7 +131,7 @@ extension GoalSnapshot {
         var resolvedLabel: String?
         switch goal.trackingMode {
         case .value:
-            let sign = goal.isLowerBetter ? "−" : "+"
+            let sign = goal.isLowerBetter ? "-" : "+"
             detail = "\(Self.formatted(goal.currentValue))/\(goal.valueWithUnit(goal.targetValue, formattedValue: Self.formatted(goal.targetValue)))"
             resolvedLabel = showsAction ? sign + Self.formatted(goal.widgetQuickAmount) : nil
         case .milestones:
