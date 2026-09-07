@@ -146,14 +146,18 @@ struct GoalRow: View {
     /// goals, or the next couple of open milestones as plain checkboxes for milestone goals.
     @ViewBuilder
     private var todayQuickContent: some View {
-        switch goal.trackingMode {
-        case .value:
-            // Stays put even once today is checked off — logging more water past the target is
-            // still a normal thing to want to do.
+        if goal.widgetAction == .complete {
             quickAddButton
-        case .milestones:
-            if !upcomingMilestones.isEmpty {
-                milestoneChecklist
+        } else {
+            switch goal.trackingMode {
+            case .value:
+                // Stays put even once today is checked off — logging more water past the target is
+                // still a normal thing to want to do.
+                quickAddButton
+            case .milestones:
+                if !upcomingMilestones.isEmpty {
+                    milestoneChecklist
+                }
             }
         }
     }
@@ -164,9 +168,9 @@ struct GoalRow: View {
             actionTick += 1
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: "plus")
+                Image(systemName: quickButtonIcon)
                     .font(.system(size: 12, weight: .semibold))
-                Text(goal.valueWithUnit(goal.widgetQuickAmount, formattedValue: formatted(goal.widgetQuickAmount)))
+                Text(quickButtonLabel)
                     .font(Theme.Typo.captionEmphasis)
                     .monospacedDigit()
             }
@@ -179,7 +183,27 @@ struct GoalRow: View {
         }
         .buttonStyle(.plain)
         .padding(.top, 10)
-        .accessibilityLabel(Text("a11y.quickAdd \(goal.valueWithUnit(goal.widgetQuickAmount, formattedValue: formatted(goal.widgetQuickAmount)))"))
+        .accessibilityLabel(quickButtonA11y)
+    }
+
+    /// `−` for a lower-is-better goal, a check for a "complete" goal, `+` otherwise.
+    private var quickButtonIcon: String {
+        if goal.widgetAction == .complete { return "checkmark" }
+        return goal.isLowerBetter ? "minus" : "plus"
+    }
+
+    private var quickButtonLabel: String {
+        if goal.widgetAction == .complete {
+            return String(localized: "widget.action.complete", bundle: AppLanguage.currentBundle)
+        }
+        return goal.valueWithUnit(goal.widgetQuickAmount, formattedValue: formatted(goal.widgetQuickAmount))
+    }
+
+    private var quickButtonA11y: Text {
+        if goal.widgetAction == .complete {
+            return Text("a11y.widget.complete \(goal.title)")
+        }
+        return Text("a11y.quickAdd \(goal.valueWithUnit(goal.widgetQuickAmount, formattedValue: formatted(goal.widgetQuickAmount)))")
     }
 
     /// Up to two nearest open milestones — just the one left, if only one remains.
