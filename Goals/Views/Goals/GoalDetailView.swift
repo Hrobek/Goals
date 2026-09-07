@@ -18,6 +18,7 @@ struct GoalDetailView: View {
     @State private var isShowingEdit = false
     @State private var isShowingCheckIn = false
     @State private var isShowingDeleteConfirmation = false
+    @State private var shareImage: Image?
     @State private var newMilestoneTitle = ""
     @State private var activityRange: StatsRange = .month
     @State private var activityOffset = 0
@@ -126,6 +127,9 @@ struct GoalDetailView: View {
         .hidesTabBar()
         .toolbar(.hidden, for: .navigationBar)
         .safeAreaInset(edge: .top, spacing: 0) { navBar }
+        .task(id: shareSignature) {
+            shareImage = ShareCard.image(for: shareData)
+        }
         // Logging something is a light tap; finishing the goal or hitting a streak milestone gets
         // the celebration overlay (which brings its own success haptic). Both completion and the
         // streak count are watched as transitions, so they fire on the check-in that crosses the
@@ -185,6 +189,14 @@ struct GoalDetailView: View {
                     isShowingEdit = true
                 } label: {
                     Label("action.edit", systemImage: "pencil")
+                }
+                if let shareImage {
+                    ShareLink(
+                        item: shareImage,
+                        preview: SharePreview(Text(verbatim: goal.title), image: shareImage)
+                    ) {
+                        Label("action.share", systemImage: "square.and.arrow.up")
+                    }
                 }
                 Button {
                     goal.isArchived.toggle()
@@ -637,6 +649,34 @@ struct GoalDetailView: View {
 
     private func formattedValue(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(0...2)))
+    }
+
+    // MARK: - Sharing
+
+    private var shareSignature: String {
+        "\(goal.id)|\(goal.currentValue)|\(goal.completedMilestoneCount)|\(goal.isCompleted)|\(goal.title)"
+    }
+
+    private var shareData: ProgressShareData {
+        let headline: String
+        switch goal.trackingMode {
+        case .value:
+            headline = goal.isCompleted
+                ? String(localized: "shareCard.done", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+                : "\(formattedValue(goal.currentValue)) / \(goal.valueWithUnit(goal.targetValue, formattedValue: formattedValue(goal.targetValue)))"
+        case .milestones:
+            headline = "\(goal.completedMilestoneCount) / \(goal.milestones.count)"
+        }
+        return ProgressShareData(
+            title: goal.title,
+            emoji: goal.emoji,
+            tintHex: nil,
+            fraction: goal.progressFraction,
+            headline: headline,
+            caption: goal.progressFraction.formatted(.percent.precision(.fractionLength(0)).locale(AppLanguage.current.locale)),
+            streak: StreakCalculator.currentStreak(for: goal),
+            footNote: Recurrence.localizedSummary(for: goal)
+        )
     }
 
     /// A completed, archived or deleted goal shouldn't keep reminding.

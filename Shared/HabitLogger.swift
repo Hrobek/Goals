@@ -62,6 +62,27 @@ enum HabitLogger {
         adjust(habit, by: habit.widgetQuickAmount, in: context, now: now, calendar: calendar)
     }
 
+    /// One tap on a times-counter habit's control ("stretch 3× a day"): steps the count up by one
+    /// until the day's target is met, then the next tap steps it back down. Keeps an over-tap as
+    /// easy to walk back as a checkbox, and stops the tally running past the target.
+    ///
+    /// A quota schedule ("5× a week") is a different animal — its taps are meant to accumulate,
+    /// several a day if you like — so there it just adds one.
+    @discardableResult
+    static func cycle(
+        _ habit: Habit,
+        in context: ModelContext,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> Bool {
+        guard !habit.isQuota else {
+            return adjust(habit, by: 1, in: context, now: now, calendar: calendar)
+        }
+        let current = habit.amount(on: now, calendar: calendar)
+        let delta: Double = current >= habit.effectiveTarget ? -1 : 1
+        return adjust(habit, by: delta, in: context, now: now, calendar: calendar)
+    }
+
     /// The "complete" tap. Finishes the current occurrence in one go — today for a day-based
     /// habit, the week/month tally for a quota schedule; tapping again when it's already done
     /// clears today's contribution, so a stray tap is easy to take back.

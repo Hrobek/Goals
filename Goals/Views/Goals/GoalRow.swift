@@ -12,6 +12,9 @@ struct GoalRow: View {
     let goal: Goal
     /// Today's screen marks off what's already been logged; the overview shows the deadline instead.
     var showsTodayState = false
+    /// The day the row acts on — today for the live screen, an earlier date when Today is paged
+    /// back to catch up a missed check-off. Every check-in and quick action lands on this date.
+    var referenceDate: Date = .now
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -25,7 +28,7 @@ struct GoalRow: View {
     private var iconSize: CGFloat { min(scaledIconSize, 52) }
 
     private var isDoneToday: Bool {
-        goal.hasCheckIn(on: .now)
+        goal.hasCheckIn(on: referenceDate)
     }
 
     /// A goal that's finished with — done for today, or done altogether — steps back towards the
@@ -164,7 +167,7 @@ struct GoalRow: View {
 
     private var quickAddButton: some View {
         Button {
-            ProgressLogger.performQuickAction(on: goal, in: modelContext)
+            ProgressLogger.performQuickAction(on: goal, in: modelContext, now: referenceDate)
             actionTick += 1
         } label: {
             HStack(spacing: 6) {
@@ -214,7 +217,7 @@ struct GoalRow: View {
         VStack(alignment: .leading, spacing: 2) {
             ForEach(upcomingMilestones) { milestone in
                 Button {
-                    ProgressLogger.toggleMilestone(milestone, on: goal, in: modelContext)
+                    ProgressLogger.toggleMilestone(milestone, on: goal, in: modelContext, now: referenceDate)
                     actionTick += 1
                 } label: {
                     HStack(spacing: 8) {

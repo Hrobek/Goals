@@ -20,18 +20,30 @@ struct TodayView: View {
     @Query private var goals: [Goal]
     @Query private var habits: [Habit]
 
+    /// Which day the screen is showing. Defaults to today; the day strip pages it back so a
+    /// check-off forgotten yesterday can still be logged on the right date. Never goes past today.
+    @State private var selectedDate = Calendar.current.startOfDay(for: .now)
+
+    /// How far back the day strip reaches. Enough to catch up after a trip, not so far it turns
+    /// into a data-entry sheet.
+    private let daysBack = 90
+
+    private let calendar = Calendar.current
+
     init(userId: UUID, path: Binding<NavigationPath>) {
         self._path = path
         _goals = Query(filter: #Predicate<Goal> { $0.ownerId == userId }, sort: \Goal.createdAt, order: .reverse)
         _habits = Query(filter: #Predicate<Habit> { $0.ownerId == userId }, sort: [SortDescriptor(\Habit.sortIndex)])
     }
 
+    private var isViewingToday: Bool { calendar.isDateInToday(selectedDate) }
+
     private var todaysGoals: [Goal] {
         goals
-            .filter { $0.status == .active && $0.isScheduledToday() }
+            .filter { $0.status == .active && $0.isScheduledToday(date: selectedDate) }
             .sorted { lhs, rhs in
-                let lhsDone = lhs.hasCheckIn(on: .now)
-                let rhsDone = rhs.hasCheckIn(on: .now)
+                let lhsDone = lhs.hasCheckIn(on: selectedDate)
+                let rhsDone = rhs.hasCheckIn(on: selectedDate)
                 if lhsDone != rhsDone { return !lhsDone }
                 if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
                 return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
@@ -40,10 +52,10 @@ struct TodayView: View {
 
     private var todaysHabits: [Habit] {
         habits
-            .filter { !$0.isArchived && $0.isScheduledToday() }
+            .filter { !$0.isArchived && $0.isScheduledToday(date: selectedDate) }
             .sorted { lhs, rhs in
-                let lhsDone = lhs.isDone(on: .now)
-                let rhsDone = rhs.isDone(on: .now)
+                let lhsDone = lhs.isDone(on: selectedDate)
+                let rhsDone = rhs.isDone(on: selectedDate)
                 if lhsDone != rhsDone { return !lhsDone }
                 return lhs.sortIndex < rhs.sortIndex
             }
@@ -54,8 +66,8 @@ struct TodayView: View {
     private var totalCount: Int { todaysGoals.count + todaysHabits.count }
 
     private var doneCount: Int {
-        todaysGoals.filter { $0.hasCheckIn(on: .now) }.count
-            + todaysHabits.filter { $0.isDone(on: .now) }.count
+        todaysGoals.filter { $0.hasCheckIn(on: selectedDate) }.count
+            + todaysHabits.filter { $0.isDone(on: selectedDate) }.count
     }
 
     /// The longest run going right now across every active goal and habit — the one number worth
@@ -67,7 +79,7 @@ struct TodayView: View {
     }
 
     private var todayText: String {
-        Date.now.formatted(
+        selectedDate.formatted(
             .dateTime.weekday(.wide).day().month(.wide).locale(AppLanguage.current.locale)
         )
     }
@@ -78,20 +90,35 @@ struct TodayView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     header
 
+                    DayStrip(selection: $selectedDate, daysBack: daysBack)
+                        .padding(.top, 16)
+
                     if isEmpty {
                         EmptyStateView(
                             systemImage: "moon.stars",
                             title: "today.empty.title",
                             message: "today.empty.description"
                         )
-                        .padding(.top, 90)
+                        .padding(.top, 70)
                     } else {
                         summary
                         if !todaysGoals.isEmpty {
-                            section(title: "tab.goals", symbol: "target") { goalList }
+                            section(title: "tab.goals") {
+                                // The heading mirrors the tab bar, where Goals carries the app's
+                                // own mark rather than an SF Symbol.
+                                GoalsMark(size: 13, tone: .mono, color: Theme.textFaint)
+                            } content: {
+                                goalList
+                            }
                         }
                         if !todaysHabits.isEmpty {
-                            section(title: "tab.habits", symbol: "repeat") { habitList }
+                            section(title: "tab.habits") {
+                                Image(systemName: "repeat")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Theme.textFaint)
+                            } content: {
+                                habitList
+                            }
                         }
                     }
                 }
@@ -117,11 +144,13 @@ struct TodayView: View {
     /// A group heading — the one visual cue that separates "goals due today" from "habits due
     /// today" on a screen that otherwise stacks both as cards.
     @ViewBuilder
-    private func section<Content: View>(title: LocalizedStringKey, symbol: String, @ViewBuilder content: () -> Content) -> some View {
+    private func section<Icon: View, Content: View>(
+        title: LocalizedStringKey,
+        @ViewBuilder icon: () -> Icon,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
         HStack(spacing: 7) {
-            Image(systemName: symbol)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Theme.textFaint)
+            icon()
             Text(title)
                 .font(Theme.Typo.footnote.weight(.semibold))
                 .textCase(.uppercase)
@@ -136,10 +165,34 @@ struct TodayView: View {
 
     private var header: some View {
         ScreenTitle("today.title", subtitle: todayText) {
-            if bestStreak > 0 {
-                streakPill
+            if isViewingToday {
+                if bestStreak > 0 {
+                    streakPill
+                }
+            } else {
+                backToTodayButton
             }
         }
+    }
+
+    /// Shown only while the strip is parked on an earlier day — the one tap back to the default.
+    private var backToTodayButton: some View {
+        Button {
+            withAnimation { selectedDate = calendar.startOfDay(for: .now) }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "arrow.uturn.backward").font(.system(size: 12, weight: .semibold))
+                Text("today.jumpToToday")
+                    .font(.system(size: 13, weight: .medium))
+            }
+            .padding(.horizontal, 11)
+            .frame(height: 30)
+            .background(Theme.accentWell, in: .capsule)
+            .overlay { Capsule().strokeBorder(Theme.accentWellBorder, lineWidth: 1) }
+            .foregroundStyle(Theme.accentWellText)
+            .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
     }
 
     private var streakPill: some View {
@@ -192,7 +245,7 @@ struct TodayView: View {
         LazyVStack(spacing: Theme.Space.card) {
             ForEach(todaysGoals) { goal in
                 NavigationLink(value: goal.id) {
-                    GoalRow(goal: goal, showsTodayState: true)
+                    GoalRow(goal: goal, showsTodayState: true, referenceDate: selectedDate)
                 }
                 .buttonStyle(.plain)
             }
@@ -205,13 +258,79 @@ struct TodayView: View {
         LazyVStack(spacing: Theme.Space.card) {
             ForEach(todaysHabits) { habit in
                 NavigationLink(value: HabitDestination(id: habit.id)) {
-                    HabitRow(habit: habit)
+                    HabitRow(habit: habit, referenceDate: selectedDate)
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, Theme.Space.screen)
         .padding(.top, 14)
+    }
+}
+
+/// A horizontal run of day pills ending on today, scrolled to the right. Tapping one moves the
+/// Today screen to that date so a forgotten check-off lands on the day it actually happened;
+/// there's nothing past today to tap.
+private struct DayStrip: View {
+    @Binding var selection: Date
+    let daysBack: Int
+
+    private let calendar = Calendar.current
+
+    private var days: [Date] {
+        let today = calendar.startOfDay(for: .now)
+        return (0...daysBack)
+            .reversed()
+            .compactMap { calendar.date(byAdding: .day, value: -$0, to: today) }
+    }
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(days, id: \.self) { day in
+                        pill(for: day).id(day)
+                    }
+                }
+                .padding(.horizontal, Theme.Space.screen)
+            }
+            .onAppear { proxy.scrollTo(calendar.startOfDay(for: selection), anchor: .trailing) }
+            .onChange(of: selection) { _, new in
+                withAnimation { proxy.scrollTo(calendar.startOfDay(for: new), anchor: .center) }
+            }
+        }
+    }
+
+    private func pill(for day: Date) -> some View {
+        let isSelected = calendar.isDate(day, inSameDayAs: selection)
+        let isToday = calendar.isDateInToday(day)
+        return Button {
+            withAnimation { selection = day }
+        } label: {
+            VStack(spacing: 3) {
+                Text(Recurrence.weekdayAbbreviation(calendar.component(.weekday, from: day)))
+                    .font(.system(size: 10, weight: .medium))
+                    .textCase(.uppercase)
+                Text(day.formatted(.dateTime.day().locale(AppLanguage.current.locale)))
+                    .font(.system(size: 15, weight: .semibold))
+                    .monospacedDigit()
+            }
+            .foregroundStyle(isSelected ? Theme.onAccent : (isToday ? Theme.accent : Theme.textFaint))
+            .frame(width: 44, height: 52)
+            .background(isSelected ? Theme.accent : Theme.surface, in: .rect(cornerRadius: Theme.Radius.control))
+            .overlay {
+                RoundedRectangle(cornerRadius: Theme.Radius.control)
+                    .strokeBorder(
+                        isToday && !isSelected ? Theme.accent.opacity(0.5) : Theme.hairline,
+                        lineWidth: 1
+                    )
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(day.formatted(
+            .dateTime.weekday(.wide).day().month(.wide).locale(AppLanguage.current.locale)
+        )))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

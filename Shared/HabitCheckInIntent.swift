@@ -54,7 +54,7 @@ struct HabitCheckInIntent: AppIntent {
                 HabitLogger.addQuick(habit, in: context)
             } else {
                 // A "times" counter or a quota schedule: one tap is one more tick.
-                HabitLogger.adjust(habit, by: 1, in: context)
+                HabitLogger.cycle(habit, in: context)
             }
         }
 

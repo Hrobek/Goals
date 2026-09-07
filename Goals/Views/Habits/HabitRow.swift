@@ -11,6 +11,9 @@ import SwiftData
 /// the list.
 struct HabitRow: View {
     let habit: Habit
+    /// The day the row acts on — today for the live screen, an earlier date when Today is paged
+    /// back to catch up a missed check-off. Every entry lands on this date.
+    var referenceDate: Date = .now
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -21,7 +24,7 @@ struct HabitRow: View {
     @ScaledMetric(relativeTo: .headline) private var scaledIconSize: CGFloat = 40
     private var iconSize: CGFloat { min(scaledIconSize, 52) }
 
-    private var doneToday: Bool { habit.isDone(on: .now) }
+    private var doneToday: Bool { habit.isDone(on: referenceDate) }
     private var streak: Int { habit.currentStreak }
     private var tint: Color { Color(hex: habit.colorHex) }
 
@@ -38,7 +41,7 @@ struct HabitRow: View {
 
                 HStack(spacing: 8) {
                     if !habit.isCheckbox {
-                        Text(habit.progressText())
+                        Text(habit.progressText(on: referenceDate))
                             .font(Theme.Typo.caption)
                             .monospacedDigit()
                             .foregroundStyle(Theme.textStrong)
@@ -79,13 +82,13 @@ struct HabitRow: View {
         .accessibilityValue(Text(doneToday ? "a11y.today.done" : "a11y.today.notDone"))
         .accessibilityAction(named: Text("a11y.habit.toggleToday")) {
             if habit.widgetAction == .complete {
-                HabitLogger.completeOccurrence(habit, in: modelContext)
+                HabitLogger.completeOccurrence(habit, in: modelContext, now: referenceDate)
             } else if habit.isCheckbox {
-                HabitLogger.toggleToday(habit, in: modelContext)
+                HabitLogger.toggleToday(habit, in: modelContext, now: referenceDate)
             } else if habit.hasUnit {
-                HabitLogger.addQuick(habit, in: modelContext)
+                HabitLogger.addQuick(habit, in: modelContext, now: referenceDate)
             } else {
-                HabitLogger.adjust(habit, by: 1, in: modelContext)
+                HabitLogger.cycle(habit, in: modelContext, now: referenceDate)
             }
             actionTick += 1
         }
@@ -114,7 +117,7 @@ struct HabitRow: View {
     private var checkControl: some View {
         if habit.widgetAction == .complete {
             Button {
-                HabitLogger.completeOccurrence(habit, in: modelContext)
+                HabitLogger.completeOccurrence(habit, in: modelContext, now: referenceDate)
                 actionTick += 1
             } label: {
                 circle {
@@ -140,7 +143,7 @@ struct HabitRow: View {
             .buttonStyle(.plain)
         } else if !habit.hasUnit {
             Button {
-                HabitLogger.adjust(habit, by: 1, in: modelContext)
+                HabitLogger.cycle(habit, in: modelContext, now: referenceDate)
                 actionTick += 1
             } label: {
                 circle {
@@ -149,7 +152,7 @@ struct HabitRow: View {
                             .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(Theme.onAccent)
                     } else {
-                        Text(habit.progressText())
+                        Text(habit.progressText(on: referenceDate))
                             .font(.system(size: 10, weight: .semibold))
                             .monospacedDigit()
                             .foregroundStyle(Theme.textStrong)
@@ -160,7 +163,7 @@ struct HabitRow: View {
             .accessibilityLabel(Text("a11y.habit.toggleToday"))
         } else {
             Button {
-                HabitLogger.addQuick(habit, in: modelContext)
+                HabitLogger.addQuick(habit, in: modelContext, now: referenceDate)
                 actionTick += 1
             } label: {
                 HStack(spacing: 5) {
@@ -196,7 +199,7 @@ struct HabitRow: View {
     }
 
     private func toggle() {
-        HabitLogger.toggleToday(habit, in: modelContext)
+        HabitLogger.toggleToday(habit, in: modelContext, now: referenceDate)
         actionTick += 1
     }
 

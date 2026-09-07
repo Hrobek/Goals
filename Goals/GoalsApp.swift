@@ -10,6 +10,7 @@ import SwiftData
 struct GoalsApp: App {
     @State private var session = AuthSession()
     @State private var purchaseManager = PurchaseManager()
+    @State private var syncMonitor = SyncMonitor()
     private let modelContainer = SharedStore.container
 
     init() {
@@ -27,6 +28,7 @@ struct GoalsApp: App {
             RootView()
                 .environment(session)
                 .environment(purchaseManager)
+                .environment(syncMonitor)
         }
         .modelContainer(modelContainer)
     }

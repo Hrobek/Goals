@@ -20,6 +20,7 @@ struct HabitDetailView: View {
     @State private var activityRange: StatsRange = .month
     @State private var activityOffset = 0
     @State private var checkTick = 0
+    @State private var shareImage: Image?
 
     private var tint: Color { Color(hex: habit.colorHex) }
     private var doneToday: Bool { habit.isDone(on: .now) }
@@ -56,6 +57,19 @@ struct HabitDetailView: View {
         habit.scheduleDates.count
     }
 
+    private var shareData: ProgressShareData {
+        ProgressShareData(
+            title: habit.title,
+            emoji: habit.emoji,
+            tintHex: habit.colorHex,
+            fraction: 0,
+            headline: "\(habit.currentStreak)",
+            caption: String(localized: "shareCard.streakCaption", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale),
+            streak: 0,
+            footNote: Recurrence.localizedSummary(for: habit)
+        )
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.section) {
@@ -78,6 +92,9 @@ struct HabitDetailView: View {
         .toolbar(.hidden, for: .navigationBar)
         .safeAreaInset(edge: .top, spacing: 0) { navBar }
         .sensoryFeedback(.success, trigger: checkTick)
+        .task(id: "\(habit.id)|\(habit.currentStreak)|\(habit.title)|\(habit.emoji ?? "")") {
+            shareImage = ShareCard.image(for: shareData)
+        }
         .sheet(isPresented: $isShowingEdit) {
             AddEditHabitView(habit: habit, userId: habit.ownerId)
         }
@@ -118,6 +135,14 @@ struct HabitDetailView: View {
             Menu {
                 Button { isShowingEdit = true } label: {
                     Label("action.edit", systemImage: "pencil")
+                }
+                if let shareImage {
+                    ShareLink(
+                        item: shareImage,
+                        preview: SharePreview(Text(verbatim: habit.title), image: shareImage)
+                    ) {
+                        Label("action.share", systemImage: "square.and.arrow.up")
+                    }
                 }
                 Button {
                     habit.isArchived.toggle()

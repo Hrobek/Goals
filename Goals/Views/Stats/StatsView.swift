@@ -12,7 +12,10 @@ struct StatsView: View {
     @Query private var habits: [Habit]
     @Query private var allCheckIns: [CheckIn]
 
+    private let userId: UUID
+
     init(userId: UUID) {
+        self.userId = userId
         _goals = Query(filter: #Predicate<Goal> { $0.ownerId == userId }, sort: \Goal.createdAt, order: .reverse)
         _habits = Query(filter: #Predicate<Habit> { $0.ownerId == userId }, sort: [SortDescriptor(\Habit.sortIndex)])
         _allCheckIns = Query(filter: #Predicate<CheckIn> { $0.ownerId == userId }, sort: \CheckIn.date)
@@ -126,7 +129,12 @@ struct StatsView: View {
     }
 
     private var weeklySummary: some View {
-        WeeklySummaryCard(checkInDates: trackedCheckIns.map(\.date) + habitDoneDates)
+        NavigationLink {
+            WeekReviewView(userId: userId)
+        } label: {
+            WeeklySummaryCard(checkInDates: trackedCheckIns.map(\.date) + habitDoneDates)
+        }
+        .buttonStyle(.plain)
     }
 
     private var streakSection: some View {
@@ -309,6 +317,12 @@ private struct WeeklySummaryCard: View {
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(delta >= 0 ? Theme.accentBright : Theme.textMuted)
             }
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Theme.textGhost)
+                .padding(.leading, 4)
+                .accessibilityHidden(true)
         }
         .cardSurface(padding: 16)
         .accessibilityElement(children: .ignore)
