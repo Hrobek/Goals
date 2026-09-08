@@ -184,7 +184,10 @@ enum Theme {
 
     /// A colour that reads the ramp from whichever end the current appearance calls for.
     private static func adaptive(dark: String, light: String) -> Color {
-        #if canImport(UIKit)
+        // watchOS ships a cut-down UIKit without `UIColor(dynamicProvider:)` or trait styles, so
+        // `canImport(UIKit)` alone isn't enough — it's true there too. The watch app pins its own
+        // dark palette (`WatchTheme`) and doesn't lean on this.
+        #if canImport(UIKit) && !os(watchOS)
         Color(UIColor { traits in
             UIColor(Color(hex: traits.userInterfaceStyle == .dark ? dark : light))
         })

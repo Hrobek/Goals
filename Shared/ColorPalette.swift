@@ -5,6 +5,10 @@
 
 import SwiftUI
 
+#if canImport(UIKit) && !os(watchOS)
+import UIKit
+#endif
+
 enum ColorPalette {
     static let hexValues: [String] = [
         "#FF6B6B", "#FF9F43", "#FECA57", "#1DD1A1",
@@ -30,8 +34,10 @@ extension Color {
     }
 
     /// `#RRGGBB` for the color, clamped to sRGB — the form stores a hex string, so a colour
-    /// picked from the wheel has to round-trip back through one.
+    /// picked from the wheel has to round-trip back through one. Only the iOS colour picker calls
+    /// this; on watchOS (no UIKit) it never runs, so the fallback just returns the default.
     var hexString: String {
+        #if canImport(UIKit) && !os(watchOS)
         let resolved = UIColor(self).cgColor.converted(
             to: CGColorSpace(name: CGColorSpace.sRGB)!, intent: .defaultIntent, options: nil
         ) ?? UIColor(self).cgColor
@@ -40,6 +46,9 @@ extension Color {
         let g = Int((comps[safe: 1] ?? 0) * 255 + 0.5)
         let b = Int((comps[safe: 2] ?? 0) * 255 + 0.5)
         return String(format: "#%02X%02X%02X", min(max(r, 0), 255), min(max(g, 0), 255), min(max(b, 0), 255))
+        #else
+        return ColorPalette.defaultHex
+        #endif
     }
 }
 

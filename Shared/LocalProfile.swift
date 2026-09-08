@@ -11,7 +11,10 @@ import Foundation
 ///
 /// Lives in the App Group so the widget extension resolves the same id the app does. The id is
 /// created once, by the app, on first launch; the widget only ever reads it.
-enum LocalProfile {
+///
+/// `nonisolated`: it's all UserDefaults reads, no main-actor state — so the nonisolated
+/// `WatchConnectivityBridge` can resolve the id without an isolation mismatch.
+nonisolated enum LocalProfile {
     private static let idKey = "Goals.localProfile.id"
     private static let nicknameKey = "Goals.localProfile.nickname"
 
@@ -38,6 +41,19 @@ enum LocalProfile {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         defaults?.set(trimmed, forKey: nicknameKey)
     }
+
+    #if os(watchOS)
+    /// The watch has no launch flow that mints an id — it's pushed from the iPhone over
+    /// WatchConnectivity (see `WatchConnectivityBridge`) and cached here so every `ownerId == …`
+    /// query resolves the same identity the phone uses.
+    static func applyPushedIdentity(id: UUID, nickname: String) {
+        defaults?.set(id.uuidString, forKey: idKey)
+        let trimmed = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            defaults?.set(trimmed, forKey: nicknameKey)
+        }
+    }
+    #endif
 
     /// Called once at launch, before any `@Query` runs. Returns the existing id; failing that,
     /// adopts the id (and name) from the retired account blob so a signed-in user's data stays

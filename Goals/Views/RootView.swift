@@ -131,6 +131,7 @@ struct RootView: View {
             case .active:
                 Analytics.beginSession()
                 AppReviewPrompt.recordFirstLaunchIfNeeded()
+                pushIdentityToWatch()
                 Task { await NotificationScheduler.syncAll(context: modelContext, userId: profile.id) }
                 // The rating prompt itself no longer lives here — it fires from the moment a goal
                 // is finished (see `GoalDetailView.requestReviewIfEarned`), right after the
@@ -172,6 +173,17 @@ struct RootView: View {
         .sheet(isPresented: $isShowingPaywall) {
             PaywallView(source: paywallSource)
         }
+    }
+
+    /// Hands the watch app the local profile id, nickname and cloud-sync flag it can't mint for
+    /// itself. Cheap and idempotent — WatchConnectivity only delivers the newest context.
+    private func pushIdentityToWatch() {
+        WatchConnectivityBridge.shared.pushIdentity(
+            profileID: profile.id,
+            nickname: profile.nickname,
+            cloudSyncEnabled: SharedStore.isCloudSyncEnabled,
+            vacation: Vacation.current(for: profile.id)
+        )
     }
 
     /// The promo waits for the same quiet moment the rating prompt does — nothing else on screen,

@@ -20,6 +20,10 @@ struct GoalsApp: App {
         OwnershipMigration.claimOrphanData(for: profile.id, context: modelContainer.mainContext)
         Category.migrateDefaultKeysIfNeeded(context: modelContainer.mainContext, for: profile.id)
         Category.seedDefaultsIfNeeded(context: modelContainer.mainContext, for: profile.id)
+
+        // The watch app has no identity of its own — push this one to it (and stay listening for
+        // its check-off pokes).
+        WatchConnectivityBridge.shared.activate()
     }
 
     var body: some Scene {

@@ -9,7 +9,12 @@ import os
 
 /// The SwiftData store, living in the App Group container so the widget extension reads and
 /// writes the same database as the app.
-enum SharedStore {
+///
+/// `nonisolated`: everything here is UserDefaults / filesystem / `ModelContainer` construction, none
+/// of it main-actor state. The widget extensions already treat it that way; spelling it out keeps
+/// it callable from the `WatchConnectivityBridge` (which is nonisolated by necessity) without the
+/// app target's default main-actor isolation getting in the way.
+nonisolated enum SharedStore {
     static let appGroupID = "group.com.hrobek.goals"
     static let cloudKitContainerID = "iCloud.com.hrobek.goals"
 
