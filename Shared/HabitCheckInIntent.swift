@@ -44,6 +44,9 @@ struct HabitCheckInIntent: AppIntent {
             return .result()
         }
 
+        // An avoid habit is never logged from a widget — recording a slip has to be deliberate.
+        guard !habit.isAvoid else { return .result() }
+
         switch habit.widgetAction {
         case .complete:
             HabitLogger.completeOccurrence(habit, in: context)

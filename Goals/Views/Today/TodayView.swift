@@ -38,9 +38,12 @@ struct TodayView: View {
 
     private var isViewingToday: Bool { calendar.isDateInToday(selectedDate) }
 
+    /// Read once per render — paused goals and habits drop off Today for days inside the window.
+    private var vacation: Vacation { Vacation.current() }
+
     private var todaysGoals: [Goal] {
         goals
-            .filter { $0.status == .active && $0.isScheduledToday(date: selectedDate) }
+            .filter { $0.status == .active && $0.isScheduledToday(date: selectedDate) && !vacation.pauses($0.id, on: selectedDate) }
             .sorted { lhs, rhs in
                 let lhsDone = lhs.hasCheckIn(on: selectedDate)
                 let rhsDone = rhs.hasCheckIn(on: selectedDate)
@@ -52,7 +55,7 @@ struct TodayView: View {
 
     private var todaysHabits: [Habit] {
         habits
-            .filter { !$0.isArchived && $0.isScheduledToday(date: selectedDate) }
+            .filter { !$0.isArchived && $0.isScheduledToday(date: selectedDate) && !vacation.pauses($0.id, on: selectedDate) }
             .sorted { lhs, rhs in
                 let lhsDone = lhs.isDone(on: selectedDate)
                 let rhsDone = rhs.isDone(on: selectedDate)
@@ -292,9 +295,12 @@ private struct DayStrip: View {
                         pill(for: day).id(day)
                     }
                 }
-                .padding(.horizontal, Theme.Space.screen)
             }
-            .onAppear { proxy.scrollTo(calendar.startOfDay(for: selection), anchor: .trailing) }
+            // A scroll-content margin rather than plain padding, so the resting position at the
+            // trailing end leaves the selected day the same gap you see when you drag the strip
+            // past its end — instead of pinning it flush against the edge.
+            .contentMargins(.horizontal, Theme.Space.screen, for: .scrollContent)
+            .defaultScrollAnchor(.trailing)
             .onChange(of: selection) { _, new in
                 withAnimation { proxy.scrollTo(calendar.startOfDay(for: new), anchor: .center) }
             }

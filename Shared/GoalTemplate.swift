@@ -30,20 +30,14 @@ struct GoalTemplate: Identifiable, Hashable {
         GoalTemplate(id: "run", emoji: "🏃", trackingMode: .value, startValue: 0, targetValue: 100,
                      isLowerBetter: false, unit: .km, recurrenceType: .daily, recurrenceCount: 3,
                      categoryDefaultKey: "health"),
-        GoalTemplate(id: "steps", emoji: "👟", trackingMode: .value, startValue: 0, targetValue: 10000,
-                     isLowerBetter: false, unit: .steps, recurrenceType: .daily, recurrenceCount: 3,
+        GoalTemplate(id: "runYear", emoji: "🥾", trackingMode: .value, startValue: 0, targetValue: 500,
+                     isLowerBetter: false, unit: .km, recurrenceType: .daily, recurrenceCount: 3,
                      categoryDefaultKey: "health"),
-        GoalTemplate(id: "read", emoji: "📚", trackingMode: .value, startValue: 0, targetValue: 20,
-                     isLowerBetter: false, unit: .pages, recurrenceType: .daily, recurrenceCount: 3,
+        GoalTemplate(id: "books", emoji: "📚", trackingMode: .value, startValue: 0, targetValue: 12,
+                     isLowerBetter: false, unit: .books, recurrenceType: .daily, recurrenceCount: 3,
                      categoryDefaultKey: nil),
-        GoalTemplate(id: "meditate", emoji: "🧘", trackingMode: .value, startValue: 0, targetValue: 10,
-                     isLowerBetter: false, unit: .minutes, recurrenceType: .daily, recurrenceCount: 3,
-                     categoryDefaultKey: "health"),
-        GoalTemplate(id: "water", emoji: "💧", trackingMode: .value, startValue: 0, targetValue: 8,
-                     isLowerBetter: false, unit: .glasses, recurrenceType: .daily, recurrenceCount: 3,
-                     categoryDefaultKey: "health"),
-        GoalTemplate(id: "workout", emoji: "🏋️", trackingMode: .value, startValue: 0, targetValue: 36,
-                     isLowerBetter: false, unit: .times, recurrenceType: .timesPerWeek, recurrenceCount: 3,
+        GoalTemplate(id: "run10k", emoji: "🏅", trackingMode: .value, startValue: 0, targetValue: 10,
+                     isLowerBetter: false, unit: .km, recurrenceType: .daily, recurrenceCount: 3,
                      categoryDefaultKey: "health"),
         GoalTemplate(id: "weight", emoji: "⚖️", trackingMode: .value, startValue: 5, targetValue: 0,
                      isLowerBetter: true, unit: .kg, recurrenceType: .daily, recurrenceCount: 3,
@@ -61,11 +55,9 @@ struct GoalTemplate: Identifiable, Hashable {
     var localizedTitle: String {
         switch id {
         case "run": String(localized: "template.run.title", defaultValue: "Run 100 km", bundle: AppLanguage.currentBundle)
-        case "steps": String(localized: "template.steps.title", defaultValue: "Walk 10,000 steps a day", bundle: AppLanguage.currentBundle)
-        case "read": String(localized: "template.read.title", defaultValue: "Read 20 pages a day", bundle: AppLanguage.currentBundle)
-        case "meditate": String(localized: "template.meditate.title", defaultValue: "Meditate 10 minutes a day", bundle: AppLanguage.currentBundle)
-        case "water": String(localized: "template.water.title", defaultValue: "Drink 8 glasses of water", bundle: AppLanguage.currentBundle)
-        case "workout": String(localized: "template.workout.title", defaultValue: "Work out 3× a week", bundle: AppLanguage.currentBundle)
+        case "runYear": String(localized: "template.runYear.title", defaultValue: "Run 500 km this year", bundle: AppLanguage.currentBundle)
+        case "books": String(localized: "template.books.title", defaultValue: "Read 12 books", bundle: AppLanguage.currentBundle)
+        case "run10k": String(localized: "template.run10k.title", defaultValue: "Run 10 km non-stop", bundle: AppLanguage.currentBundle)
         case "weight": String(localized: "template.weight.title", defaultValue: "Lose 5 kg", bundle: AppLanguage.currentBundle)
         case "savings": String(localized: "template.savings.title", defaultValue: "Save 10,000", bundle: AppLanguage.currentBundle)
         case "noSpend": String(localized: "template.noSpend.title", defaultValue: "30 days without spending", bundle: AppLanguage.currentBundle)
@@ -73,15 +65,12 @@ struct GoalTemplate: Identifiable, Hashable {
         }
     }
 
-    /// A one-line schedule descriptor for the picker card — "Every day" or "3×/week".
-    var scheduleSummary: String {
-        switch recurrenceType {
-        case .timesPerWeek:
-            return String(localized: "recurrence.summary.timesPerWeek \(recurrenceCount)", bundle: AppLanguage.currentBundle)
-        case .timesPerMonth:
-            return String(localized: "recurrence.summary.timesPerMonth \(recurrenceCount)", bundle: AppLanguage.currentBundle)
-        default:
-            return RecurrenceType.daily.localizedName
-        }
+    /// The card subtitle — the goal's finish line ("100 km", "12 books", "−5 kg"), which reads
+    /// more usefully on a template card than the recurrence does.
+    var targetSummary: String {
+        let value = isLowerBetter ? startValue : targetValue
+        let formatted = value.formatted(.number.precision(.fractionLength(0...1)))
+        let withUnit = GoalUnit.valueWithUnit(value, formattedValue: formatted, unitKey: unit.rawValue, customUnitText: nil)
+        return isLowerBetter ? "−\(withUnit)" : withUnit
     }
 }

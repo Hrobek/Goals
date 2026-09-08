@@ -8,11 +8,11 @@ import SwiftData
 import WidgetKit
 import UniformTypeIdentifiers
 
-/// Export the signed-in user's whole account to a JSON file, or replace it from one. Pushed from
-/// the General section of Settings.
+/// Export everything on this device to a JSON file, or replace it from one. Pushed from the
+/// General section of Settings.
 struct BackupSettingsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(AuthSession.self) private var session
+    @Environment(Profile.self) private var profile
 
     @State private var exportDocument: JSONFile?
     @State private var isExporting = false
@@ -21,7 +21,7 @@ struct BackupSettingsView: View {
     @State private var errorMessage: String?
     @State private var didImport = false
 
-    private var userId: UUID { session.currentUser?.id ?? Goal.unownedId }
+    private var userId: UUID { profile.id }
 
     struct PendingImport: Identifiable {
         let id = UUID()
@@ -204,6 +204,6 @@ struct JSONFile: FileDocument {
 #Preview {
     NavigationStack {
         BackupSettingsView()
-            .environment(AuthSession())
+            .environment(Profile())
     }
 }

@@ -28,6 +28,11 @@ struct HabitRow: View {
     private var streak: Int { habit.currentStreak }
     private var tint: Color { Color(hex: habit.colorHex) }
 
+    /// An avoid habit is "clean" almost every day, so it shouldn't wear the muted, struck-through
+    /// "done for today" look — reserve that for a build habit that's checked off, and for an avoid
+    /// habit only on a day it slipped.
+    private var settled: Bool { habit.isAvoid ? habit.slipped(on: referenceDate) : doneToday }
+
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             badge
@@ -36,7 +41,7 @@ struct HabitRow: View {
                 Text(habit.title)
                     .font(Theme.Typo.rowTitle)
                     .foregroundStyle(Theme.text)
-                    .strikethrough(doneToday, color: Theme.textGhost)
+                    .strikethrough(settled, color: Theme.textGhost)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
 
                 HStack(spacing: 8) {
@@ -50,7 +55,7 @@ struct HabitRow: View {
                         .font(Theme.Typo.caption)
                         .foregroundStyle(Theme.textFaint)
                         .lineLimit(1)
-                    if streak > 0 {
+                    if streak > 0 || habit.isAvoid {
                         Label {
                             Text("\(streak)")
                                 .font(Theme.Typo.caption)
@@ -70,18 +75,20 @@ struct HabitRow: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 13)
         // The card carries the habit's colour — a faint wash on the surface and a matching hairline.
-        .background(tint.opacity(doneToday ? 0.06 : 0.12), in: .rect(cornerRadius: Theme.Radius.card))
+        .background(tint.opacity(settled ? 0.06 : 0.12), in: .rect(cornerRadius: Theme.Radius.card))
         .overlay {
             RoundedRectangle(cornerRadius: Theme.Radius.card)
-                .strokeBorder(tint.opacity(doneToday ? 0.16 : 0.3), lineWidth: 1)
+                .strokeBorder(tint.opacity(settled ? 0.16 : 0.3), lineWidth: 1)
         }
-        .opacity(doneToday ? 0.82 : 1)
+        .opacity(settled ? 0.82 : 1)
         .sensoryFeedback(.success, trigger: actionTick)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(Text(doneToday ? "a11y.today.done" : "a11y.today.notDone"))
         .accessibilityAction(named: Text("a11y.habit.toggleToday")) {
-            if habit.widgetAction == .complete {
+            if habit.isAvoid {
+                HabitLogger.toggleToday(habit, in: modelContext, now: referenceDate)
+            } else if habit.widgetAction == .complete {
                 HabitLogger.completeOccurrence(habit, in: modelContext, now: referenceDate)
             } else if habit.isCheckbox {
                 HabitLogger.toggleToday(habit, in: modelContext, now: referenceDate)
@@ -115,7 +122,29 @@ struct HabitRow: View {
     /// (a unit habit).
     @ViewBuilder
     private var checkControl: some View {
-        if habit.widgetAction == .complete {
+        if habit.isAvoid {
+            let slipped = habit.slipped(on: referenceDate)
+            Button {
+                HabitLogger.toggleToday(habit, in: modelContext, now: referenceDate)
+                actionTick += 1
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: slipped ? "arrow.uturn.backward" : "exclamationmark")
+                        .font(.system(size: 11, weight: .bold))
+                    Text(slipped ? "habit.avoid.undo" : "habit.avoid.slip")
+                        .font(Theme.Typo.captionEmphasis)
+                        .lineLimit(1)
+                }
+                .foregroundStyle(slipped ? Theme.onAccent : Theme.textMuted)
+                .padding(.horizontal, 11)
+                .frame(height: 30)
+                .background(slipped ? Theme.accent : Color.clear, in: .capsule)
+                .overlay { Capsule().strokeBorder(slipped ? Color.clear : Theme.textGhost, lineWidth: 1) }
+                .contentShape(.capsule)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(slipped ? "habit.avoid.undo" : "habit.avoid.slip"))
+        } else if habit.widgetAction == .complete {
             Button {
                 HabitLogger.completeOccurrence(habit, in: modelContext, now: referenceDate)
                 actionTick += 1

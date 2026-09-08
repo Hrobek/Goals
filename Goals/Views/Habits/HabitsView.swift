@@ -22,10 +22,18 @@ struct HabitsView: View {
     @State private var editMode: EditMode = .inactive
     @State private var isShowingLimitAlert = false
     @State private var isShowingPaywall = false
+    @State private var isShowingTemplatePicker = false
+    @State private var pendingAdd: PendingAdd?
     @State private var addHabitConfig: AddHabitConfig?
+
+    private enum PendingAdd {
+        case blank
+        case template(HabitTemplate)
+    }
 
     private struct AddHabitConfig: Identifiable {
         let id = UUID()
+        var template: HabitTemplate?
     }
 
     init(userId: UUID, path: Binding<[UUID]> = .constant([])) {
@@ -59,8 +67,18 @@ struct HabitsView: View {
                     HabitDetailView(habit: habit)
                 }
             }
-            .sheet(item: $addHabitConfig) { _ in
-                AddEditHabitView(habit: nil, userId: userId)
+            .sheet(item: $addHabitConfig) { config in
+                AddEditHabitView(habit: nil, userId: userId, template: config.template)
+            }
+            .sheet(isPresented: $isShowingTemplatePicker, onDismiss: presentPendingAdd) {
+                TemplatePickerView(mode: .habitsOnly) { selection in
+                    if case .habit(let template) = selection {
+                        pendingAdd = .template(template)
+                    } else {
+                        pendingAdd = .blank
+                    }
+                    isShowingTemplatePicker = false
+                }
             }
             .sheet(isPresented: $isShowingPaywall) {
                 PaywallView(source: .limitAlert)
@@ -156,7 +174,20 @@ struct HabitsView: View {
             isShowingLimitAlert = true
             Analytics.send(.limitAlertShown)
         } else {
+            isShowingTemplatePicker = true
+        }
+    }
+
+    /// Runs after the template picker has fully dismissed: opens Add Habit seeded with the choice.
+    /// A plain Cancel leaves `pendingAdd` nil and does nothing.
+    private func presentPendingAdd() {
+        guard let pendingAdd else { return }
+        self.pendingAdd = nil
+        switch pendingAdd {
+        case .blank:
             addHabitConfig = AddHabitConfig()
+        case .template(let template):
+            addHabitConfig = AddHabitConfig(template: template)
         }
     }
 

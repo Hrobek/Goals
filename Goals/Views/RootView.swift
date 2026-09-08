@@ -8,7 +8,7 @@ import SwiftData
 import WidgetKit
 
 struct RootView: View {
-    @Environment(AuthSession.self) private var session
+    @Environment(Profile.self) private var profile
     @Environment(PurchaseManager.self) private var purchaseManager
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
@@ -28,25 +28,33 @@ struct RootView: View {
     /// Which of the two put it up, so the funnel can tell them apart.
     @State private var paywallSource: PaywallSource = .widget
 
-    @State private var isShowingFirstRunWelcome = false
-    /// Set when the welcome sheet's primary button is tapped, consumed once that sheet has fully
-    /// dismissed — presenting Add Goal only then avoids stacking it on the outgoing sheet.
-    @State private var wantsAddGoalAfterWelcome = false
-    /// Drives `GoalsListView` straight into its Add Goal sheet for a new user's first goal.
+    @State private var isShowingOnboarding = false
+    /// What the onboarding picker chose, applied once the onboarding cover has fully dismissed so
+    /// the Add sheet isn't stacked on the outgoing one.
+    @State private var pendingOnboardingAdd: OnboardingAdd?
+    /// Drives the seeded Add Goal / Add Habit sheet after onboarding.
+    @State private var onboardingAdd: OnboardingAdd?
+    /// Kept only to satisfy `MainTabView`'s binding; no longer driven from here.
     @State private var addGoalTrigger = false
+
+    enum OnboardingAdd: Identifiable {
+        case goal(GoalTemplate?)
+        case habit(HabitTemplate?)
+
+        var id: String {
+            switch self {
+            case .goal(let template): "goal-\(template?.id ?? "custom")"
+            case .habit(let template): "habit-\(template?.id ?? "custom")"
+            }
+        }
+    }
 
     private var language: AppLanguage {
         AppLanguage(rawValue: languageRaw) ?? .deviceDefault
     }
 
     var body: some View {
-        Group {
-            if let userId = session.currentUser?.id {
-                MainTabView(userId: userId, selection: $selectedTab, todayPath: $todayPath, habitsPath: $habitsPath, addGoalTrigger: $addGoalTrigger)
-            } else {
-                WelcomeView()
-            }
-        }
+        MainTabView(userId: profile.id, selection: $selectedTab, todayPath: $todayPath, habitsPath: $habitsPath, addGoalTrigger: $addGoalTrigger)
         .environment(\.locale, language.locale)
         .id(languageRaw)
         .preferredColorScheme((AppearanceMode(rawValue: appearanceModeRaw) ?? .default).colorScheme)
@@ -64,26 +72,56 @@ struct RootView: View {
                 WidgetCenter.shared.reloadAllTimelines()
             }
         }
-        .onChange(of: session.isAuthenticated, initial: true) { _, isAuthenticated in
-            guard isAuthenticated, let userId = session.currentUser?.id, !FirstRunWelcomeStore.hasSeen(userId: userId) else { return }
-            isShowingFirstRunWelcome = true
-        }
-        // Marked as seen on dismissal rather than on presentation, so a welcome killed by a crash
-        // or a language switch mid-sheet still gets its turn. Add Goal is also fired from here,
-        // once this sheet is actually gone, rather than from the button action — presenting a new
-        // sheet while this one is still animating out gets silently dropped.
-        .sheet(isPresented: $isShowingFirstRunWelcome, onDismiss: {
-            if let userId = session.currentUser?.id {
-                FirstRunWelcomeStore.markSeen(userId: userId)
+        .task {
+            guard !FirstRunWelcomeStore.hasSeen(userId: profile.id) else { return }
+            // A returning user - old account data adopted by `LocalProfile`, or an iCloud restore -
+            // has already been onboarded; don't make them do it again.
+            let goalCount = (try? modelContext.fetchCount(FetchDescriptor<Goal>())) ?? 0
+            let habitCount = (try? modelContext.fetchCount(FetchDescriptor<Habit>())) ?? 0
+            if goalCount > 0 || habitCount > 0 {
+                FirstRunWelcomeStore.markSeen(userId: profile.id)
+                return
             }
-            if wantsAddGoalAfterWelcome {
-                wantsAddGoalAfterWelcome = false
-                addGoalTrigger = true
+            isShowingOnboarding = true
+        }
+        // The seeded Add sheet is presented from `onDismiss`, once the cover is actually gone -
+        // stacking it straight onto the outgoing cover gets silently dropped.
+        .fullScreenCover(isPresented: $isShowingOnboarding, onDismiss: {
+            guard let pending = pendingOnboardingAdd else { return }
+            pendingOnboardingAdd = nil
+            onboardingAdd = pending
+            // They've committed to tracking something - now is the moment to ask for the nudge.
+            Task {
+                if await NotificationScheduler.requestAuthorization() {
+                    await NotificationScheduler.scheduleWelcomeNudge()
+                }
             }
         }) {
-            FirstRunWelcomeView {
-                selectedTab = .goals
-                wantsAddGoalAfterWelcome = true
+            OnboardingFlow { selection in
+                FirstRunWelcomeStore.markSeen(userId: profile.id)
+                let add: OnboardingAdd?
+                switch selection {
+                case .goal(let template): add = .goal(template)
+                case .habit(let template): add = .habit(template)
+                case .customGoal: add = .goal(nil)
+                case .customHabit: add = .habit(nil)
+                case nil: add = nil
+                }
+                pendingOnboardingAdd = add
+                switch add {
+                case .habit: selectedTab = .habits
+                case .goal: selectedTab = .goals
+                case nil: break
+                }
+                isShowingOnboarding = false
+            }
+        }
+        .sheet(item: $onboardingAdd) { add in
+            switch add {
+            case .goal(let template):
+                AddEditGoalView(goal: nil, userId: profile.id, template: template)
+            case .habit(let template):
+                AddEditHabitView(habit: nil, userId: profile.id, template: template)
             }
         }
         // Every visit rebuilds the schedule, which is also what pushes the "haven't seen you"
@@ -93,9 +131,7 @@ struct RootView: View {
             case .active:
                 Analytics.beginSession()
                 AppReviewPrompt.recordFirstLaunchIfNeeded()
-                if let userId = session.currentUser?.id {
-                    Task { await NotificationScheduler.syncAll(context: modelContext, userId: userId) }
-                }
+                Task { await NotificationScheduler.syncAll(context: modelContext, userId: profile.id) }
                 // The rating prompt itself no longer lives here — it fires from the moment a goal
                 // is finished (see `GoalDetailView.requestReviewIfEarned`), right after the
                 // celebration overlay, rather than on any old app launch.
@@ -142,15 +178,15 @@ struct RootView: View {
     /// the launch settled — and `ProPromoPrompt` decides whether this is one of the rare turns it
     /// gets at all.
     private func showProPromoIfEarned() async {
-        guard session.isAuthenticated, !isShowingFirstRunWelcome, !isShowingPaywall else { return }
+        guard !isShowingOnboarding, !isShowingPaywall else { return }
 
-        guard let userId = session.currentUser?.id else { return }
+        let userId = profile.id
         let checkInDescriptor = FetchDescriptor<CheckIn>(predicate: #Predicate { $0.ownerId == userId })
         let checkInCount = (try? modelContext.fetchCount(checkInDescriptor)) ?? 0
         guard ProPromoPrompt.shouldShow(isProUnlocked: purchaseManager.isProUnlocked, checkInCount: checkInCount) else { return }
 
         try? await Task.sleep(for: .seconds(2))
-        guard scenePhase == .active, session.isAuthenticated, !isShowingFirstRunWelcome, !isShowingPaywall else { return }
+        guard scenePhase == .active, !isShowingOnboarding, !isShowingPaywall else { return }
         // Entitlements load asynchronously, so the check is worth repeating once they have.
         guard !purchaseManager.isProUnlocked else { return }
 
@@ -160,8 +196,8 @@ struct RootView: View {
     }
 }
 
-/// Tracks the first-run welcome sheet per account rather than per device, so switching to a
-/// different account on a device that has already seen it gets its own turn.
+/// Remembers whether this device has seen the first-run welcome sheet. Keyed by the local
+/// profile id, which is stable for the life of the install.
 private enum FirstRunWelcomeStore {
     private static func key(for userId: UUID) -> String { "Goals.hasSeenFirstRunWelcome.\(userId.uuidString)" }
 
@@ -176,7 +212,7 @@ private enum FirstRunWelcomeStore {
 
 #Preview {
     RootView()
-        .environment(AuthSession())
+        .environment(Profile())
         .environment(PurchaseManager())
         .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self, Habit.self, HabitEntry.self], inMemory: true)
 }

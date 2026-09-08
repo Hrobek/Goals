@@ -159,7 +159,7 @@ struct MainTabView: View {
 
 #Preview {
     MainTabView(userId: UUID(), selection: .constant(.today), todayPath: .constant(NavigationPath()), habitsPath: .constant([]), addGoalTrigger: .constant(false))
-        .environment(AuthSession())
+        .environment(Profile())
         .environment(PurchaseManager())
         .modelContainer(for: [Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self, Habit.self, HabitEntry.self], inMemory: true)
 }

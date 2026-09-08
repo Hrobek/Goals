@@ -214,7 +214,9 @@ struct HabitDetailView: View {
 
     @ViewBuilder
     private var todayControl: some View {
-        if habit.widgetAction == .complete {
+        if habit.isAvoid {
+            avoidPanel
+        } else if habit.widgetAction == .complete {
             completeButton
         } else if habit.isCheckbox {
             checkboxButton
@@ -305,6 +307,61 @@ struct HabitDetailView: View {
             .background(tint.opacity(doneToday ? 1 : 0.9), in: .rect(cornerRadius: 12))
         }
         .buttonStyle(.plain)
+    }
+
+    /// Avoid habit: the clean-day count is the whole story, with one button to log a slip (or take
+    /// today's back).
+    private var avoidPanel: some View {
+        let slippedToday = habit.slipped()
+        return VStack(spacing: Theme.Space.card) {
+            VStack(spacing: 6) {
+                Text("\(habit.currentStreak)")
+                    .font(.system(size: 52, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.text)
+                Text(avoidCaption)
+                    .font(Theme.Typo.caption)
+                    .foregroundStyle(Theme.textFaint)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .cardSurface(radius: Theme.Radius.panel, padding: 18)
+
+            Button {
+                HabitLogger.toggleToday(habit, in: modelContext)
+                checkTick += 1
+            } label: {
+                HStack(spacing: 9) {
+                    Image(systemName: slippedToday ? "arrow.uturn.backward" : "exclamationmark.triangle")
+                        .font(.system(size: 16))
+                    Text(slippedToday ? "habit.avoid.undo" : "habit.avoid.slipToday")
+                        .font(Theme.Typo.button)
+                }
+                .foregroundStyle(slippedToday ? Theme.textMuted : Theme.onAccent)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(
+                    slippedToday ? AnyShapeStyle(Theme.control) : AnyShapeStyle(Theme.accent),
+                    in: .rect(cornerRadius: 12)
+                )
+                .overlay {
+                    if slippedToday {
+                        RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.textGhost, lineWidth: 1)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var avoidCaption: String {
+        if let last = habit.lastSlipDate {
+            let date = last.formatted(date: .abbreviated, time: .omitted)
+            return String(localized: "habit.avoid.since \(date)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+        }
+        let date = habit.createdAt.formatted(date: .abbreviated, time: .omitted)
+        return String(localized: "habit.avoid.since \(date)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
     }
 
     /// The ring + progress readout + streak, in a panel — the same shape as `GoalDetailView`'s
@@ -426,7 +483,13 @@ struct HabitDetailView: View {
                 SegmentStrip(options: availableRanges, selection: $activityRange, title: { $0.localizedName })
                     .onChange(of: activityRange) { activityOffset = 0 }
                 PeriodNavigator(range: activityRange, offset: $activityOffset)
-                ScheduleActivityView(schedule: habit, range: activityRange, offset: activityOffset, doneTint: tint)
+                ScheduleActivityView(
+                    schedule: habit,
+                    range: activityRange,
+                    offset: activityOffset,
+                    doneTint: tint,
+                    slipDays: habit.isAvoid ? Set(habit.entries.map { Calendar.current.startOfDay(for: $0.date) }) : []
+                )
             }
             .cardSurface()
         }

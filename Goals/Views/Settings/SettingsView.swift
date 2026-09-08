@@ -6,7 +6,7 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @Environment(AuthSession.self) private var session
+    @Environment(Profile.self) private var profile
     @Environment(PurchaseManager.self) private var purchaseManager
     @Environment(\.openURL) private var openURL
     @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.default.rawValue
@@ -17,6 +17,9 @@ struct SettingsView: View {
     // Not `@AppStorage`: the flag lives in the App Group so the widget honours it too, and
     // `Analytics` stays the only place that knows the key.
     @State private var isAnalyticsEnabled = Analytics.isEnabled
+    // Owned here (not in the pushed screen) so the row's "On until …" / "Off" label reflects a
+    // change made on that screen the moment you come back.
+    @State private var vacation = Vacation()
 
     private var appearanceMode: Binding<AppearanceMode> {
         Binding(
@@ -39,11 +42,12 @@ struct SettingsView: View {
                     ScreenTitle("settings.title")
 
                     VStack(alignment: .leading, spacing: Theme.Space.section) {
+                        profileSection
                         proSection
                         appearanceSection
+                        vacationSection
                         generalSection
                         supportSection
-                        accountSection
                     }
                     .padding(.horizontal, Theme.Space.screen)
                 }
@@ -53,6 +57,7 @@ struct SettingsView: View {
             .tabBarClearance()
             .screenGround()
             .toolbar(.hidden, for: .navigationBar)
+            .task { vacation = Vacation.current(for: profile.id) }
             .onChange(of: isAnalyticsEnabled) { _, isEnabled in
                 Analytics.isEnabled = isEnabled
             }
@@ -122,7 +127,7 @@ struct SettingsView: View {
     }
 
     private var generalSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        LabeledSection("settings.general") {
             CardGroup {
                 DisclosureRow(
                     label: "settings.language",
@@ -149,6 +154,44 @@ struct SettingsView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    private var vacationSection: some View {
+        LabeledSection("settings.vacation.title") {
+            CardGroup {
+                NavigationLink {
+                    VacationSettingsView(userId: profile.id, vacation: $vacation)
+                } label: {
+                    HStack(spacing: 11) {
+                        Image(systemName: "beach.umbrella")
+                            .font(.system(size: 16))
+                            .foregroundStyle(Theme.textMuted)
+                            .frame(width: 20)
+                            .accessibilityHidden(true)
+                        Text(vacationStatusText)
+                            .font(Theme.Typo.row)
+                            .foregroundStyle(Theme.text)
+                            .lineLimit(1)
+                        Spacer(minLength: 10)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.textGhost)
+                            .accessibilityHidden(true)
+                    }
+                    .padding(.vertical, 13)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var vacationStatusText: String {
+        guard vacation.isActive else {
+            return String(localized: "settings.vacation.off", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+        }
+        let end = vacation.end.formatted(date: .abbreviated, time: .omitted)
+        return String(localized: "settings.vacation.until \(end)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
     }
 
     private var supportSection: some View {
@@ -197,28 +240,30 @@ struct SettingsView: View {
         .contentShape(.rect)
     }
 
-    private var accountSection: some View {
-        LabeledSection("settings.account") {
+    /// Just a nickname. There is no account to manage - it's a label for this device, nothing
+    /// signs in or syncs.
+    private var profileSection: some View {
+        @Bindable var profile = profile
+        return LabeledSection("settings.profile") {
             CardGroup {
-                if let user = session.currentUser {
-                    ValueRow("settings.account.name", value: user.displayName)
-                    RowDivider()
-                    if let email = user.email {
-                        ValueRow("settings.account.email", value: email)
-                        RowDivider()
-                    }
+                HStack(spacing: 11) {
+                    Image(systemName: "person")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Theme.textMuted)
+                        .frame(width: 20)
+                        .accessibilityHidden(true)
+                    TextField("settings.profile.nicknamePlaceholder", text: $profile.nickname)
+                        .font(Theme.Typo.row)
+                        .foregroundStyle(Theme.text)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .submitLabel(.done)
+                        .onSubmit {
+                            profile.nickname = profile.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+                        }
+                        .accessibilityLabel(Text("settings.profile.nicknamePlaceholder"))
                 }
-                Button {
-                    session.signOut()
-                } label: {
-                    Text("settings.account.signOut")
-                        .font(Theme.Typo.rowEmphasis)
-                        .foregroundStyle(Theme.accentText)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 13)
-                        .contentShape(.rect)
-                }
-                .buttonStyle(.plain)
+                .padding(.vertical, 13)
             }
         }
     }
@@ -276,6 +321,6 @@ private struct LanguagePickerSheet: View {
 
 #Preview {
     SettingsView()
-        .environment(AuthSession())
+        .environment(Profile())
         .environment(PurchaseManager())
 }

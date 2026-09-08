@@ -18,6 +18,9 @@ struct HabitSnapshot: Identifiable, Hashable {
     let colorHex: String
     let streak: Int
     let isCheckbox: Bool
+    /// An avoid habit — the ring shows its clean state, and a tap opens the app rather than logging
+    /// a slip from the Home Screen by accident.
+    var isAvoid = false
     /// "+250" style label for a value habit's tap; empty for a checkbox habit.
     let quickAddLabel: String
 
@@ -67,9 +70,20 @@ struct HabitsProvider: TimelineProvider {
         let today = todaysHabits()
         let limit = rowLimit(for: family)
         let snapshots = today.prefix(limit).map { habit in
-            // A quota habit's ring tracks the week/month tally against the quota, not today.
-            let amount = habit.isQuota ? Double(habit.periodCount()) : habit.amount(on: .now)
-            let target = habit.isQuota ? Double(habit.quotaTarget) : habit.targetAmount
+            // A quota habit's ring tracks the week/month tally against the quota, not today. An
+            // avoid habit's ring is full while the day stays clean.
+            let amount: Double
+            let target: Double
+            if habit.isAvoid {
+                amount = habit.isDone(on: .now) ? 1 : 0
+                target = 1
+            } else if habit.isQuota {
+                amount = Double(habit.periodCount())
+                target = Double(habit.quotaTarget)
+            } else {
+                amount = habit.amount(on: .now)
+                target = habit.targetAmount
+            }
             return HabitSnapshot(
                 id: habit.id,
                 title: habit.title,
@@ -77,6 +91,7 @@ struct HabitsProvider: TimelineProvider {
                 colorHex: habit.colorHex,
                 streak: habit.currentStreak,
                 isCheckbox: habit.isCheckbox,
+                isAvoid: habit.isAvoid,
                 quickAddLabel: habit.isCheckbox ? "" : "+\(habit.numberOnly(habit.widgetQuickAmount))",
                 amountToday: amount,
                 target: target
@@ -103,13 +118,14 @@ struct HabitsProvider: TimelineProvider {
     /// own order.
     @MainActor
     static func todaysHabits() -> [Habit] {
-        guard let userId = CurrentUser.currentUserId else { return [] }
+        guard let userId = LocalProfile.currentUserId else { return [] }
         let context = SharedStore.container.mainContext
         let descriptor = FetchDescriptor<Habit>(predicate: #Predicate { $0.ownerId == userId })
         let habits = (try? context.fetch(descriptor)) ?? []
+        let vacation = Vacation.current(for: userId)
 
         return habits
-            .filter { !$0.isArchived && $0.isScheduledToday() }
+            .filter { !$0.isArchived && $0.isScheduledToday() && !vacation.pauses($0.id, on: .now) }
             .sorted { lhs, rhs in
                 let lhsDone = lhs.isDone(on: .now)
                 let rhsDone = rhs.isDone(on: .now)
@@ -207,13 +223,23 @@ struct HabitsWidgetEntryView: View {
         }
     }
 
+    @ViewBuilder
     private func ring(for habit: HabitSnapshot, diameter: CGFloat) -> some View {
-        Button(intent: HabitCheckInIntent(habitID: habit.id)) {
-            RingShape(habit: habit, diameter: diameter)
+        if habit.isAvoid {
+            // No logging from the Home Screen — a stray tap shouldn't record a slip.
+            Link(destination: GoalLink.habit(for: habit.id)) {
+                RingShape(habit: habit, diameter: diameter)
+            }
+            .accessibilityLabel(Text(habit.title))
+            .accessibilityValue(Text("a11y.streak.days \(habit.streak)"))
+        } else {
+            Button(intent: HabitCheckInIntent(habitID: habit.id)) {
+                RingShape(habit: habit, diameter: diameter)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(habit.title))
+            .accessibilityValue(Text(habit.isDone ? "a11y.today.done" : "a11y.today.notDone"))
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(habit.title))
-        .accessibilityValue(Text(habit.isDone ? "a11y.today.done" : "a11y.today.notDone"))
     }
 
     // MARK: Lock Screen
@@ -253,12 +279,20 @@ struct HabitsWidgetEntryView: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(Text(habit.title))
 
-                Button(intent: HabitCheckInIntent(habitID: habit.id)) {
-                    Image(systemName: habit.isDone ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 15, weight: .semibold))
+                if habit.isAvoid {
+                    HStack(spacing: 3) {
+                        Image(systemName: "flame.fill").font(.system(size: 12))
+                        Text("\(habit.streak)").font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                    }
+                    .accessibilityLabel(Text("a11y.streak.days \(habit.streak)"))
+                } else {
+                    Button(intent: HabitCheckInIntent(habitID: habit.id)) {
+                        Image(systemName: habit.isDone ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 15, weight: .semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("a11y.habit.toggleToday"))
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("a11y.habit.toggleToday"))
             }
         } else {
             Text("habits.empty.title").font(.caption)

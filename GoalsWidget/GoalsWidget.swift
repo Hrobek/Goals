@@ -92,13 +92,14 @@ struct GoalsProvider: TimelineProvider {
     /// Not private: `SingleGoalProvider` reuses this to show the same "today" tally in its header.
     @MainActor
     static func todaysGoals() -> [Goal] {
-        guard let userId = CurrentUser.currentUserId else { return [] }
+        guard let userId = LocalProfile.currentUserId else { return [] }
         let context = SharedStore.container.mainContext
         let descriptor = FetchDescriptor<Goal>(predicate: #Predicate { $0.ownerId == userId })
         let goals = (try? context.fetch(descriptor)) ?? []
+        let vacation = Vacation.current(for: userId)
 
         return goals
-            .filter { $0.status == .active && $0.isScheduledToday() }
+            .filter { $0.status == .active && $0.isScheduledToday() && !vacation.pauses($0.id, on: .now) }
             .sorted { lhs, rhs in
                 let lhsDone = lhs.hasCheckIn(on: .now)
                 let rhsDone = rhs.hasCheckIn(on: .now)

@@ -11,6 +11,8 @@ import SwiftUI
 struct ShareCardView: View {
     let review: WeekReview
     var locale: Locale = .current
+    /// The sharer's nickname, shown next to the wordmark in the footer. Empty hides it.
+    var nickname: String = ""
 
     /// Logical size; the renderer scales this up. 4:5 suits a feed or a story crop.
     static let logicalSize = CGSize(width: 540, height: 675)
@@ -87,17 +89,7 @@ struct ShareCardView: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 10) {
-            GoalsMark(size: 30, tone: .mono, color: Ramp.white)
-            Text(verbatim: "Goals")
-                .font(.system(size: 20, weight: .medium))
-                .foregroundStyle(Ramp.grey400)
-            Spacer(minLength: 0)
-            Text(movedStalledText)
-                .font(.system(size: 18))
-                .monospacedDigit()
-                .foregroundStyle(Ramp.grey600)
-        }
+        ShareCardFooter(nickname: nickname, trailing: movedStalledText)
     }
 
     private var checkInsText: String {
@@ -141,6 +133,8 @@ struct ProgressShareData {
 /// no tint and stays mono, the accent showing only on the progress bar.
 struct ProgressShareCardView: View {
     let data: ProgressShareData
+    /// The sharer's nickname, shown next to the wordmark in the footer. Empty hides it.
+    var nickname: String = ""
 
     private var tinted: Bool { data.tintHex != nil }
     private var tint: Color { data.tintHex.map(Color.init(hex:)) ?? Ramp.red400 }
@@ -217,22 +211,45 @@ struct ProgressShareCardView: View {
 
             Spacer(minLength: 0)
 
-            HStack(spacing: 10) {
-                GoalsMark(size: 30, tone: .mono, color: Ramp.white)
-                Text(verbatim: "Goals")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(Ramp.grey400)
-                Spacer(minLength: 0)
-                Text(data.footNote)
-                    .font(.system(size: 18))
-                    .foregroundStyle(Ramp.grey600)
-                    .lineLimit(1)
-            }
+            ShareCardFooter(nickname: nickname, trailing: data.footNote)
         }
         .padding(44)
         .frame(width: ShareCardView.logicalSize.width, height: ShareCardView.logicalSize.height, alignment: .topLeading)
         .background(Ramp.black)
         .environment(\.colorScheme, .dark)
+    }
+}
+
+// MARK: - Footer
+
+/// The strip along the bottom of every share card: the app mark, the wordmark carrying the
+/// sharer's nickname when they've set one, and a small trailing detail. Fixed dark palette, same
+/// as the cards it sits in.
+private struct ShareCardFooter: View {
+    var nickname: String = ""
+    let trailing: String
+
+    private var brand: String {
+        let name = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? "Goals" : "Goals · \(name)"
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            GoalsMark(size: 30, tone: .mono, color: Ramp.white)
+            Text(verbatim: brand)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundStyle(Ramp.grey400)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: 8)
+            Text(trailing)
+                .font(.system(size: 18))
+                .monospacedDigit()
+                .foregroundStyle(Ramp.grey600)
+                .lineLimit(1)
+                .layoutPriority(1)
+        }
     }
 }
 
@@ -242,14 +259,14 @@ enum ShareCard {
     /// Renders the weekly card to an `Image` ready for `ShareLink`. Main-actor because
     /// `ImageRenderer` is.
     @MainActor
-    static func image(for review: WeekReview, locale: Locale = AppLanguage.current.locale, scale: CGFloat = 2) -> Image? {
-        render(ShareCardView(review: review, locale: locale), scale: scale)
+    static func image(for review: WeekReview, locale: Locale = AppLanguage.current.locale, nickname: String? = nil, scale: CGFloat = 2) -> Image? {
+        render(ShareCardView(review: review, locale: locale, nickname: nickname ?? LocalProfile.nickname), scale: scale)
     }
 
     /// Renders a single goal's / habit's progress card.
     @MainActor
-    static func image(for data: ProgressShareData, scale: CGFloat = 2) -> Image? {
-        render(ProgressShareCardView(data: data), scale: scale)
+    static func image(for data: ProgressShareData, nickname: String? = nil, scale: CGFloat = 2) -> Image? {
+        render(ProgressShareCardView(data: data, nickname: nickname ?? LocalProfile.nickname), scale: scale)
     }
 
     @MainActor

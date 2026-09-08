@@ -50,12 +50,17 @@ enum NotificationScheduler {
         let habits = (try? context.fetch(habitDescriptor)) ?? []
         let center = UNUserNotificationCenter.current()
 
+        // A repeating reminder can't be date-bounded, so a paused item just isn't scheduled while
+        // the vacation covers today. `syncAll` runs on every foreground, so the reminder comes
+        // back on the first launch after the vacation ends.
+        let vacation = Vacation.current(for: userId)
+
         let stale = await center.pendingNotificationRequests()
             .map(\.identifier)
             .filter { $0.hasPrefix(goalPrefix) || $0.hasPrefix(habitPrefix) || $0.hasPrefix(inactivityPrefix) }
         center.removePendingNotificationRequests(withIdentifiers: stale)
 
-        for goal in goals where goal.isReminderOn && goal.status == .active {
+        for goal in goals where goal.isReminderOn && goal.status == .active && !vacation.pauses(goal.id, on: .now) {
             for request in reminderRequests(
                 prefix: goalPrefix,
                 id: goal.id,
@@ -70,7 +75,7 @@ enum NotificationScheduler {
             }
         }
 
-        for habit in habits where habit.isReminderOn && habit.status == .active {
+        for habit in habits where habit.isReminderOn && habit.status == .active && !vacation.pauses(habit.id, on: .now) {
             for request in reminderRequests(
                 prefix: habitPrefix,
                 id: habit.id,
@@ -85,8 +90,11 @@ enum NotificationScheduler {
             }
         }
 
-        for request in inactivityRequests() {
-            try? await center.add(request)
+        // No "haven't heard from you" guilt trip while the user has told us they're away.
+        if !vacation.coversToday {
+            for request in inactivityRequests() {
+                try? await center.add(request)
+            }
         }
     }
 

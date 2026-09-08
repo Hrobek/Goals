@@ -12,24 +12,33 @@ enum StreakCalculator {
     ///   *scheduled* days that were done; unscheduled days are skipped without breaking the streak.
     /// - quota-based types (times per week / times per month) count consecutive periods where the
     ///   done count met the quota; the still-in-progress current period never breaks the streak.
+    /// Days the item was ticked off on vacation still count — but a day the user marked as away
+    /// (in the active `Vacation`) is skipped like an unscheduled day rather than breaking the run.
     static func currentStreak(for schedule: some Scheduled, calendar: Calendar = .current, referenceDate: Date = .now) -> Int {
+        let vacation = Vacation.current()
         switch schedule.recurrenceType {
         case .daily, .specificWeekdays, .specificDaysOfMonth:
-            return dayBasedStreak(for: schedule, calendar: calendar, referenceDate: referenceDate)
+            return dayBasedStreak(for: schedule, vacation: vacation, calendar: calendar, referenceDate: referenceDate)
         case .timesPerWeek:
-            return periodBasedStreak(for: schedule, component: .weekOfYear, maxIterations: 520, calendar: calendar, referenceDate: referenceDate)
+            return periodBasedStreak(for: schedule, vacation: vacation, component: .weekOfYear, maxIterations: 520, calendar: calendar, referenceDate: referenceDate)
         case .timesPerMonth:
-            return periodBasedStreak(for: schedule, component: .month, maxIterations: 240, calendar: calendar, referenceDate: referenceDate)
+            return periodBasedStreak(for: schedule, vacation: vacation, component: .month, maxIterations: 240, calendar: calendar, referenceDate: referenceDate)
         }
     }
 
-    private static func dayBasedStreak(for schedule: some Scheduled, calendar: Calendar, referenceDate: Date) -> Int {
+    private static func dayBasedStreak(for schedule: some Scheduled, vacation: Vacation, calendar: Calendar, referenceDate: Date) -> Int {
         let doneDays = Set(schedule.scheduleDates.map { calendar.startOfDay(for: $0) })
         var cursor = calendar.startOfDay(for: referenceDate)
 
+        func counts(_ day: Date) -> Bool {
+            Recurrence.isDayScheduled(day, for: schedule, calendar: calendar)
+                && !vacation.pauses(schedule.id, on: day, calendar: calendar)
+        }
+
         // Grace: if today is scheduled but not done yet, don't let that break the streak —
-        // start counting from yesterday instead.
-        if Recurrence.isDayScheduled(cursor, for: schedule, calendar: calendar), !doneDays.contains(cursor) {
+        // start counting from yesterday instead. An avoid habit gets no grace: a slip logged
+        // today breaks the run today, it isn't "not done yet".
+        if !schedule.isAvoid, counts(cursor), !doneDays.contains(cursor) {
             guard let yesterday = calendar.date(byAdding: .day, value: -1, to: cursor) else { return 0 }
             cursor = yesterday
         }
@@ -40,7 +49,7 @@ enum StreakCalculator {
 
         while iterations < maxIterations {
             iterations += 1
-            if Recurrence.isDayScheduled(cursor, for: schedule, calendar: calendar) {
+            if counts(cursor) {
                 if doneDays.contains(cursor) {
                     streak += 1
                 } else {
@@ -55,6 +64,7 @@ enum StreakCalculator {
 
     private static func periodBasedStreak(
         for schedule: some Scheduled,
+        vacation: Vacation,
         component: Calendar.Component,
         maxIterations: Int,
         calendar: Calendar,
@@ -72,7 +82,7 @@ enum StreakCalculator {
         while iterations < maxIterations {
             iterations += 1
             let count = doneDates.filter { interval.contains($0) }.count
-            if count >= schedule.recurrenceCount {
+            if count >= schedule.recurrenceCount || vacation.pausesEntirePeriod(schedule.id, interval, calendar: calendar) {
                 streak += 1
             } else if !isCurrentPeriod {
                 break

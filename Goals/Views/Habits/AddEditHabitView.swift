@@ -18,6 +18,7 @@ struct AddEditHabitView: View {
     private let userId: UUID
 
     @State private var title: String
+    @State private var isAvoid: Bool
     @State private var emoji: String?
     @State private var colorHex: String
     @State private var customColor: Color
@@ -41,29 +42,32 @@ struct AddEditHabitView: View {
     @State private var isShowingEmojiPicker = false
     @State private var isShowingUnitPicker = false
 
-    init(habit: Habit?, userId: UUID) {
+    init(habit: Habit?, userId: UUID, template: HabitTemplate? = nil) {
         self.habit = habit
         self.userId = habit?.ownerId ?? userId
-        _title = State(initialValue: habit?.title ?? "")
-        _emoji = State(initialValue: habit?.emoji)
+        // A template only seeds a *new* habit; an edit sheet is never reshaped by a stale value.
+        let template = habit == nil ? template : nil
+        _title = State(initialValue: habit?.title ?? template?.localizedTitle ?? "")
+        _isAvoid = State(initialValue: habit?.isAvoid ?? template?.isAvoid ?? false)
+        _emoji = State(initialValue: habit?.emoji ?? template?.emoji)
         let hex = habit?.colorHex ?? ColorPalette.defaultHex
         _colorHex = State(initialValue: hex)
         _customColor = State(initialValue: Color(hex: hex))
         _hasDeadline = State(initialValue: habit?.deadline != nil)
         _deadline = State(initialValue: habit?.deadline ?? Date().addingTimeInterval(30 * 24 * 3600))
         let unit = UnitSelection(
-            unitKey: habit?.unitKey ?? GoalUnit.times.rawValue,
+            unitKey: habit?.unitKey ?? template?.unit.rawValue ?? GoalUnit.times.rawValue,
             customUnitText: habit?.customUnitText
         )
         _unitSelection = State(initialValue: unit)
-        _targetAmountText = State(initialValue: Self.trimmed(habit?.targetAmount ?? 1))
+        _targetAmountText = State(initialValue: Self.trimmed(habit?.targetAmount ?? template?.targetAmount ?? 1))
         _quickAmountText = State(initialValue: Self.trimmed(
-            habit?.widgetQuickAmount ?? Self.defaultStep(for: unit)))
+            habit?.widgetQuickAmount ?? template?.quickAddAmount ?? Self.defaultStep(for: unit)))
         _widgetAction = State(initialValue: habit?.widgetAction ?? .checkOff)
-        _recurrenceType = State(initialValue: habit?.recurrenceType ?? .daily)
+        _recurrenceType = State(initialValue: habit?.recurrenceType ?? template?.recurrenceType ?? .daily)
         _recurrenceWeekdays = State(initialValue: Set(habit?.recurrenceWeekdays ?? []))
         _recurrenceDaysOfMonth = State(initialValue: Set(habit?.recurrenceDaysOfMonth ?? []))
-        _recurrenceCount = State(initialValue: habit?.recurrenceCount ?? 3)
+        _recurrenceCount = State(initialValue: habit?.recurrenceCount ?? template?.recurrenceCount ?? 3)
         _isReminderOn = State(initialValue: habit?.isReminderOn ?? false)
         _reminderFrequency = State(initialValue: habit?.reminderFrequency ?? .daily)
         let minutes = habit?.reminderTimes ?? [9 * 60]
@@ -114,7 +118,14 @@ struct AddEditHabitView: View {
 
     private var isValid: Bool {
         guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        if isAvoid { return true }
         return isUnitHabit ? parsedTarget != nil : true
+    }
+
+    /// Avoid habits are always a plain daily (or specific-weekday) yes/no — no unit, no per-day
+    /// count, no widget quick-add — so those cards drop out of the form.
+    private var recurrenceOptions: [RecurrenceType] {
+        isAvoid ? [.daily, .specificWeekdays] : RecurrenceType.allCases
     }
 
     private static func trimmed(_ value: Double) -> String {
@@ -136,6 +147,14 @@ struct AddEditHabitView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.section) {
                     identityRow
+                    if habit == nil {
+                        SegmentStrip(
+                            options: [false, true],
+                            selection: $isAvoid.animation(),
+                            title: { $0 ? String(localized: "habit.polarity.quit", bundle: AppLanguage.currentBundle)
+                                        : String(localized: "habit.polarity.build", bundle: AppLanguage.currentBundle) }
+                        )
+                    }
                     colorRow
                     CardGroup {
                         SwitchRow(label: "goal.field.hasDeadline", isOn: $hasDeadline.animation())
@@ -157,9 +176,11 @@ struct AddEditHabitView: View {
                             type: $recurrenceType,
                             weekdays: $recurrenceWeekdays,
                             daysOfMonth: $recurrenceDaysOfMonth,
-                            count: $recurrenceCount
+                            count: $recurrenceCount,
+                            options: recurrenceOptions
                         )
                     }
+                    if !isAvoid {
                     LabeledSection("habit.field.tracking") {
                         VStack(alignment: .leading, spacing: 8) {
                             CardGroup {
@@ -202,6 +223,7 @@ struct AddEditHabitView: View {
                                 .padding(.horizontal, 4)
                         }
                     }
+                    } // !isAvoid
                     LabeledSection("reminder.title") {
                         ReminderEditor(
                             isOn: $isReminderOn,
@@ -253,6 +275,16 @@ struct AddEditHabitView: View {
                 // Moving to a quota schedule drops the per-day count — don't carry a stale "3"
                 // into a habit that's now just one check-in a day.
                 if (newType == .timesPerWeek || newType == .timesPerMonth), !isUnitHabit {
+                    targetAmountText = "1"
+                }
+            }
+            .onChange(of: isAvoid) { _, avoid in
+                // An avoid habit can't be a quota, and always tracks as a plain yes/no.
+                if avoid {
+                    if recurrenceType == .timesPerWeek || recurrenceType == .timesPerMonth || recurrenceType == .specificDaysOfMonth {
+                        recurrenceType = .daily
+                    }
+                    unitSelection = .preset(.times)
                     targetAmountText = "1"
                 }
             }
@@ -381,9 +413,16 @@ struct AddEditHabitView: View {
         }
 
         // A quota-scheduled "times" habit is a plain one-tap-a-day check-in; the "how many" is the
-        // weekly/monthly quota, not a per-day count.
-        let target = (isUnitHabit || showsTimesPerDay) ? (parsedTarget ?? 1) : 1
-        let quick = isUnitHabit ? parsedQuick : 1
+        // weekly/monthly quota, not a per-day count. An avoid habit is always a plain yes/no.
+        let target = (!isAvoid && (isUnitHabit || showsTimesPerDay)) ? (parsedTarget ?? 1) : 1
+        let quick = (!isAvoid && isUnitHabit) ? parsedQuick : 1
+        let effectiveUnitKey = isAvoid ? GoalUnit.times.rawValue : unitSelection.unitKey
+        let effectiveCustomUnit = isAvoid ? nil : unitSelection.customUnitText
+        let effectiveWidgetAction: HabitWidgetAction = isAvoid ? .checkOff : widgetAction
+        var effectiveRecurrence = recurrenceType
+        if isAvoid, effectiveRecurrence == .timesPerWeek || effectiveRecurrence == .timesPerMonth || effectiveRecurrence == .specificDaysOfMonth {
+            effectiveRecurrence = .daily
+        }
 
         let saved: Habit
         if let habit {
@@ -391,12 +430,12 @@ struct AddEditHabitView: View {
             habit.emoji = emoji
             habit.colorHex = colorHex
             habit.deadline = hasDeadline ? deadline : nil
-            habit.unitKey = unitSelection.unitKey
-            habit.customUnitText = unitSelection.customUnitText
+            habit.unitKey = effectiveUnitKey
+            habit.customUnitText = effectiveCustomUnit
             habit.targetAmount = target
             habit.widgetQuickAmount = quick
-            habit.widgetAction = widgetAction
-            habit.recurrenceType = recurrenceType
+            habit.widgetAction = effectiveWidgetAction
+            habit.recurrenceType = effectiveRecurrence
             habit.recurrenceWeekdays = sortedWeekdays
             habit.recurrenceDaysOfMonth = sortedDaysOfMonth
             habit.recurrenceCount = recurrenceCount
@@ -411,13 +450,14 @@ struct AddEditHabitView: View {
                 sortIndex: nextSortIndex(),
                 targetAmount: target,
                 widgetQuickAmount: quick,
-                widgetAction: widgetAction,
-                unitKey: unitSelection.unitKey,
-                customUnitText: unitSelection.customUnitText,
-                recurrenceType: recurrenceType,
+                widgetAction: effectiveWidgetAction,
+                unitKey: effectiveUnitKey,
+                customUnitText: effectiveCustomUnit,
+                recurrenceType: effectiveRecurrence,
                 recurrenceWeekdays: sortedWeekdays,
                 recurrenceDaysOfMonth: sortedDaysOfMonth,
-                recurrenceCount: recurrenceCount
+                recurrenceCount: recurrenceCount,
+                isAvoid: isAvoid
             )
             modelContext.insert(newHabit)
             saved = newHabit

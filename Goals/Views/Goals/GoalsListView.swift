@@ -90,8 +90,12 @@ struct GoalsListView: View {
                 AddEditGoalView(goal: nil, userId: userId, template: config.template, presetCategory: config.category)
             }
             .sheet(isPresented: $isShowingTemplatePicker, onDismiss: presentPendingAdd) {
-                TemplatePickerView { picked in
-                    pendingAdd = picked.map(PendingAdd.template) ?? .blank
+                TemplatePickerView(mode: .goalsOnly) { selection in
+                    if case .goal(let template) = selection {
+                        pendingAdd = .template(template)
+                    } else {
+                        pendingAdd = .blank
+                    }
                     isShowingTemplatePicker = false
                 }
             }
@@ -104,19 +108,6 @@ struct GoalsListView: View {
                 Button("action.ok", role: .cancel) {}
             } message: {
                 Text("goals.limit.message")
-            }
-            .onChange(of: addGoalTrigger) { _, isTriggered in
-                guard isTriggered else { return }
-                addGoalTrigger = false
-                // A brand-new user gets the template grid rather than the empty form — but the
-                // free-tier limit still applies, in the odd case the trigger fires with goals
-                // already in place.
-                if !purchaseManager.isProUnlocked && activeGoalsCount >= Self.freeActiveGoalLimit {
-                    isShowingLimitAlert = true
-                    Analytics.send(.limitAlertShown)
-                } else {
-                    isShowingTemplatePicker = true
-                }
             }
         }
     }
@@ -214,8 +205,9 @@ struct GoalsListView: View {
             isShowingLimitAlert = true
             Analytics.send(.limitAlertShown)
         } else {
-            // The manual "+" and the empty-state button always open a blank form.
-            addGoalConfig = AddGoalConfig()
+            // The "+" and the empty-state button open the template grid; "Custom goal" on it
+            // leads to the blank form.
+            isShowingTemplatePicker = true
         }
     }
 

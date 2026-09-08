@@ -48,6 +48,8 @@ final class Habit {
     private var storedTargetAmount: Double?
     private var storedWidgetQuickAmount: Double?
     private var widgetActionRawValue: String?
+    /// A habit you're trying to *not* do. Nil (→ false) for every habit written before this shipped.
+    private var storedIsAvoid: Bool?
 
     // Stored optional for CloudKit; read through the non-optional accessor below.
     @Relationship(deleteRule: .cascade, originalName: "entries", inverse: \HabitEntry.habit)
@@ -76,6 +78,7 @@ final class Habit {
         recurrenceDaysOfMonth: [Int] = [],
         recurrenceCount: Int = 3,
         isArchived: Bool = false,
+        isAvoid: Bool = false,
         isReminderOn: Bool = false,
         reminderFrequency: ReminderFrequency = .daily,
         reminderTimes: [Int] = [9 * 60],
@@ -101,6 +104,7 @@ final class Habit {
         self.recurrenceCount = recurrenceCount
         self.createdAt = createdAt
         self.storedIsArchived = isArchived
+        self.storedIsAvoid = isAvoid
         self.storedIsReminderOn = isReminderOn
         self.reminderFrequencyRawValue = reminderFrequency.rawValue
         self.storedReminderTimes = reminderTimes
@@ -112,6 +116,14 @@ final class Habit {
     var isArchived: Bool {
         get { storedIsArchived ?? false }
         set { storedIsArchived = newValue }
+    }
+
+    /// A habit framed as something to quit: "no smoking", "no doomscrolling". A day is a success
+    /// unless you log a slip on it, so a `HabitEntry` here means a slip, not a check-in. The
+    /// streak counts consecutive clean scheduled days.
+    var isAvoid: Bool {
+        get { storedIsAvoid ?? false }
+        set { storedIsAvoid = newValue }
     }
 
     var isReminderOn: Bool {
@@ -229,20 +241,38 @@ final class Habit {
     var quotaTarget: Int { max(1, recurrenceCount) }
 
     /// 0…1 fraction of the target reached — the day's target normally, the period's quota for a
-    /// quota schedule.
+    /// quota schedule. Binary for an avoid habit: full unless the day carries a slip.
     func progressFraction(on date: Date = .now, calendar: Calendar = .current) -> Double {
+        if isAvoid {
+            return entry(on: date, calendar: calendar) == nil ? 1 : 0
+        }
         if isQuota {
             return min(max(Double(periodCount(on: date, calendar: calendar)) / Double(quotaTarget), 0), 1)
         }
         return min(max(amount(on: date, calendar: calendar) / effectiveTarget, 0), 1)
     }
 
-    /// Whether the target is met: the day's amount normally, the period's quota for a quota schedule.
+    /// Whether the day counts as a success: target met normally, the quota met for a quota
+    /// schedule, or — for an avoid habit — no slip logged that day.
     func isDone(on date: Date, calendar: Calendar = .current) -> Bool {
+        if isAvoid {
+            return entry(on: date, calendar: calendar) == nil
+        }
         if isQuota {
             return periodCount(on: date, calendar: calendar) >= quotaTarget
         }
         return amount(on: date, calendar: calendar) >= effectiveTarget
+    }
+
+    /// Avoid habit only: whether a slip is already on the books for today.
+    func slipped(on date: Date = .now, calendar: Calendar = .current) -> Bool {
+        isAvoid && entry(on: date, calendar: calendar) != nil
+    }
+
+    /// The most recent slip, if any — for the "clean since …" line on an avoid habit's detail.
+    var lastSlipDate: Date? {
+        guard isAvoid else { return nil }
+        return entries.map(\.date).max()
     }
 
     var currentStreak: Int {
@@ -265,7 +295,7 @@ final class Habit {
     /// "3,000/4,000 ml" for a value habit, "3/5" for a times counter, "2/5" for a weekly quota;
     /// "" for a plain checkbox.
     func progressText(on date: Date = .now, calendar: Calendar = .current) -> String {
-        guard !isCheckbox else { return "" }
+        guard !isCheckbox, !isAvoid else { return "" }
         if isQuota {
             return "\(periodCount(on: date, calendar: calendar))/\(quotaTarget)"
         }
@@ -282,11 +312,17 @@ final class Habit {
 extension Habit: Scheduled {
     /// The dates that feed the streak and the activity heatmap.
     ///
+    /// - Avoid habit: every scheduled day from creation through today that carries no slip — the
+    ///   "clean" days. Inverting it here means `StreakCalculator` and the heatmap need no special
+    ///   case.
     /// - Day-based habit: one date per day whose logged amount reached the target.
     /// - Quota habit: each day's date repeated once per check-in, so a period's total (which is
     ///   what the quota is measured against) is just a count of these — and the heatmap, which
     ///   maps them to distinct days, still lights each day once.
     var scheduleDates: [Date] {
+        if isAvoid {
+            return cleanDayDates()
+        }
         if isQuota {
             return entries.flatMap { entry in
                 Array(repeating: entry.date, count: max(0, Int(entry.amount.rounded())))
@@ -294,5 +330,26 @@ extension Habit: Scheduled {
         }
         let target = effectiveTarget
         return entries.filter { $0.amount >= target }.map(\.date)
+    }
+
+    /// Avoid habit only: the scheduled days between creation and today with no slip on them.
+    private func cleanDayDates(calendar: Calendar = .current, now: Date = .now) -> [Date] {
+        let start = calendar.startOfDay(for: createdAt)
+        let today = calendar.startOfDay(for: now)
+        guard start <= today else { return [] }
+
+        let slipDays = Set(entries.map { calendar.startOfDay(for: $0.date) })
+        var result: [Date] = []
+        var cursor = start
+        var iterations = 0
+        while cursor <= today, iterations < 4000 {
+            iterations += 1
+            if Recurrence.isDayScheduled(cursor, for: self, calendar: calendar), !slipDays.contains(cursor) {
+                result.append(cursor)
+            }
+            guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
+            cursor = next
+        }
+        return result
     }
 }

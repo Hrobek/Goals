@@ -8,25 +8,24 @@ import SwiftData
 
 @main
 struct GoalsApp: App {
-    @State private var session = AuthSession()
+    @State private var profile = Profile()
     @State private var purchaseManager = PurchaseManager()
     @State private var syncMonitor = SyncMonitor()
     private let modelContainer = SharedStore.container
 
     init() {
-        // Covers a user who was already signed in before per-user data isolation shipped — they
-        // never call `AuthSession.signIn`, since their session is restored directly at launch.
-        if let user = session.currentUser {
-            OwnershipMigration.claimOrphanData(for: user.id, context: modelContainer.mainContext)
-            Category.migrateDefaultKeysIfNeeded(context: modelContainer.mainContext, for: user.id)
-            Category.seedDefaultsIfNeeded(context: modelContainer.mainContext, for: user.id)
-        }
+        // Rows created before per-user isolation carry `Goal.unownedId`; rows created under the
+        // retired account system carry that account's id, which `Profile` adopts as the device id.
+        // Either way, claim everything for the one local identity and seed its defaults.
+        OwnershipMigration.claimOrphanData(for: profile.id, context: modelContainer.mainContext)
+        Category.migrateDefaultKeysIfNeeded(context: modelContainer.mainContext, for: profile.id)
+        Category.seedDefaultsIfNeeded(context: modelContainer.mainContext, for: profile.id)
     }
 
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environment(session)
+                .environment(profile)
                 .environment(purchaseManager)
                 .environment(syncMonitor)
         }

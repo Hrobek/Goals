@@ -71,12 +71,15 @@ struct RecurrenceEditor: View {
     @Binding var weekdays: Set<Int>
     @Binding var daysOfMonth: Set<Int>
     @Binding var count: Int
+    /// Which recurrence types the menu offers. Avoid habits pass the day-based ones only — a
+    /// "3× a week" quota makes no sense for something you're trying never to do.
+    var options: [RecurrenceType] = RecurrenceType.allCases
 
     var body: some View {
         CardGroup {
             MenuRow(
                 label: "goal.field.recurrence",
-                options: RecurrenceType.allCases,
+                options: options,
                 selection: $type.animation(),
                 title: { $0.localizedName }
             )

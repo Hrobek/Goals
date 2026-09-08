@@ -5,15 +5,14 @@
 
 import SwiftUI
 
-/// The "you're in" moment, shown once after the first sign-in on a device. It stands in for the
-/// welcome email a server-backed app would send: what the app is for, what to do first, and — with
-/// permission — a nudge tomorrow asking how that first goal is going.
+/// The "you're in" screen, shown once on a device's first launch. It stands in for the welcome
+/// email a server-backed app would send: what the app is for, what to do first, and the fact that
+/// none of it needs an account.
 struct FirstRunWelcomeView: View {
-    /// Called when the user takes the primary action, so the caller can land them on the goals list.
-    let onStart: () -> Void
-
-    @Environment(\.dismiss) private var dismiss
-    @State private var isPreparing = false
+    /// The primary button - move on to picking a first goal or habit.
+    let onContinue: () -> Void
+    /// "I'll set one up later" - straight to the app.
+    let onSkip: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -34,22 +33,19 @@ struct FirstRunWelcomeView: View {
             VStack(spacing: Theme.Space.card) {
                 markPoint(title: "firstRun.point.goal.title", body: "firstRun.point.goal.body")
                 point(icon: "checkmark.circle", title: "firstRun.point.checkIn.title", body: "firstRun.point.checkIn.body")
-                point(icon: "chart.line.uptrend.xyaxis", title: "firstRun.point.progress.title", body: "firstRun.point.progress.body")
+                point(icon: "lock", title: "firstRun.point.private.title", body: "firstRun.point.private.body")
             }
             .padding(.top, 32)
 
             Spacer(minLength: 24)
 
             VStack(spacing: 12) {
-                Button {
-                    start()
-                } label: {
+                Button { onContinue() } label: {
                     Text("firstRun.cta")
                 }
                 .buttonStyle(AccentButtonStyle(height: 52))
-                .disabled(isPreparing)
 
-                Button("firstRun.skip") { dismiss() }
+                Button("firstRun.skip") { onSkip() }
                     .font(Theme.Typo.rowEmphasis)
                     .foregroundStyle(Theme.textMuted)
                     .buttonStyle(.plain)
@@ -61,7 +57,6 @@ struct FirstRunWelcomeView: View {
         .padding(.vertical, 28)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .screenGround()
-        .presentationDragIndicator(.visible)
     }
 
     /// "Name one goal" is the app's own subject, so it gets the app's own mark.
@@ -101,25 +96,8 @@ struct FirstRunWelcomeView: View {
         }
         .cardSurface()
     }
-
-    /// Asks for notifications and books tomorrow's nudge before handing over. A refusal isn't worth
-    /// blocking on — the rest of the app works fine without it.
-    private func start() {
-        isPreparing = true
-        Task {
-            if await NotificationScheduler.requestAuthorization() {
-                await NotificationScheduler.scheduleWelcomeNudge()
-            }
-            isPreparing = false
-            dismiss()
-            onStart()
-        }
-    }
 }
 
 #Preview {
-    Color.black
-        .sheet(isPresented: .constant(true)) {
-            FirstRunWelcomeView {}
-        }
+    FirstRunWelcomeView(onContinue: {}, onSkip: {})
 }

@@ -62,11 +62,15 @@ struct ScheduleActivityView: View {
     /// Fill for a done day — the app accent for goals, the habit's own colour when a habit passes
     /// one in.
     var doneTint: Color = Theme.accent
+    /// Start-of-day dates an avoid habit logged a slip on — rendered in red instead of the neutral
+    /// "scheduled but not done" grey. Empty for everything else.
+    var slipDays: Set<Date> = []
 
     private let calendar = Calendar.current
+    private let vacation = Vacation.current()
 
     private enum DayState {
-        case done, scheduled, blocked
+        case done, slipped, scheduled, blocked
     }
 
     /// Distinct type from the weekday-label `Int` ids (1–7) so a grid's leading blanks never
@@ -215,7 +219,11 @@ struct ScheduleActivityView: View {
     // MARK: - Cells
 
     private func state(for day: Date) -> DayState {
-        if checkInDays.contains(calendar.startOfDay(for: day)) { return .done }
+        let startOfDay = calendar.startOfDay(for: day)
+        if slipDays.contains(startOfDay) { return .slipped }
+        if checkInDays.contains(startOfDay) { return .done }
+        // A day the user marked away reads as "not on the schedule" rather than a missed day.
+        if vacation.pauses(schedule.id, on: day, calendar: calendar) { return .blocked }
         return Recurrence.isDayScheduled(day, for: schedule, calendar: calendar) ? .scheduled : .blocked
     }
 
@@ -237,6 +245,7 @@ struct ScheduleActivityView: View {
     private func stateDescription(for day: Date) -> String {
         let key: String.LocalizationValue = switch state(for: day) {
         case .done: "a11y.day.done"
+        case .slipped: "a11y.day.slipped"
         case .scheduled: "a11y.day.scheduled"
         case .blocked: "a11y.day.notScheduled"
         }
@@ -246,6 +255,7 @@ struct ScheduleActivityView: View {
     private func fill(for day: Date) -> Color {
         switch state(for: day) {
         case .done: doneTint
+        case .slipped: Theme.accent.opacity(0.5)
         case .scheduled: Theme.cellScheduled
         case .blocked: Theme.cellBlocked
         }

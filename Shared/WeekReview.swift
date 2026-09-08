@@ -75,6 +75,7 @@ struct WeekReview {
 
         let activeGoals = goals.filter { $0.status == .active }
         let activeHabits = habits.filter { !$0.isArchived }
+        let vacation = Vacation.current()
 
         var lines: [Line] = []
         lines.reserveCapacity(activeGoals.count + activeHabits.count)
@@ -86,7 +87,7 @@ struct WeekReview {
                 emoji: goal.emoji,
                 colorHex: goal.colorHex,
                 isHabit: false,
-                planned: plannedCount(for: goal, createdAt: goal.createdAt, in: interval, now: now, calendar: calendar),
+                planned: plannedCount(for: goal, createdAt: goal.createdAt, in: interval, now: now, vacation: vacation, calendar: calendar),
                 done: doneCount(for: goal, in: interval),
                 streak: StreakCalculator.currentStreak(for: goal, calendar: calendar, referenceDate: now)
             ))
@@ -98,7 +99,7 @@ struct WeekReview {
                 emoji: habit.emoji,
                 colorHex: habit.colorHex,
                 isHabit: true,
-                planned: plannedCount(for: habit, createdAt: habit.createdAt, in: interval, now: now, calendar: calendar),
+                planned: plannedCount(for: habit, createdAt: habit.createdAt, in: interval, now: now, vacation: vacation, calendar: calendar),
                 done: doneCount(for: habit, in: interval),
                 streak: StreakCalculator.currentStreak(for: habit, calendar: calendar, referenceDate: now)
             ))
@@ -145,6 +146,7 @@ struct WeekReview {
         createdAt: Date,
         in interval: DateInterval,
         now: Date,
+        vacation: Vacation = .current(),
         calendar: Calendar
     ) -> Int {
         let lower = max(interval.start, calendar.startOfDay(for: createdAt))
@@ -154,7 +156,8 @@ struct WeekReview {
 
         switch schedule.recurrenceType {
         case .timesPerWeek:
-            return max(0, schedule.recurrenceCount)
+            // A week the user was entirely away for doesn't ask anything of them.
+            return vacation.pausesEntirePeriod(schedule.id, interval, calendar: calendar) ? 0 : max(0, schedule.recurrenceCount)
         case .timesPerMonth:
             // ~4.345 weeks to a month; at least one so a monthly habit still shows up.
             return max(1, Int((Double(max(0, schedule.recurrenceCount)) / 4.345).rounded()))
@@ -162,7 +165,10 @@ struct WeekReview {
             var count = 0
             var cursor = lower
             while cursor < upper {
-                if Recurrence.isDayScheduled(cursor, for: schedule, calendar: calendar) { count += 1 }
+                if Recurrence.isDayScheduled(cursor, for: schedule, calendar: calendar),
+                   !vacation.pauses(schedule.id, on: cursor, calendar: calendar) {
+                    count += 1
+                }
                 guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
                 cursor = next
             }
