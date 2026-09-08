@@ -121,7 +121,6 @@ struct WatchTodayView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            WatchDiagnosticsFooter()
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 20)

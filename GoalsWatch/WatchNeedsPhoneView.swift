@@ -19,7 +19,6 @@ struct WatchNeedsPhoneView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            WatchDiagnosticsFooter()
         }
         .padding()
     }
