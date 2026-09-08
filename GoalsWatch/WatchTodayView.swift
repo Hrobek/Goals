@@ -36,7 +36,9 @@ struct WatchTodayView: View {
             VStack(alignment: .leading, spacing: 10) {
                 header
 
-                if summary.isEmpty {
+                if goals.isEmpty && habits.isEmpty {
+                    noDataState
+                } else if summary.isEmpty {
                     emptyState
                 } else {
                     ForEach(summary.items) { item in
@@ -106,6 +108,23 @@ struct WatchTodayView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 24)
+    }
+
+    /// Identity resolved but nothing has synced. Almost always because iCloud sync is off on the
+    /// phone (the watch has no way to turn it on) or the first CloudKit import hasn't landed yet.
+    private var noDataState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "icloud")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+            Text("watch.needsPhone.message")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 20)
+        .padding(.horizontal, 6)
     }
 
     // MARK: - Actions

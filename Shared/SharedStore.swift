@@ -49,10 +49,21 @@ nonisolated enum SharedStore {
         Bundle.main.bundleURL.pathExtension == "appex"
     }
 
+    /// The watch app has no Settings screen and no local-only story worth having — CloudKit is the
+    /// only way goals and habits reach the wrist. So it always opens the synced store; if the phone
+    /// has iCloud sync off, that store is simply empty and the UI says so.
+    private static var alwaysWantsCloudKit: Bool {
+        #if os(watchOS)
+        return !isAppExtension
+        #else
+        return false
+        #endif
+    }
+
     static let container: ModelContainer = {
         migrateLocalStoreIfNeeded()
 
-        let wantsCloudKit = isCloudSyncEnabled && !isAppExtension
+        let wantsCloudKit = (isCloudSyncEnabled || alwaysWantsCloudKit) && !isAppExtension
 
         if let container = makeContainer(cloudKit: wantsCloudKit ? .private(cloudKitContainerID) : .none) {
             return container
