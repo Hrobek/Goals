@@ -182,6 +182,7 @@ struct RootView: View {
             profileID: profile.id,
             nickname: profile.nickname,
             cloudSyncEnabled: SharedStore.isCloudSyncEnabled,
+            language: language.rawValue,
             vacation: Vacation.current(for: profile.id)
         )
     }

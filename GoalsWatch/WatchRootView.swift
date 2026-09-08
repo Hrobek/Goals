@@ -15,6 +15,10 @@ struct WatchRootView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var userId: UUID? = LocalProfile.currentUserId
+    /// The phone's in-app language pick, mirrored here over WatchConnectivity. Drives the locale
+    /// and a full rebuild on change, the same way `RootView` does on the phone — so the watch
+    /// follows the app's language, not the watch's system language.
+    @State private var languageRaw = AppLanguage.current.rawValue
 
     var body: some View {
         NavigationStack {
@@ -24,13 +28,20 @@ struct WatchRootView: View {
                 WatchNeedsPhoneView()
             }
         }
-        .onAppear(perform: resolveIdentity)
+        .environment(\.locale, (AppLanguage(rawValue: languageRaw) ?? .deviceDefault).locale)
+        .id(languageRaw)
+        .onAppear(perform: refresh)
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { resolveIdentity() }
+            if phase == .active { refresh() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .watchDataDidChange)) { _ in
-            resolveIdentity()
+            refresh()
         }
+    }
+
+    private func refresh() {
+        languageRaw = AppLanguage.current.rawValue
+        resolveIdentity()
     }
 
     /// Order of preference: a cached id, then the owner of any row CloudKit has already synced

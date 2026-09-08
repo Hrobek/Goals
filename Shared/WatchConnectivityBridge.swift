@@ -35,6 +35,7 @@ nonisolated enum WatchContextKey {
     static let profileID = "profileID"
     static let nickname = "nickname"
     static let cloudSyncEnabled = "cloudSyncEnabled"
+    static let language = "language"
     static let vacationActive = "vacationActive"
     static let vacationStart = "vacationStart"
     static let vacationEnd = "vacationEnd"
@@ -76,12 +77,14 @@ nonisolated final class WatchConnectivityBridge: NSObject, WCSessionDelegate, @u
         profileID: UUID,
         nickname: String,
         cloudSyncEnabled: Bool,
+        language: String,
         vacation: Vacation
     ) {
         let context: [String: Any] = [
             WatchContextKey.profileID: profileID.uuidString,
             WatchContextKey.nickname: nickname,
             WatchContextKey.cloudSyncEnabled: cloudSyncEnabled,
+            WatchContextKey.language: language,
             WatchContextKey.vacationActive: vacation.isActive,
             WatchContextKey.vacationStart: vacation.start,
             WatchContextKey.vacationEnd: vacation.end,
@@ -219,6 +222,11 @@ nonisolated enum WatchContextResolver {
         }
         if let cloudSync = context[WatchContextKey.cloudSyncEnabled] as? Bool {
             SharedStore.isCloudSyncEnabled = cloudSync
+        }
+        if let language = context[WatchContextKey.language] as? String, !language.isEmpty {
+            // Same key `AppLanguage.current` reads — the watch app follows the phone's in-app
+            // language pick rather than the watch's system language.
+            defaults.set(language, forKey: "Goals.appLanguage")
         }
         if let userId = LocalProfile.currentUserId {
             // Write straight to the keys `Vacation.current(for:)` reads — `Vacation` itself is a
