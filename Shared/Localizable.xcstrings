@@ -19334,6 +19334,38 @@
           }
         }
       }
+    },
+    "settings.sync.retrying" : {
+      "localizations" : {
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchronizace se opakuje…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retrying sync…"
+          }
+        }
+      }
+    },
+    "settings.sync.stuck" : {
+      "localizations" : {
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchronizace opakovaně selhává. Zkus appku ukončit a spustit znovu."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync keeps failing. Try quitting and reopening the app."
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

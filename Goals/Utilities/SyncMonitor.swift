@@ -29,6 +29,15 @@ final class SyncMonitor {
     private(set) var lastSync: Date?
     /// The last sync error, if the most recent event failed.
     private(set) var lastErrorMessage: String?
+    /// A transient failure (partial failure, network) hit and hasn't cleared yet — sync is
+    /// retrying in the background. Shown as a soft "retrying…" line so the screen doesn't look
+    /// dead. Resets on the next clean sync or a hard error.
+    private(set) var isRetrying = false
+
+    /// How many transient failures in a row without a clean sync. Past `stuckThreshold` the soft
+    /// line escalates to a real (still non-technical) error message.
+    private var consecutiveTransientFailures = 0
+    private static let stuckThreshold = 3
 
     private let defaults = UserDefaults(suiteName: SharedStore.appGroupID)
     private static let lastSyncKey = "Goals.sync.lastSuccess"
@@ -89,14 +98,33 @@ final class SyncMonitor {
 
             // A partial failure (some records rejected) or a network hiccup clears itself on the
             // next sync cycle — `NSPersistentCloudKitContainer` retries. The log above has the
-            // per-record detail; the user doesn't need to see a raw "CKErrorDomain error 2".
-            guard !Self.isTransient(error) else { return }
+            // per-record detail; the user doesn't need to see a raw "CKErrorDomain error 2". Show
+            // a soft "retrying…" line instead, and only escalate to a message once it's clearly
+            // not clearing.
+            if Self.isTransient(error) {
+                consecutiveTransientFailures += 1
+                isRetrying = true
+                if consecutiveTransientFailures >= Self.stuckThreshold {
+                    let message = String(
+                        localized: "settings.sync.stuck",
+                        defaultValue: "Sync keeps failing. Try quitting and reopening the app.",
+                        bundle: AppLanguage.currentBundle
+                    )
+                    lastErrorMessage = message
+                    defaults?.set(message, forKey: Self.lastErrorKey)
+                }
+                return
+            }
 
+            consecutiveTransientFailures = 0
+            isRetrying = false
             lastErrorMessage = error.localizedDescription
             defaults?.set(error.localizedDescription, forKey: Self.lastErrorKey)
             return
         }
 
+        consecutiveTransientFailures = 0
+        isRetrying = false
         lastErrorMessage = nil
         defaults?.removeObject(forKey: Self.lastErrorKey)
 

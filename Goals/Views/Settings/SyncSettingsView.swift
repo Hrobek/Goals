@@ -89,6 +89,20 @@ struct SyncSettingsView: View {
                     .monospacedDigit()
             }
 
+            if monitor.isRetrying && monitor.lastErrorMessage == nil {
+                RowDivider()
+                HStack(spacing: 7) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(Theme.Typo.footnote)
+                        .foregroundStyle(Theme.textFaint)
+                    Text("settings.sync.retrying")
+                        .font(Theme.Typo.footnote)
+                        .foregroundStyle(Theme.textMuted)
+                    Spacer(minLength: 0)
+                }
+                .padding(.vertical, 12)
+            }
+
             if let error = monitor.lastErrorMessage {
                 RowDivider()
                 VStack(alignment: .leading, spacing: 4) {
