@@ -73,8 +73,10 @@ struct WeekReview {
         let interval = calendar.dateInterval(of: .weekOfYear, for: anchor)
             ?? DateInterval(start: calendar.startOfDay(for: anchor), duration: 7 * 86_400)
 
-        let activeGoals = goals.filter { $0.status == .active }
-        let activeHabits = habits.filter { !$0.isArchived }
+        // A goal or habit whose start date is still in the future hasn't begun — it shouldn't
+        // show up as "stalled" in a week it was never meant to run.
+        let activeGoals = goals.filter { $0.status == .active && !$0.isUpcoming(asOf: now, calendar: calendar) }
+        let activeHabits = habits.filter { !$0.isArchived && !$0.isUpcoming(asOf: now, calendar: calendar) }
         let vacation = Vacation.current()
 
         var lines: [Line] = []
@@ -87,7 +89,7 @@ struct WeekReview {
                 emoji: goal.emoji,
                 colorHex: goal.colorHex,
                 isHabit: false,
-                planned: plannedCount(for: goal, createdAt: goal.createdAt, in: interval, now: now, vacation: vacation, calendar: calendar),
+                planned: plannedCount(for: goal, start: goal.startDate, in: interval, now: now, vacation: vacation, calendar: calendar),
                 done: doneCount(for: goal, in: interval),
                 streak: StreakCalculator.currentStreak(for: goal, calendar: calendar, referenceDate: now)
             ))
@@ -99,7 +101,7 @@ struct WeekReview {
                 emoji: habit.emoji,
                 colorHex: habit.colorHex,
                 isHabit: true,
-                planned: plannedCount(for: habit, createdAt: habit.createdAt, in: interval, now: now, vacation: vacation, calendar: calendar),
+                planned: plannedCount(for: habit, start: habit.startDate, in: interval, now: now, vacation: vacation, calendar: calendar),
                 done: doneCount(for: habit, in: interval),
                 streak: StreakCalculator.currentStreak(for: habit, calendar: calendar, referenceDate: now)
             ))
@@ -139,17 +141,17 @@ struct WeekReview {
 
     /// How many times `schedule` was due in `interval`. Day-based types count their scheduled days
     /// in the window; a weekly quota is one target for the week, a monthly quota is prorated to a
-    /// week. The window starts no earlier than the item's creation and, for the current week, ends
-    /// at the end of today.
+    /// week. The window starts no earlier than the item's start date and, for the current week,
+    /// ends at the end of today.
     static func plannedCount(
         for schedule: some Scheduled,
-        createdAt: Date,
+        start: Date,
         in interval: DateInterval,
         now: Date,
         vacation: Vacation = .current(),
         calendar: Calendar
     ) -> Int {
-        let lower = max(interval.start, calendar.startOfDay(for: createdAt))
+        let lower = max(interval.start, calendar.startOfDay(for: start))
         let endOfToday = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? interval.end
         let upper = min(interval.end, endOfToday)
         guard lower < upper else { return 0 }

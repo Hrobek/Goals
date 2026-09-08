@@ -231,6 +231,8 @@ struct GoalDTO: Codable {
     var priorityRaw: String
     var isCompleted: Bool
     var createdAt: Date
+    /// Optional so a backup written before start dates existed still decodes; nil falls back to `createdAt`.
+    var startDate: Date?
     var categoryID: UUID?
     var targetValue: Double
     var currentValue: Double
@@ -262,6 +264,7 @@ struct GoalDTO: Codable {
         priorityRaw = model.priority.rawValue
         isCompleted = model.isCompleted
         createdAt = model.createdAt
+        startDate = model.startDate
         categoryID = model.category?.id
         targetValue = model.targetValue
         currentValue = model.currentValue
@@ -293,6 +296,7 @@ struct GoalDTO: Codable {
         goal.priority = GoalPriority(rawValue: priorityRaw) ?? .medium
         goal.isCompleted = isCompleted
         goal.createdAt = createdAt
+        if let startDate { goal.startDate = startDate }
         goal.targetValue = targetValue
         goal.currentValue = currentValue
         goal.startValue = startValue
@@ -339,6 +343,8 @@ struct HabitDTO: Codable {
     var emoji: String?
     var colorHex: String
     var createdAt: Date
+    /// Optional so a backup written before start dates existed still decodes; nil falls back to `createdAt`.
+    var startDate: Date?
     var deadline: Date?
     var sortIndex: Int
     var targetAmount: Double
@@ -363,6 +369,7 @@ struct HabitDTO: Codable {
         emoji = model.emoji
         colorHex = model.colorHex
         createdAt = model.createdAt
+        startDate = model.startDate
         deadline = model.deadline
         sortIndex = model.sortIndex
         targetAmount = model.targetAmount
@@ -387,6 +394,7 @@ struct HabitDTO: Codable {
         habit.emoji = emoji
         habit.colorHex = colorHex
         habit.createdAt = createdAt
+        if let startDate { habit.startDate = startDate }
         habit.deadline = deadline
         habit.sortIndex = sortIndex
         habit.targetAmount = targetAmount

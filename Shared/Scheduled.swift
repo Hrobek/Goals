@@ -15,6 +15,9 @@ protocol Scheduled {
     var recurrenceWeekdays: [Int] { get }
     var recurrenceDaysOfMonth: [Int] { get }
     var recurrenceCount: Int { get }
+    /// The day this thing begins. Days before it are never scheduled — the goal or habit didn't
+    /// exist yet. Defaults to the row's creation date.
+    var startDate: Date { get }
     /// Every day this thing counts as done — a check-in date for a goal, a met-target entry date
     /// for a habit. Not de-duplicated or start-of-day'd; callers do that as they need.
     var scheduleDates: [Date] { get }

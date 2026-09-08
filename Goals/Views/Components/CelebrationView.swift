@@ -44,7 +44,7 @@ enum GoalCelebration: Equatable {
         let streak = StreakCalculator.currentStreak(for: goal)
         if !wasCompleted, goal.isCompleted {
             let days = Calendar.current.dateComponents(
-                [.day], from: Calendar.current.startOfDay(for: goal.createdAt), to: now
+                [.day], from: Calendar.current.startOfDay(for: goal.startDate), to: now
             ).day ?? 0
             return .completed(days: days, streak: streak)
         }

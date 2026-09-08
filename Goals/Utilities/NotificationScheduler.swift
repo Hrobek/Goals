@@ -60,7 +60,10 @@ enum NotificationScheduler {
             .filter { $0.hasPrefix(goalPrefix) || $0.hasPrefix(habitPrefix) || $0.hasPrefix(inactivityPrefix) }
         center.removePendingNotificationRequests(withIdentifiers: stale)
 
-        for goal in goals where goal.isReminderOn && goal.status == .active && !vacation.pauses(goal.id, on: .now) {
+        // A repeating reminder can't be date-bounded, so an item that hasn't reached its start
+        // date just isn't scheduled yet; `syncAll` runs on every foreground, so it appears on the
+        // first launch on or after the start day.
+        for goal in goals where goal.isReminderOn && goal.status == .active && !goal.isUpcoming() && !vacation.pauses(goal.id, on: .now) {
             for request in reminderRequests(
                 prefix: goalPrefix,
                 id: goal.id,
@@ -75,7 +78,7 @@ enum NotificationScheduler {
             }
         }
 
-        for habit in habits where habit.isReminderOn && habit.status == .active && !vacation.pauses(habit.id, on: .now) {
+        for habit in habits where habit.isReminderOn && habit.status == .active && !habit.isUpcoming() && !vacation.pauses(habit.id, on: .now) {
             for request in reminderRequests(
                 prefix: habitPrefix,
                 id: habit.id,

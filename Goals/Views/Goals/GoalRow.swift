@@ -74,10 +74,17 @@ struct GoalRow: View {
                             .font(Theme.Typo.caption)
                             .foregroundStyle(Theme.textFaint)
                             .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                    } else if goal.isUpcoming() {
+                        // A Spacer would push vertically once the layout stacks, tearing the
+                        // two captions apart down the row.
+                        if !dynamicTypeSize.isAccessibilitySize {
+                            Spacer(minLength: 8)
+                        }
+                        Text(startsText)
+                            .font(Theme.Typo.caption)
+                            .foregroundStyle(Theme.accentText)
                     } else {
                         if let deadline = goal.deadline {
-                            // A Spacer would push vertically once the layout stacks, tearing the
-                            // two captions apart down the row.
                             if !dynamicTypeSize.isAccessibilitySize {
                                 Spacer(minLength: 8)
                             }
@@ -138,7 +145,9 @@ struct GoalRow: View {
                 parts.append(String(localized: "a11y.goal.completed", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale))
             }
             parts.append(goal.priority.localizedName)
-            if let deadline = goal.deadline {
+            if goal.isUpcoming() {
+                parts.append(startsText)
+            } else if let deadline = goal.deadline {
                 parts.append(deadline.formatted(date: .abbreviated, time: .omitted))
             }
         }
@@ -269,5 +278,11 @@ struct GoalRow: View {
 
     private func formatted(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(0...1)))
+    }
+
+    /// "Starts tomorrow" / "Starts in 5 days" — shown on the overview for a goal that hasn't begun.
+    private var startsText: String {
+        let relative = goal.startDate.formatted(.relative(presentation: .named))
+        return String(localized: "upcoming.starts \(relative)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
     }
 }

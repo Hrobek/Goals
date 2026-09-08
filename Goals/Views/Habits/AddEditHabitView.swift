@@ -22,6 +22,7 @@ struct AddEditHabitView: View {
     @State private var emoji: String?
     @State private var colorHex: String
     @State private var customColor: Color
+    @State private var startDate: Date
     @State private var hasDeadline: Bool
     @State private var deadline: Date
     /// Only meaningful for a value habit (one with a unit); a checkbox habit ignores both.
@@ -53,6 +54,7 @@ struct AddEditHabitView: View {
         let hex = habit?.colorHex ?? ColorPalette.defaultHex
         _colorHex = State(initialValue: hex)
         _customColor = State(initialValue: Color(hex: hex))
+        _startDate = State(initialValue: habit?.startDate ?? .now)
         _hasDeadline = State(initialValue: habit?.deadline != nil)
         _deadline = State(initialValue: habit?.deadline ?? Date().addingTimeInterval(30 * 24 * 3600))
         let unit = UnitSelection(
@@ -157,6 +159,16 @@ struct AddEditHabitView: View {
                     }
                     colorRow
                     CardGroup {
+                        HStack {
+                            Text("field.startDate")
+                                .font(Theme.Typo.row)
+                                .foregroundStyle(Theme.textMuted)
+                            Spacer(minLength: 10)
+                            DatePicker("field.startDate", selection: $startDate, displayedComponents: .date)
+                                .labelsHidden()
+                        }
+                        .padding(.vertical, 9)
+                        RowDivider()
                         SwitchRow(label: "goal.field.hasDeadline", isOn: $hasDeadline.animation())
                         if hasDeadline {
                             RowDivider()
@@ -429,6 +441,7 @@ struct AddEditHabitView: View {
             habit.title = trimmedTitle
             habit.emoji = emoji
             habit.colorHex = colorHex
+            habit.startDate = startDate
             habit.deadline = hasDeadline ? deadline : nil
             habit.unitKey = effectiveUnitKey
             habit.customUnitText = effectiveCustomUnit
@@ -457,7 +470,8 @@ struct AddEditHabitView: View {
                 recurrenceWeekdays: sortedWeekdays,
                 recurrenceDaysOfMonth: sortedDaysOfMonth,
                 recurrenceCount: recurrenceCount,
-                isAvoid: isAvoid
+                isAvoid: isAvoid,
+                startDate: startDate
             )
             modelContext.insert(newHabit)
             saved = newHabit

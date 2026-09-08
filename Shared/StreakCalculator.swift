@@ -28,6 +28,7 @@ enum StreakCalculator {
 
     private static func dayBasedStreak(for schedule: some Scheduled, vacation: Vacation, calendar: Calendar, referenceDate: Date) -> Int {
         let doneDays = Set(schedule.scheduleDates.map { calendar.startOfDay(for: $0) })
+        let startFloor = calendar.startOfDay(for: schedule.startDate)
         var cursor = calendar.startOfDay(for: referenceDate)
 
         func counts(_ day: Date) -> Bool {
@@ -49,6 +50,7 @@ enum StreakCalculator {
 
         while iterations < maxIterations {
             iterations += 1
+            if cursor < startFloor { break }
             if counts(cursor) {
                 if doneDays.contains(cursor) {
                     streak += 1
@@ -75,12 +77,15 @@ enum StreakCalculator {
         }
 
         let doneDates = schedule.scheduleDates
+        let startFloor = calendar.startOfDay(for: schedule.startDate)
         var streak = 0
         var isCurrentPeriod = true
         var iterations = 0
 
         while iterations < maxIterations {
             iterations += 1
+            // A period that ended before the schedule began can't extend the streak.
+            if interval.end <= startFloor { break }
             let count = doneDates.filter { interval.contains($0) }.count
             if count >= schedule.recurrenceCount || vacation.pausesEntirePeriod(schedule.id, interval, calendar: calendar) {
                 streak += 1

@@ -360,7 +360,7 @@ struct HabitDetailView: View {
             let date = last.formatted(date: .abbreviated, time: .omitted)
             return String(localized: "habit.avoid.since \(date)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
         }
-        let date = habit.createdAt.formatted(date: .abbreviated, time: .omitted)
+        let date = habit.startDate.formatted(date: .abbreviated, time: .omitted)
         return String(localized: "habit.avoid.since \(date)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
     }
 

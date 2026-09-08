@@ -88,6 +88,10 @@ final class Goal {
     // through the accessors below: a row written before the property existed comes back as nil,
     // and SwiftData would otherwise crash trying to cast that nil into a non-optional value.
     private var trackingModeRawValue: String?
+    /// The day the goal is meant to begin. Nil for goals saved before this shipped — they fall
+    /// back to `createdAt`, so nothing about their history moves. A date in the future keeps the
+    /// goal off Today and out of the week review until it arrives.
+    private var storedStartDate: Date?
     private var storedStartValue: Double?
     private var storedIsLowerBetter: Bool?
     private var storedIsArchived: Bool?
@@ -110,6 +114,17 @@ final class Goal {
     var startValue: Double {
         get { storedStartValue ?? 0 }
         set { storedStartValue = newValue }
+    }
+
+    /// When the goal starts counting. Defaults to `createdAt` for rows written before it existed.
+    var startDate: Date {
+        get { storedStartDate ?? createdAt }
+        set { storedStartDate = newValue }
+    }
+
+    /// A start date still in the future: the goal exists but hasn't begun.
+    func isUpcoming(asOf date: Date = .now, calendar: Calendar = .current) -> Bool {
+        calendar.startOfDay(for: startDate) > calendar.startOfDay(for: date)
     }
 
     /// Set for goals where progress means going down (losing weight, cutting spending).
@@ -234,7 +249,8 @@ final class Goal {
         recurrenceCount: Int = 3,
         isCompleted: Bool = false,
         isArchived: Bool = false,
-        createdAt: Date = .now
+        createdAt: Date = .now,
+        startDate: Date? = nil
     ) {
         self.id = id
         self.ownerId = ownerId
@@ -258,6 +274,7 @@ final class Goal {
         self.isCompleted = isCompleted
         self.storedIsArchived = isArchived
         self.createdAt = createdAt
+        self.storedStartDate = startDate
     }
 
     var status: GoalStatus {

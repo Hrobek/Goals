@@ -24,6 +24,7 @@ struct AddEditGoalView: View {
     @State private var title: String
     @State private var category: Category?
     @State private var priority: GoalPriority
+    @State private var startDate: Date
     @State private var hasDeadline: Bool
     @State private var deadline: Date
     @State private var trackingMode: GoalTrackingMode
@@ -68,6 +69,7 @@ struct AddEditGoalView: View {
         _title = State(initialValue: goal?.title ?? template?.localizedTitle ?? "")
         _category = State(initialValue: goal?.category ?? presetCategory)
         _priority = State(initialValue: goal?.priority ?? .medium)
+        _startDate = State(initialValue: goal?.startDate ?? .now)
         _hasDeadline = State(initialValue: goal?.deadline != nil)
         _deadline = State(initialValue: goal?.deadline ?? Date().addingTimeInterval(7 * 24 * 3600))
         _trackingMode = State(initialValue: goal?.trackingMode ?? template?.trackingMode ?? .value)
@@ -253,6 +255,16 @@ struct AddEditGoalView: View {
                 title: { $0.localizedName }
             )
             RowDivider()
+            HStack {
+                Text("field.startDate")
+                    .font(Theme.Typo.row)
+                    .foregroundStyle(Theme.textMuted)
+                Spacer(minLength: 10)
+                DatePicker("field.startDate", selection: $startDate, displayedComponents: .date)
+                    .labelsHidden()
+            }
+            .padding(.vertical, 9)
+            RowDivider()
             SwitchRow(label: "goal.field.hasDeadline", isOn: $hasDeadline.animation())
             if hasDeadline {
                 RowDivider()
@@ -430,6 +442,7 @@ struct AddEditGoalView: View {
             goal.title = trimmedTitle
             goal.category = category
             goal.priority = priority
+            goal.startDate = startDate
             goal.deadline = hasDeadline ? deadline : nil
             // Flipping the direction puts the value on a different scale (a counted-up 1.25 kg is
             // not a weigh-in), so the current value goes back to the starting point — as it does
@@ -470,7 +483,8 @@ struct AddEditGoalView: View {
                 recurrenceType: recurrenceType,
                 recurrenceWeekdays: sortedWeekdays,
                 recurrenceDaysOfMonth: sortedDaysOfMonth,
-                recurrenceCount: recurrenceCount
+                recurrenceCount: recurrenceCount,
+                startDate: startDate
             )
             modelContext.insert(newGoal)
             saved = newGoal

@@ -65,7 +65,7 @@ enum GoalPaceInsight {
         // the goal started instead.
         guard !goal.checkIns.isEmpty else { return nil }
         let daysSinceStart = calendar.dateComponents(
-            [.day], from: calendar.startOfDay(for: goal.createdAt), to: calendar.startOfDay(for: now)
+            [.day], from: calendar.startOfDay(for: goal.startDate), to: calendar.startOfDay(for: now)
         ).day ?? 0
         guard daysSinceStart >= 1 else { return nil }
 

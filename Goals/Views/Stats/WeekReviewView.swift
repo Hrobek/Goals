@@ -53,6 +53,7 @@ struct WeekReviewView: View {
         }
         .scrollIndicators(.hidden)
         .screenGround()
+        .hidesTabBar()
         .navigationTitle(Text("weekReview.title"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.ground, for: .navigationBar)

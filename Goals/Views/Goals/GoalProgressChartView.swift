@@ -20,7 +20,7 @@ struct GoalProgressChartView: View {
     }
 
     private var allPoints: [ProgressPoint] {
-        var result = [ProgressPoint(date: goal.createdAt, value: goal.startValue)]
+        var result = [ProgressPoint(date: goal.startDate, value: goal.startValue)]
         result += goal.checkIns
             .compactMap { checkIn -> ProgressPoint? in
                 guard let value = checkIn.valueSnapshot else { return nil }

@@ -41,6 +41,10 @@ final class Habit {
     // properties added after the first rows were written — a nil from an older row must not crash
     // a non-optional cast, and it keeps the schema change a lightweight migration.
     private var storedIsArchived: Bool?
+    /// The day the habit is meant to begin. Nil for habits saved before this shipped — they fall
+    /// back to `createdAt`, so their streak and history are untouched. A future date keeps the
+    /// habit off Today and out of the week review until it arrives.
+    private var storedStartDate: Date?
     private var storedIsReminderOn: Bool?
     private var reminderFrequencyRawValue: String?
     private var storedReminderTimes: [Int]?
@@ -83,7 +87,8 @@ final class Habit {
         reminderFrequency: ReminderFrequency = .daily,
         reminderTimes: [Int] = [9 * 60],
         reminderWeekdays: [Int] = [],
-        createdAt: Date = .now
+        createdAt: Date = .now,
+        startDate: Date? = nil
     ) {
         self.id = id
         self.ownerId = ownerId
@@ -103,6 +108,7 @@ final class Habit {
         self.recurrenceDaysOfMonth = recurrenceDaysOfMonth
         self.recurrenceCount = recurrenceCount
         self.createdAt = createdAt
+        self.storedStartDate = startDate
         self.storedIsArchived = isArchived
         self.storedIsAvoid = isAvoid
         self.storedIsReminderOn = isReminderOn
@@ -116,6 +122,17 @@ final class Habit {
     var isArchived: Bool {
         get { storedIsArchived ?? false }
         set { storedIsArchived = newValue }
+    }
+
+    /// When the habit starts counting. Defaults to `createdAt` for rows written before it existed.
+    var startDate: Date {
+        get { storedStartDate ?? createdAt }
+        set { storedStartDate = newValue }
+    }
+
+    /// A start date still in the future: the habit exists but hasn't begun.
+    func isUpcoming(asOf date: Date = .now, calendar: Calendar = .current) -> Bool {
+        calendar.startOfDay(for: startDate) > calendar.startOfDay(for: date)
     }
 
     /// A habit framed as something to quit: "no smoking", "no doomscrolling". A day is a success
@@ -332,9 +349,9 @@ extension Habit: Scheduled {
         return entries.filter { $0.amount >= target }.map(\.date)
     }
 
-    /// Avoid habit only: the scheduled days between creation and today with no slip on them.
+    /// Avoid habit only: the scheduled days between the start date and today with no slip on them.
     private func cleanDayDates(calendar: Calendar = .current, now: Date = .now) -> [Date] {
-        let start = calendar.startOfDay(for: createdAt)
+        let start = calendar.startOfDay(for: startDate)
         let today = calendar.startOfDay(for: now)
         guard start <= today else { return [] }
 

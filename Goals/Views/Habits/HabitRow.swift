@@ -45,6 +45,12 @@ struct HabitRow: View {
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
 
                 HStack(spacing: 8) {
+                    if habit.isUpcoming() {
+                        Text(startsText)
+                            .font(Theme.Typo.caption)
+                            .foregroundStyle(Theme.accentText)
+                            .lineLimit(1)
+                    }
                     if !habit.isCheckbox {
                         Text(habit.progressText(on: referenceDate))
                             .font(Theme.Typo.caption)
@@ -232,8 +238,17 @@ struct HabitRow: View {
         actionTick += 1
     }
 
+    /// "Starts tomorrow" / "Starts in 5 days" — shown in the list for a habit that hasn't begun.
+    private var startsText: String {
+        let relative = habit.startDate.formatted(.relative(presentation: .named))
+        return String(localized: "upcoming.starts \(relative)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+    }
+
     private var accessibilityLabel: Text {
         var parts = [habit.title, Recurrence.localizedSummary(for: habit)]
+        if habit.isUpcoming() {
+            parts.append(startsText)
+        }
         if streak > 0 {
             parts.append(String(localized: "a11y.streak.days \(streak)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale))
         }

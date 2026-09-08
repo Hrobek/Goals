@@ -63,6 +63,10 @@ enum Recurrence {
     /// Whether `date` is a scheduled day for day-based recurrence types (daily / specific weekdays / specific days of month).
     /// Not meaningful for the quota-based types (timesPerWeek / timesPerMonth) — those are evaluated per-period instead.
     static func isDayScheduled(_ date: Date, for schedule: some Scheduled, calendar: Calendar) -> Bool {
+        // Before the start date the goal or habit didn't exist — nothing is due.
+        if calendar.startOfDay(for: date) < calendar.startOfDay(for: schedule.startDate) {
+            return false
+        }
         switch schedule.recurrenceType {
         case .daily:
             return true

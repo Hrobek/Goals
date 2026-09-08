@@ -3971,6 +3971,46 @@
         }
       }
     },
+    "field.startDate" : {
+      "localizations" : {
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Začátek"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Startdatum"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start date"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fecha de inicio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date de début"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Data de início"
+          }
+        }
+      }
+    },
     "firstRun.cta" : {
       "localizations" : {
         "cs" : {
@@ -17963,6 +18003,46 @@
         }
       }
     },
+    "upcoming.starts %@" : {
+      "localizations" : {
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Začíná %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beginnt %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empieza %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commence %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Começa %@"
+          }
+        }
+      }
+    },
     "weekReview.activity" : {
       "localizations" : {
         "cs" : {
@@ -18168,7 +18248,7 @@
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pohnulo se"
+            "value" : "Pokrok"
           }
         },
         "de" : {
@@ -18208,7 +18288,7 @@
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Stojí"
+            "value" : "Stagnace"
           }
         },
         "de" : {

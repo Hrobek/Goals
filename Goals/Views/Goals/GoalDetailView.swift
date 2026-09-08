@@ -339,7 +339,7 @@ struct GoalDetailView: View {
                     if !wasCompleted, isCompleted {
                         celebration = .completed(
                             days: Calendar.current.dateComponents(
-                                [.day], from: Calendar.current.startOfDay(for: goal.createdAt), to: .now
+                                [.day], from: Calendar.current.startOfDay(for: goal.startDate), to: .now
                             ).day ?? 0,
                             streak: StreakCalculator.currentStreak(for: goal)
                         )

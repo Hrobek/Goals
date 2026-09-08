@@ -22,7 +22,7 @@ struct StatsView: View {
     }
 
     private var trackedHabits: [Habit] {
-        habits.filter { !$0.isArchived }
+        habits.filter { !$0.isArchived && !$0.isUpcoming() }
     }
 
     /// Every active habit with its streak, longest first.
@@ -36,9 +36,10 @@ struct StatsView: View {
             }
     }
 
-    /// Archived goals are off the board — they'd only pad the stats with frozen streaks.
+    /// Archived goals are off the board — they'd only pad the stats with frozen streaks. A goal
+    /// that hasn't reached its start date isn't running yet, so it stays out too.
     private var trackedGoals: [Goal] {
-        goals.filter { !$0.isArchived }
+        goals.filter { !$0.isArchived && !$0.isUpcoming() }
     }
 
     private var trackedCheckIns: [CheckIn] {
