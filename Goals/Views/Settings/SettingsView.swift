@@ -20,6 +20,8 @@ struct SettingsView: View {
     // Owned here (not in the pushed screen) so the row's "On until …" / "Off" label reflects a
     // change made on that screen the moment you come back.
     @State private var vacation = Vacation()
+    // Same idea as `vacation`: owned here so the toggle + balance line stay live.
+    @State private var freezeBank = FreezeBank()
 
     private var appearanceMode: Binding<AppearanceMode> {
         Binding(
@@ -45,7 +47,7 @@ struct SettingsView: View {
                         profileSection
                         proSection
                         appearanceSection
-                        vacationSection
+                        breaksSection
                         generalSection
                         supportSection
                     }
@@ -57,7 +59,13 @@ struct SettingsView: View {
             .tabBarClearance()
             .screenGround()
             .toolbar(.hidden, for: .navigationBar)
-            .task { vacation = Vacation.current(for: profile.id) }
+            .task {
+                vacation = Vacation.current(for: profile.id)
+                freezeBank = FreezeBank.current(for: profile.id)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .streakFreezesDidChange)) { _ in
+                freezeBank = FreezeBank.current(for: profile.id)
+            }
             .onChange(of: isAnalyticsEnabled) { _, isEnabled in
                 Analytics.isEnabled = isEnabled
             }
@@ -156,34 +164,50 @@ struct SettingsView: View {
         }
     }
 
-    private var vacationSection: some View {
-        LabeledSection("settings.vacation.title") {
+    private var breaksSection: some View {
+        LabeledSection("settings.breaks.title") {
             CardGroup {
                 NavigationLink {
                     VacationSettingsView(userId: profile.id, vacation: $vacation)
                 } label: {
-                    HStack(spacing: 11) {
-                        Image(systemName: "beach.umbrella")
-                            .font(.system(size: 16))
-                            .foregroundStyle(Theme.textMuted)
-                            .frame(width: 20)
-                            .accessibilityHidden(true)
-                        Text(vacationStatusText)
-                            .font(Theme.Typo.row)
-                            .foregroundStyle(Theme.text)
-                            .lineLimit(1)
-                        Spacer(minLength: 10)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Theme.textGhost)
-                            .accessibilityHidden(true)
-                    }
-                    .padding(.vertical, 13)
-                    .contentShape(.rect)
+                    statusRow(icon: "beach.umbrella", label: "settings.vacation.title", value: vacationStatusText)
+                }
+                .buttonStyle(.plain)
+                RowDivider()
+                NavigationLink {
+                    StreakFreezeSettingsView(userId: profile.id, bank: $freezeBank)
+                } label: {
+                    statusRow(icon: "snowflake", label: "streakFreeze.settings.title", value: freezeStatusText)
                 }
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    /// Mirrors `DisclosureRow`: the feature's name on the left, its current state on the right,
+    /// then a chevron — but as a `NavigationLink` label rather than a plain button.
+    private func statusRow(icon: String, label: LocalizedStringKey, value: String) -> some View {
+        HStack(spacing: 11) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundStyle(Theme.textMuted)
+                .frame(width: 20)
+                .accessibilityHidden(true)
+            Text(label)
+                .font(Theme.Typo.row)
+                .foregroundStyle(Theme.textMuted)
+            Spacer(minLength: 10)
+            Text(value)
+                .font(Theme.Typo.row)
+                .foregroundStyle(Theme.text)
+                .lineLimit(1)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Theme.textGhost)
+                .accessibilityHidden(true)
+        }
+        .padding(.vertical, 13)
+        .contentShape(.rect)
     }
 
     private var vacationStatusText: String {
@@ -192,6 +216,15 @@ struct SettingsView: View {
         }
         let end = vacation.end.formatted(date: .abbreviated, time: .omitted)
         return String(localized: "settings.vacation.until \(end)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+    }
+
+    private var freezeStatusText: String {
+        guard freezeBank.isEnabled else {
+            return String(localized: "streakFreeze.settings.off", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+        }
+        let cap = StreakFreezeEngine.cap(isPro: purchaseManager.isProUnlocked)
+        let have = max(0, min(freezeBank.balance, cap))
+        return String(localized: "streakFreeze.settings.status \(have) \(cap)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
     }
 
     private var supportSection: some View {

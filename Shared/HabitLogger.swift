@@ -140,5 +140,6 @@ enum HabitLogger {
     private static func finish() {
         Analytics.send(.habitCheckIn)
         WidgetCenter.shared.reloadAllTimelines()
+        NotificationCenter.default.post(name: .checkInDidChange, object: nil)
     }
 }

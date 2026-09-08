@@ -35,6 +35,7 @@ struct PaywallView: View {
         ("chart.line.uptrend.xyaxis", "stats.trends.title", "stats.trends.locked"),
         ("sparkles", "pace.title", "pace.locked"),
         ("chart.xyaxis.line", "goalDetail.chart.title", "goalDetail.chart.locked"),
+        ("snowflake", "streakFreeze.paywall.title", "streakFreeze.paywall.locked"),
         ("bell.badge", "reminder.multiple.title", "reminder.multiple.locked"),
         ("square.grid.2x2", "widget.activity.displayName", "widget.activity.description")
     ]

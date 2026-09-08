@@ -20,7 +20,7 @@ nonisolated enum SharedStore {
 
     static let schema = Schema([
         Goal.self, Milestone.self, CheckIn.self, Category.self, CustomUnit.self,
-        Habit.self, HabitEntry.self
+        Habit.self, HabitEntry.self, StreakFreeze.self
     ])
 
     private static let log = Logger(subsystem: "com.hrobek.goals", category: "SharedStore")

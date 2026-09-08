@@ -56,7 +56,9 @@ struct WatchTodayView: View {
         .containerBackground(WatchTheme.accent.opacity(0.12), for: .navigation)
         .navigationTitle("watch.today.title")
         .refreshable { WatchConnectivityBridge.shared.requestIdentity() }
+        .task(id: userId) { FreezeLedger.rebuild(from: modelContext, userId: userId) }
         .onReceive(NotificationCenter.default.publisher(for: .watchDataDidChange)) { _ in
+            FreezeLedger.rebuild(from: modelContext, userId: userId)
             refreshToken &+= 1
         }
     }

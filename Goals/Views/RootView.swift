@@ -132,6 +132,7 @@ struct RootView: View {
                 Analytics.beginSession()
                 AppReviewPrompt.recordFirstLaunchIfNeeded()
                 pushIdentityToWatch()
+                reconcileStreakFreezes()
                 Task { await NotificationScheduler.syncAll(context: modelContext, userId: profile.id) }
                 // The rating prompt itself no longer lives here — it fires from the moment a goal
                 // is finished (see `GoalDetailView.requestReviewIfEarned`), right after the
@@ -146,6 +147,9 @@ struct RootView: View {
             default:
                 break
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .checkInDidChange)) { _ in
+            reconcileStreakFreezes()
         }
         .onOpenURL { url in
             guard url.scheme == "goals" else { return }
@@ -173,6 +177,17 @@ struct RootView: View {
         .sheet(isPresented: $isShowingPaywall) {
             PaywallView(source: paywallSource)
         }
+    }
+
+    /// Earns any freezes the streaks have built up and — for Pro — auto-spends one on a streak
+    /// a single missed day from breaking. Runs on every scene-active and after each in-app
+    /// check-in; it's a no-op unless something actually changed.
+    private func reconcileStreakFreezes() {
+        StreakFreezeEngine.reconcile(
+            context: modelContext,
+            userId: profile.id,
+            isPro: purchaseManager.isProUnlocked
+        )
     }
 
     /// Hands the watch app the local profile id, nickname and cloud-sync flag it can't mint for

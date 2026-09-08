@@ -28,6 +28,9 @@ enum StreakCalculator {
 
     private static func dayBasedStreak(for schedule: some Scheduled, vacation: Vacation, calendar: Calendar, referenceDate: Date) -> Int {
         let doneDays = Set(schedule.scheduleDates.map { calendar.startOfDay(for: $0) })
+        // A day rescued by a streak freeze counts exactly like a done day. Avoid habits are never
+        // frozen — a slip is a slip — so don't even look.
+        let frozenDays = schedule.isAvoid ? [] : FreezeLedger.frozenDays(for: schedule.id)
         let startFloor = calendar.startOfDay(for: schedule.startDate)
         var cursor = calendar.startOfDay(for: referenceDate)
 
@@ -35,11 +38,12 @@ enum StreakCalculator {
             Recurrence.isDayScheduled(day, for: schedule, calendar: calendar)
                 && !vacation.pauses(schedule.id, on: day, calendar: calendar)
         }
+        func isMet(_ day: Date) -> Bool { doneDays.contains(day) || frozenDays.contains(day) }
 
         // Grace: if today is scheduled but not done yet, don't let that break the streak —
         // start counting from yesterday instead. An avoid habit gets no grace: a slip logged
         // today breaks the run today, it isn't "not done yet".
-        if !schedule.isAvoid, counts(cursor), !doneDays.contains(cursor) {
+        if !schedule.isAvoid, counts(cursor), !isMet(cursor) {
             guard let yesterday = calendar.date(byAdding: .day, value: -1, to: cursor) else { return 0 }
             cursor = yesterday
         }
@@ -52,7 +56,7 @@ enum StreakCalculator {
             iterations += 1
             if cursor < startFloor { break }
             if counts(cursor) {
-                if doneDays.contains(cursor) {
+                if isMet(cursor) {
                     streak += 1
                 } else {
                     break
@@ -62,6 +66,79 @@ enum StreakCalculator {
             cursor = previous
         }
         return streak
+    }
+
+    /// How recent a missed day can be and still be rescued by a manual freeze — and, mirrored, how
+    /// long an applied freeze stays offered for undo.
+    static let freezeWindowDays = 14
+
+    /// The one missed day a streak freeze would rescue: the most recent unmet scheduled day that
+    /// is sitting between two met scheduled days (a done day further back to reconnect to, and at
+    /// least one done day — or nothing but non-scheduled days — between it and today). Bridging it
+    /// splices a broken run back together.
+    ///
+    /// `nil` when: there is no such gap, the lapse is two or more scheduled days in a row (one
+    /// freeze only covers one), the gap is older than `freezeWindowDays`, there's no earlier run
+    /// to reconnect to, or the schedule is an avoid habit / not day-based.
+    static func repairableGap(
+        for schedule: some Scheduled,
+        calendar: Calendar = .current,
+        referenceDate: Date = .now
+    ) -> Date? {
+        guard !schedule.isAvoid else { return nil }
+        switch schedule.recurrenceType {
+        case .daily, .specificWeekdays, .specificDaysOfMonth:
+            break
+        case .timesPerWeek, .timesPerMonth:
+            return nil
+        }
+
+        let vacation = Vacation.current()
+        let doneDays = Set(schedule.scheduleDates.map { calendar.startOfDay(for: $0) })
+        let frozenDays = FreezeLedger.frozenDays(for: schedule.id)
+        let startFloor = calendar.startOfDay(for: schedule.startDate)
+        let today = calendar.startOfDay(for: referenceDate)
+        let windowFloor = calendar.date(byAdding: .day, value: -freezeWindowDays, to: today) ?? startFloor
+
+        func counts(_ day: Date) -> Bool {
+            Recurrence.isDayScheduled(day, for: schedule, calendar: calendar)
+                && !vacation.pauses(schedule.id, on: day, calendar: calendar)
+        }
+        func isMet(_ day: Date) -> Bool { doneDays.contains(day) || frozenDays.contains(day) }
+        func stepBack(_ day: Date) -> Date? { calendar.date(byAdding: .day, value: -1, to: day) }
+
+        // Walk back from today over met (and unscheduled) days; stop at the first scheduled day
+        // that wasn't done. An unmet *today* is skipped — same grace the count uses, it isn't a
+        // missed day yet.
+        var cursor = today
+        var iterations = 0
+        while true {
+            iterations += 1
+            if iterations > 800 { return nil }
+            if cursor < startFloor || cursor < windowFloor { return nil }
+            if counts(cursor) {
+                if cursor == today, !isMet(cursor) {
+                    // today not done yet — keep looking further back
+                } else if isMet(cursor) {
+                    // a met scheduled day — keep walking back
+                } else {
+                    break
+                }
+            }
+            guard let previous = stepBack(cursor) else { return nil }
+            cursor = previous
+        }
+        let gapDay = cursor
+
+        // The scheduled day just before the gap has to be met, or the lapse is longer than one
+        // day and no single freeze brings the run back.
+        var previous = gapDay
+        repeat {
+            guard let earlier = stepBack(previous) else { return nil }
+            previous = earlier
+            if previous < startFloor { return nil }
+        } while !counts(previous)
+        return isMet(previous) ? gapDay : nil
     }
 
     private static func periodBasedStreak(

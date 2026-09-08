@@ -55,6 +55,8 @@ enum TodaySchedule {
     ) -> Summary {
         let goals = (try? context.fetch(FetchDescriptor<Goal>(predicate: #Predicate { $0.ownerId == userId }))) ?? []
         let habits = (try? context.fetch(FetchDescriptor<Habit>(predicate: #Predicate { $0.ownerId == userId }))) ?? []
+        // Refresh the streak-freeze day cache off the same store before any streak is computed.
+        FreezeLedger.rebuild(from: context, userId: userId)
         return summary(goals: goals, habits: habits, userId: userId, on: date, calendar: calendar)
     }
 

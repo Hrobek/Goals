@@ -23,6 +23,7 @@ enum ProgressLogger {
             guard !goal.isCompleted else { return false }
             markCompleted(goal)
             WidgetCenter.shared.reloadAllTimelines()
+            NotificationCenter.default.post(name: .checkInDidChange, object: nil)
             return true
         }
 
@@ -81,6 +82,7 @@ enum ProgressLogger {
         // No check-in for today yet: undoing shouldn't create one — there's nothing to retract.
 
         WidgetCenter.shared.reloadAllTimelines()
+        NotificationCenter.default.post(name: .checkInDidChange, object: nil)
         return true
     }
 
@@ -147,6 +149,7 @@ enum ProgressLogger {
 
         Analytics.send(.checkInLogged, [.trackingMode: goal.trackingMode.rawValue])
         WidgetCenter.shared.reloadAllTimelines()
+        NotificationCenter.default.post(name: .checkInDidChange, object: nil)
     }
 
     /// Guarded, so a goal that's already done doesn't report finishing again — a later check-in on

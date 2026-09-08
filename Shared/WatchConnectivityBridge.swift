@@ -28,6 +28,15 @@ extension Notification.Name {
     /// Posted on the main queue when the counterpart device reports a change (a poke), or when the
     /// watch has just applied a fresh identity context. Views observe it to re-fetch immediately.
     static let watchDataDidChange = Notification.Name("Goals.watchDataDidChange")
+
+    /// Posted by `HabitLogger` / `ProgressLogger` after any in-app check-in. `RootView` listens
+    /// and re-runs the streak-freeze reconcile so an earned or auto-spent freeze shows up without
+    /// waiting for the next launch.
+    static let checkInDidChange = Notification.Name("Goals.checkInDidChange")
+
+    /// Posted by `StreakFreezeEngine` after it spends, auto-spends or undoes a freeze. The detail
+    /// screens' freeze card listens so it flips between "protect" and "used" immediately.
+    static let streakFreezesDidChange = Notification.Name("Goals.streakFreezesDidChange")
 }
 
 /// Keys in the application-context dictionary. Shared so both sides spell them the same.

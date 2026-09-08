@@ -94,6 +94,7 @@ struct GoalsProvider: TimelineProvider {
     static func todaysGoals() -> [Goal] {
         guard let userId = LocalProfile.currentUserId else { return [] }
         let context = SharedStore.container.mainContext
+        FreezeLedger.rebuild(from: context, userId: userId)
         let descriptor = FetchDescriptor<Goal>(predicate: #Predicate { $0.ownerId == userId })
         let goals = (try? context.fetch(descriptor)) ?? []
         let vacation = Vacation.current(for: userId)

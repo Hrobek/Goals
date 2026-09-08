@@ -105,6 +105,9 @@ enum DataTransfer {
     static func replaceAll(with doc: Document, userId: UUID, context: ModelContext) throws {
         try context.delete(model: CheckIn.self, where: #Predicate { $0.ownerId == userId })
         try context.delete(model: HabitEntry.self, where: #Predicate { $0.ownerId == userId })
+        // Streak freezes aren't in the backup document; a restore rebuilds the bank from scratch,
+        // so clear any that point at the data being replaced.
+        try context.delete(model: StreakFreeze.self, where: #Predicate { $0.ownerId == userId })
         try context.delete(model: Milestone.self, where: #Predicate { $0.ownerId == userId })
         try context.delete(model: Goal.self, where: #Predicate { $0.ownerId == userId })
         try context.delete(model: Habit.self, where: #Predicate { $0.ownerId == userId })

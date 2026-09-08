@@ -103,6 +103,8 @@ struct GoalDetailView: View {
                     completedToggle
                 }
 
+                StreakFreezeCard(schedule: goal, isHabit: false, userId: goal.ownerId, tint: Theme.accent, refreshKey: logTick)
+
                 if goal.trackingMode == .value {
                     progressChartSection
                 }
@@ -416,7 +418,12 @@ struct GoalDetailView: View {
                 SegmentStrip(options: StatsRange.allCases, selection: $activityRange, title: { $0.localizedName })
                     .onChange(of: activityRange) { activityOffset = 0 }
                 PeriodNavigator(range: activityRange, offset: $activityOffset)
-                ScheduleActivityView(schedule: goal, range: activityRange, offset: activityOffset)
+                ScheduleActivityView(
+                    schedule: goal,
+                    range: activityRange,
+                    offset: activityOffset,
+                    frozenDays: FreezeLedger.frozenDays(for: goal.id)
+                )
             }
             .cardSurface()
         }

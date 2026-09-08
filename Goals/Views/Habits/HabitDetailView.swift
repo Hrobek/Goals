@@ -75,6 +75,9 @@ struct HabitDetailView: View {
             VStack(alignment: .leading, spacing: Theme.Space.section) {
                 header
                 todayControl
+                if !habit.isAvoid {
+                    StreakFreezeCard(schedule: habit, isHabit: true, userId: habit.ownerId, tint: tint, refreshKey: checkTick)
+                }
                 activitySection
                 if purchaseManager.isProUnlocked {
                     statsSection
@@ -488,7 +491,8 @@ struct HabitDetailView: View {
                     range: activityRange,
                     offset: activityOffset,
                     doneTint: tint,
-                    slipDays: habit.isAvoid ? Set(habit.entries.map { Calendar.current.startOfDay(for: $0.date) }) : []
+                    slipDays: habit.isAvoid ? Set(habit.entries.map { Calendar.current.startOfDay(for: $0.date) }) : [],
+                    frozenDays: FreezeLedger.frozenDays(for: habit.id)
                 )
             }
             .cardSurface()
