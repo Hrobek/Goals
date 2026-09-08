@@ -26,6 +26,12 @@ nonisolated enum SharedStore {
     private static let log = Logger(subsystem: "com.hrobek.goals", category: "SharedStore")
     private static let cloudSyncKey = "Goals.cloudSyncEnabled"
 
+    /// Which rung of the fallback ladder `container` actually landed on. Set once, at first access;
+    /// read for diagnostics (the watch shows it when it has no data, so "is CloudKit even up?" is
+    /// answerable without a debugger).
+    enum StoreMode: String { case cloudKit, local, fresh, memory }
+    nonisolated(unsafe) private(set) static var storeMode: StoreMode = .local
+
     /// Whether the store syncs through CloudKit. Read once, at `container`'s first access — flipping
     /// it from Settings takes effect on the next launch, not live (swapping a running container's
     /// `cloudKitDatabase` would invalidate every `@Query` and context bound to it).
@@ -66,21 +72,26 @@ nonisolated enum SharedStore {
         let wantsCloudKit = (isCloudSyncEnabled || alwaysWantsCloudKit) && !isAppExtension
 
         if let container = makeContainer(cloudKit: wantsCloudKit ? .private(cloudKitContainerID) : .none) {
+            storeMode = wantsCloudKit ? .cloudKit : .local
+            log.notice("store opened: \(storeMode.rawValue, privacy: .public) (wantsCloudKit=\(wantsCloudKit))")
             return container
         }
 
         if wantsCloudKit, let container = makeContainer(cloudKit: .none) {
+            storeMode = .local
             log.error("Opened the store without CloudKit after the synced configuration failed.")
             return container
         }
 
-        log.error("Store could not be opened — moving it aside and starting fresh.")
+        log.error("Store could not be opened - moving it aside and starting fresh.")
         moveStoreAside()
         if let container = makeContainer(cloudKit: .none) {
+            storeMode = .fresh
             return container
         }
 
         log.fault("Falling back to an in-memory store; changes will not persist.")
+        storeMode = .memory
         // Truly nothing worked (read-only disk?). An in-memory container keeps the app usable.
         return try! ModelContainer(
             for: schema,

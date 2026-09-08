@@ -88,6 +88,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		AA20000000000000000000BD /* Exceptions for "GoalsWatchWidget" folder in "GoalsWatchWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AA20000000000000000000B1 /* GoalsWatchWidgetExtension */;
+		};
 		AA30000000000000000000C1 /* Exceptions for "Shared" folder in "GoalsWatch Watch App" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -103,13 +110,6 @@
 				DataTransfer.swift,
 				PageIntent.swift,
 				QuickActionIntent.swift,
-			);
-			target = AA20000000000000000000B1 /* GoalsWatchWidgetExtension */;
-		};
-		AA20000000000000000000BD /* Exceptions for "GoalsWatchWidget" folder in "GoalsWatchWidgetExtension" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
 			);
 			target = AA20000000000000000000B1 /* GoalsWatchWidgetExtension */;
 		};
@@ -475,7 +475,7 @@
 				CLANG_ANALYZER_NONNULL = YES;
 				CODE_SIGN_ENTITLEMENTS = GoalsWatch/GoalsWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 37;
+				CURRENT_PROJECT_VERSION = 38;
 				DEVELOPMENT_TEAM = 73M487ZPLB;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -514,7 +514,7 @@
 				CLANG_ANALYZER_NONNULL = YES;
 				CODE_SIGN_ENTITLEMENTS = GoalsWatch/GoalsWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 37;
+				CURRENT_PROJECT_VERSION = 38;
 				DEVELOPMENT_TEAM = 73M487ZPLB;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -552,7 +552,7 @@
 				CLANG_ANALYZER_NONNULL = YES;
 				CODE_SIGN_ENTITLEMENTS = GoalsWatchWidget/GoalsWatchWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 37;
+				CURRENT_PROJECT_VERSION = 38;
 				DEVELOPMENT_TEAM = 73M487ZPLB;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = GoalsWatchWidget/Info.plist;
@@ -586,7 +586,7 @@
 				CLANG_ANALYZER_NONNULL = YES;
 				CODE_SIGN_ENTITLEMENTS = GoalsWatchWidget/GoalsWatchWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 37;
+				CURRENT_PROJECT_VERSION = 38;
 				DEVELOPMENT_TEAM = 73M487ZPLB;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = GoalsWatchWidget/Info.plist;
@@ -621,7 +621,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = GoalsWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 37;
+				CURRENT_PROJECT_VERSION = 38;
 				DEVELOPMENT_TEAM = 73M487ZPLB;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = GoalsWidget/Info.plist;
@@ -651,7 +651,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = GoalsWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 37;
+				CURRENT_PROJECT_VERSION = 38;
 				DEVELOPMENT_TEAM = 73M487ZPLB;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = GoalsWidget/Info.plist;
@@ -805,7 +805,7 @@
 				CODE_SIGN_ENTITLEMENTS = Goals/Goals.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 37;
+				CURRENT_PROJECT_VERSION = 38;
 				DEVELOPMENT_TEAM = 73M487ZPLB;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -841,7 +841,7 @@
 				CODE_SIGN_ENTITLEMENTS = Goals/Goals.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 37;
+				CURRENT_PROJECT_VERSION = 38;
 				DEVELOPMENT_TEAM = 73M487ZPLB;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
