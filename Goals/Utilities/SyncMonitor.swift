@@ -85,7 +85,13 @@ final class SyncMonitor {
         isSyncing = false
 
         if let error = event.error {
-            Self.log.error("sync \(String(describing: event.type), privacy: .public) failed: \(error, privacy: .public)")
+            logSyncFailure(event.type, error)
+
+            // A partial failure (some records rejected) or a network hiccup clears itself on the
+            // next sync cycle — `NSPersistentCloudKitContainer` retries. The log above has the
+            // per-record detail; the user doesn't need to see a raw "CKErrorDomain error 2".
+            guard !Self.isTransient(error) else { return }
+
             lastErrorMessage = error.localizedDescription
             defaults?.set(error.localizedDescription, forKey: Self.lastErrorKey)
             return
@@ -99,4 +105,53 @@ final class SyncMonitor {
             defaults?.set(endDate, forKey: Self.lastSyncKey)
         }
     }
+
+    /// Logs the failure, and for a CloudKit partial failure walks `CKPartialErrorsByItemIDKey`
+    /// (and any nested underlying errors) so the log names which records failed and why.
+    private func logSyncFailure(_ type: NSPersistentCloudKitContainer.EventType, _ error: Error) {
+        Self.log.error("sync \(String(describing: type), privacy: .public) failed: \(error, privacy: .public)")
+        #if canImport(CloudKit)
+        Self.logPartialErrors(error, indent: "  ", depth: 0)
+        #endif
+    }
+
+    #if canImport(CloudKit)
+    /// True when the error (or something it wraps) is a CloudKit code that the mirroring delegate
+    /// retries on its own — nothing for the user to act on.
+    private static func isTransient(_ error: Error) -> Bool {
+        var current: NSError? = error as NSError
+        var hops = 0
+        while let e = current, hops < 5 {
+            if e.domain == CKErrorDomain, transientCKCodes.contains(e.code) { return true }
+            current = e.userInfo[NSUnderlyingErrorKey] as? NSError
+            hops += 1
+        }
+        return false
+    }
+
+    private static let transientCKCodes: Set<Int> = [
+        CKError.Code.partialFailure.rawValue,
+        CKError.Code.networkUnavailable.rawValue,
+        CKError.Code.networkFailure.rawValue,
+        CKError.Code.serviceUnavailable.rawValue,
+        CKError.Code.requestRateLimited.rawValue,
+        CKError.Code.zoneBusy.rawValue,
+    ]
+
+    private static func logPartialErrors(_ error: Error, indent: String, depth: Int) {
+        guard depth < 4 else { return }
+        let ns = error as NSError
+
+        if let perItem = ns.userInfo[CKPartialErrorsByItemIDKey] as? [AnyHashable: Error] {
+            for (id, sub) in perItem {
+                let subNS = sub as NSError
+                log.error("\(indent, privacy: .public)· \(String(describing: id), privacy: .public): \(subNS.domain, privacy: .public) \(subNS.code) \(subNS.localizedDescription, privacy: .public)")
+                logPartialErrors(sub, indent: indent + "  ", depth: depth + 1)
+            }
+        }
+        if let underlying = ns.userInfo[NSUnderlyingErrorKey] as? Error {
+            logPartialErrors(underlying, indent: indent, depth: depth + 1)
+        }
+    }
+    #endif
 }
