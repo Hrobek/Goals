@@ -116,17 +116,6 @@ private final class EmojiOnlyTextField: UITextField {
     }
 }
 
-private extension Character {
-    /// Whether this grapheme cluster is an emoji — used to filter out anything the emoji keyboard
-    /// might still insert (a plain space, for example, if the user long-presses to switch languages).
-    var isEmojiCharacter: Bool {
-        guard let first = unicodeScalars.first else { return false }
-        return first.properties.isEmojiPresentation
-            || (first.properties.isEmoji && unicodeScalars.contains { $0.value == 0xFE0F })
-            || unicodeScalars.contains { (0x1F1E6...0x1F1FF).contains($0.value) }
-    }
-}
-
 #Preview {
     EmojiPickerSheet(selection: .constant("🎯"))
 }

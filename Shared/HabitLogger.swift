@@ -66,8 +66,10 @@ enum HabitLogger {
     /// until the day's target is met, then the next tap steps it back down. Keeps an over-tap as
     /// easy to walk back as a checkbox, and stops the tally running past the target.
     ///
-    /// A quota schedule ("5× a week") is a different animal — its taps are meant to accumulate,
-    /// several a day if you like — so there it just adds one.
+    /// A quota schedule ("5× a week") toggles this day's own contribution: taps it on if today
+    /// hasn't logged yet, taps it back off if it has — so a mis-tap is always one tap away from
+    /// undone, on whichever day it happened. Stays capped at the quota: once the period's already
+    /// met from other days, a tap on a fresh day does nothing rather than running past it.
     @discardableResult
     static func cycle(
         _ habit: Habit,
@@ -76,6 +78,12 @@ enum HabitLogger {
         calendar: Calendar = .current
     ) -> Bool {
         guard !habit.isQuota else {
+            if habit.entry(on: now, calendar: calendar) != nil {
+                return adjust(habit, by: -1, in: context, now: now, calendar: calendar)
+            }
+            guard habit.periodCount(on: now, calendar: calendar) < habit.quotaTarget else {
+                return habit.isDone(on: now, calendar: calendar)
+            }
             return adjust(habit, by: 1, in: context, now: now, calendar: calendar)
         }
         let current = habit.amount(on: now, calendar: calendar)

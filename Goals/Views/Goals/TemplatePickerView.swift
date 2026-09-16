@@ -55,7 +55,7 @@ struct TemplatePickerView: View {
                     if showsGoals {
                         section(title: isSectioned ? "templatePicker.section.goals" : nil) {
                             ForEach(GoalTemplate.all) { template in
-                                card(emoji: template.emoji, title: template.localizedTitle, subtitle: template.targetSummary) {
+                                card(emoji: template.emoji, tint: Color(hex: template.colorHex), title: template.localizedTitle, subtitle: template.targetSummary) {
                                     onPick(.goal(template))
                                 }
                             }
@@ -66,7 +66,7 @@ struct TemplatePickerView: View {
                     if showsHabits {
                         section(title: isSectioned ? "templatePicker.section.habits" : nil) {
                             ForEach(HabitTemplate.all) { template in
-                                card(emoji: template.emoji, title: template.localizedTitle, subtitle: template.summary) {
+                                card(emoji: template.emoji, tint: Color(hex: template.colorHex), title: template.localizedTitle, subtitle: template.summary) {
                                     onPick(.habit(template))
                                 }
                             }
@@ -103,9 +103,9 @@ struct TemplatePickerView: View {
         }
     }
 
-    private func card(emoji: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+    private func card(emoji: String, tint: Color, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            cardBody(glyph: Text(emoji).font(.system(size: 25)), title: title, subtitle: subtitle)
+            cardBody(glyph: Text(emoji).font(.system(size: 25)), tint: tint, title: title, subtitle: subtitle)
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
@@ -117,6 +117,7 @@ struct TemplatePickerView: View {
         Button(action: action) {
             cardBody(
                 glyph: Image(systemName: "plus").font(.system(size: 20, weight: .medium)).foregroundStyle(Theme.textMuted),
+                tint: nil,
                 title: String(localized: title, bundle: AppLanguage.currentBundle),
                 subtitle: String(localized: "templatePicker.custom.subtitle", bundle: AppLanguage.currentBundle)
             )
@@ -124,11 +125,18 @@ struct TemplatePickerView: View {
         .buttonStyle(.plain)
     }
 
-    private func cardBody(glyph: some View, title: String, subtitle: String) -> some View {
+    /// `tint` is each template's own color, so the cards read as distinct at a glance instead of
+    /// all wearing the same neutral badge; the "Custom" card has none to show and stays neutral.
+    private func cardBody(glyph: some View, tint: Color?, title: String, subtitle: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             glyph
                 .frame(width: 44, height: 44)
-                .background(Theme.control, in: .circle)
+                .background(tint?.opacity(0.20) ?? Theme.control, in: .circle)
+                .overlay {
+                    if let tint {
+                        Circle().strokeBorder(tint.opacity(0.35), lineWidth: 1)
+                    }
+                }
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {

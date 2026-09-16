@@ -51,7 +51,7 @@ struct AddEditHabitView: View {
         _title = State(initialValue: habit?.title ?? template?.localizedTitle ?? "")
         _isAvoid = State(initialValue: habit?.isAvoid ?? template?.isAvoid ?? false)
         _emoji = State(initialValue: habit?.emoji ?? template?.emoji)
-        let hex = habit?.colorHex ?? ColorPalette.defaultHex
+        let hex = habit?.colorHex ?? template?.colorHex ?? ColorPalette.defaultHex
         _colorHex = State(initialValue: hex)
         _customColor = State(initialValue: Color(hex: hex))
         _startDate = State(initialValue: habit?.startDate ?? .now)
@@ -362,6 +362,14 @@ struct AddEditHabitView: View {
                 TextField("habit.field.title", text: $title)
                     .font(.system(size: 19, weight: .medium))
                     .foregroundStyle(Theme.text)
+                    // The emoji has its own field right next to this one; keeping it out of the
+                    // title too avoids a double-emoji look in the list row and a lost glyph
+                    // wherever the title renders too small to show it properly (a widget, a
+                    // notification).
+                    .onChange(of: title) { _, newValue in
+                        let stripped = newValue.strippingEmoji()
+                        if stripped != newValue { title = stripped }
+                    }
                 Rectangle()
                     .fill(Theme.textGhost)
                     .frame(height: 1)

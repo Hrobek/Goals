@@ -39,6 +39,39 @@ struct HabitsEntry: TimelineEntry {
     var isSignedIn = true
 }
 
+extension HabitSnapshot {
+    /// A quota habit's ring tracks the week/month tally against the quota, not today. An avoid
+    /// habit's ring is full while the day stays clean. Not private - the full-page Today widget
+    /// builds its own habit list with this too.
+    @MainActor
+    init(habit: Habit) {
+        let amount: Double
+        let target: Double
+        if habit.isAvoid {
+            amount = habit.isDone(on: .now) ? 1 : 0
+            target = 1
+        } else if habit.isQuota {
+            amount = Double(habit.periodCount())
+            target = Double(habit.quotaTarget)
+        } else {
+            amount = habit.amount(on: .now)
+            target = habit.targetAmount
+        }
+        self.init(
+            id: habit.id,
+            title: habit.title,
+            emoji: habit.emoji,
+            colorHex: habit.colorHex,
+            streak: habit.currentStreak,
+            isCheckbox: habit.isCheckbox,
+            isAvoid: habit.isAvoid,
+            quickAddLabel: habit.isCheckbox ? "" : "+\(habit.numberOnly(habit.widgetQuickAmount))",
+            amountToday: amount,
+            target: target
+        )
+    }
+}
+
 // MARK: - Provider
 
 struct HabitsProvider: TimelineProvider {
@@ -69,37 +102,9 @@ struct HabitsProvider: TimelineProvider {
 
         let today = todaysHabits()
         let limit = rowLimit(for: family)
-        let snapshots = today.prefix(limit).map { habit in
-            // A quota habit's ring tracks the week/month tally against the quota, not today. An
-            // avoid habit's ring is full while the day stays clean.
-            let amount: Double
-            let target: Double
-            if habit.isAvoid {
-                amount = habit.isDone(on: .now) ? 1 : 0
-                target = 1
-            } else if habit.isQuota {
-                amount = Double(habit.periodCount())
-                target = Double(habit.quotaTarget)
-            } else {
-                amount = habit.amount(on: .now)
-                target = habit.targetAmount
-            }
-            return HabitSnapshot(
-                id: habit.id,
-                title: habit.title,
-                emoji: habit.emoji,
-                colorHex: habit.colorHex,
-                streak: habit.currentStreak,
-                isCheckbox: habit.isCheckbox,
-                isAvoid: habit.isAvoid,
-                quickAddLabel: habit.isCheckbox ? "" : "+\(habit.numberOnly(habit.widgetQuickAmount))",
-                amountToday: amount,
-                target: target
-            )
-        }
         return HabitsEntry(
             date: .now,
-            habits: Array(snapshots),
+            habits: today.prefix(limit).map(HabitSnapshot.init(habit:)),
             doneToday: today.filter { $0.isDone(on: .now) }.count,
             totalToday: today.count
         )
@@ -202,8 +207,10 @@ struct HabitsWidgetEntryView: View {
                 .widgetURL(GoalLink.habits)
         } else {
             // Size the rings to the actual space: fill each grid cell in whichever dimension is
-            // tighter, so they're as large as 5-per-row allows and the leftover height is split
-            // evenly top and bottom. A partial last row still fills from the leading edge.
+            // tighter, so they're as large as 5-per-row allows. On the large widget, which has
+            // room for far more rows than most people have habits, any leftover height sits below
+            // the grid rather than splitting it away from the top; the small and medium widgets
+            // rarely have a partial grid, so there it's still centered.
             GeometryReader { geo in
                 let columns = CGFloat(columnCount)
                 let rowCount = max(1, Int((Double(entry.habits.count) / Double(columnCount)).rounded(.up)))
@@ -215,31 +222,12 @@ struct HabitsWidgetEntryView: View {
                     spacing: gap
                 ) {
                     ForEach(entry.habits) { habit in
-                        ring(for: habit, diameter: diameter)
+                        HabitRingButton(habit: habit, diameter: diameter)
                     }
                 }
-                .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
+                .frame(width: geo.size.width, height: geo.size.height, alignment: family == .systemLarge ? .top : .center)
             }
             .padding(gap)
-        }
-    }
-
-    @ViewBuilder
-    private func ring(for habit: HabitSnapshot, diameter: CGFloat) -> some View {
-        if habit.isAvoid {
-            // No logging from the Home Screen — a stray tap shouldn't record a slip.
-            Link(destination: GoalLink.habit(for: habit.id)) {
-                RingShape(habit: habit, diameter: diameter)
-            }
-            .accessibilityLabel(Text(habit.title))
-            .accessibilityValue(Text("a11y.streak.days \(habit.streak)"))
-        } else {
-            Button(intent: HabitCheckInIntent(habitID: habit.id)) {
-                RingShape(habit: habit, diameter: diameter)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(habit.title))
-            .accessibilityValue(Text(habit.isDone ? "a11y.today.done" : "a11y.today.notDone"))
         }
     }
 
@@ -301,9 +289,34 @@ struct HabitsWidgetEntryView: View {
     }
 }
 
-/// One emoji ring. A plain fixed-size view — no `GeometryReader`, no `aspectRatio` that could
+/// One habit's ring, made tappable: a `Link` to the habit for an avoid habit (no logging from the
+/// Home Screen - a stray tap shouldn't record a slip), a check-in button for every other kind.
+/// Not private - the full-page Today widget reuses it in its own grid.
+struct HabitRingButton: View {
+    let habit: HabitSnapshot
+    let diameter: CGFloat
+
+    var body: some View {
+        if habit.isAvoid {
+            Link(destination: GoalLink.habit(for: habit.id)) {
+                RingShape(habit: habit, diameter: diameter)
+            }
+            .accessibilityLabel(Text(habit.title))
+            .accessibilityValue(Text("a11y.streak.days \(habit.streak)"))
+        } else {
+            Button(intent: HabitCheckInIntent(habitID: habit.id)) {
+                RingShape(habit: habit, diameter: diameter)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(habit.title))
+            .accessibilityValue(Text(habit.isDone ? "a11y.today.done" : "a11y.today.notDone"))
+        }
+    }
+}
+
+/// One emoji ring. A plain fixed-size view - no `GeometryReader`, no `aspectRatio` that could
 /// collapse to zero height inside the grid, so the `Button` label is always tappable.
-private struct RingShape: View {
+struct RingShape: View {
     let habit: HabitSnapshot
     let diameter: CGFloat
 
@@ -344,7 +357,7 @@ struct HabitsWidget: Widget {
         }
         .configurationDisplayName("widget.habits.displayName")
         .description("widget.habits.description")
-        .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular, .accessoryRectangular])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryCircular, .accessoryRectangular])
         // The grid runs to the edges; the default ~16pt content margin would waste that space.
         .contentMarginsDisabled()
     }

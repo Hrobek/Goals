@@ -90,7 +90,7 @@ struct AddEditGoalView: View {
             MilestoneDraft(id: $0.id, title: $0.title, isCompleted: $0.isCompleted)
         })
         _emoji = State(initialValue: goal?.emoji ?? template?.emoji)
-        _colorHex = State(initialValue: goal?.colorHex ?? ColorPalette.defaultHex)
+        _colorHex = State(initialValue: goal?.colorHex ?? template?.colorHex ?? ColorPalette.defaultHex)
         _recurrenceType = State(initialValue: goal?.recurrenceType ?? template?.recurrenceType ?? .daily)
         _recurrenceWeekdays = State(initialValue: Set(goal?.recurrenceWeekdays ?? []))
         _recurrenceDaysOfMonth = State(initialValue: Set(goal?.recurrenceDaysOfMonth ?? []))
@@ -233,6 +233,14 @@ struct AddEditGoalView: View {
                 TextField("goal.field.title", text: $title)
                     .font(.system(size: 19, weight: .medium))
                     .foregroundStyle(Theme.text)
+                    // The emoji has its own field right next to this one; keeping it out of the
+                    // title too avoids a double-emoji look in the list row and a lost glyph
+                    // wherever the title renders too small to show it properly (a widget, a
+                    // notification).
+                    .onChange(of: title) { _, newValue in
+                        let stripped = newValue.strippingEmoji()
+                        if stripped != newValue { title = stripped }
+                    }
                 Rectangle()
                     .fill(Theme.textGhost)
                     .frame(height: 1)

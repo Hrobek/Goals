@@ -5,6 +5,7 @@
 
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 @main
 struct GoalsApp: App {
@@ -24,6 +25,9 @@ struct GoalsApp: App {
         // The watch app has no identity of its own — push this one to it (and stay listening for
         // its check-off pokes).
         WatchConnectivityBridge.shared.activate()
+
+        // So tapping a goal or habit reminder opens that goal or habit, not just the app.
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
     }
 
     var body: some Scene {

@@ -12,6 +12,9 @@ struct HabitTemplate: Identifiable, Hashable {
     /// Stable id: analytics tag and the localization-key suffix (`habitTemplate.<id>.title`).
     let id: String
     let emoji: String
+    /// A distinct pick from `ColorPalette`, so the template cards - and the habit a card seeds -
+    /// don't all start out the same shade of blue.
+    let colorHex: String
     /// `.times` for a plain checkbox habit; a real unit for a value habit.
     let unit: GoalUnit
     /// Full-day target - 1 for a checkbox, a real quantity for a value habit.
@@ -23,19 +26,19 @@ struct HabitTemplate: Identifiable, Hashable {
     let recurrenceCount: Int
 
     static let all: [HabitTemplate] = [
-        HabitTemplate(id: "water", emoji: "💧", unit: .milliliters, targetAmount: 2000,
+        HabitTemplate(id: "water", emoji: "💧", colorHex: "#54A0FF", unit: .milliliters, targetAmount: 2000,
                       isAvoid: false, recurrenceType: .daily, recurrenceCount: 3),
-        HabitTemplate(id: "meditate", emoji: "🧘", unit: .times, targetAmount: 1,
+        HabitTemplate(id: "meditate", emoji: "🧘", colorHex: "#5F27CD", unit: .times, targetAmount: 1,
                       isAvoid: false, recurrenceType: .daily, recurrenceCount: 3),
-        HabitTemplate(id: "read", emoji: "📖", unit: .pages, targetAmount: 20,
+        HabitTemplate(id: "read", emoji: "📖", colorHex: "#1DD1A1", unit: .pages, targetAmount: 20,
                       isAvoid: false, recurrenceType: .daily, recurrenceCount: 3),
-        HabitTemplate(id: "gym", emoji: "🏋️", unit: .times, targetAmount: 1,
+        HabitTemplate(id: "gym", emoji: "🏋️", colorHex: "#FF6B6B", unit: .times, targetAmount: 1,
                       isAvoid: false, recurrenceType: .timesPerWeek, recurrenceCount: 3),
-        HabitTemplate(id: "noPhoneBed", emoji: "📵", unit: .times, targetAmount: 1,
+        HabitTemplate(id: "noPhoneBed", emoji: "📵", colorHex: "#8395A7", unit: .times, targetAmount: 1,
                       isAvoid: true, recurrenceType: .daily, recurrenceCount: 3),
-        HabitTemplate(id: "noSugar", emoji: "🍬", unit: .times, targetAmount: 1,
+        HabitTemplate(id: "noSugar", emoji: "🍬", colorHex: "#EE5A9E", unit: .times, targetAmount: 1,
                       isAvoid: true, recurrenceType: .daily, recurrenceCount: 3),
-        HabitTemplate(id: "quitSmoking", emoji: "🚭", unit: .times, targetAmount: 1,
+        HabitTemplate(id: "quitSmoking", emoji: "🚭", colorHex: "#FF9F43", unit: .times, targetAmount: 1,
                       isAvoid: true, recurrenceType: .daily, recurrenceCount: 3),
     ]
 

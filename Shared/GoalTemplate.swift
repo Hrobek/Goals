@@ -12,6 +12,9 @@ struct GoalTemplate: Identifiable, Hashable {
     /// Stable identifier: the analytics tag and the localization-key suffix (`template.<id>.title`).
     let id: String
     let emoji: String
+    /// A distinct pick from `ColorPalette`, so the template cards - and the goal a card seeds -
+    /// don't all start out the same shade of blue.
+    let colorHex: String
     let trackingMode: GoalTrackingMode
     let startValue: Double
     let targetValue: Double
@@ -27,25 +30,25 @@ struct GoalTemplate: Identifiable, Hashable {
     /// The catalogue, in display order. Kept short on purpose — a wall of templates is its own
     /// kind of blank page.
     static let all: [GoalTemplate] = [
-        GoalTemplate(id: "run", emoji: "🏃", trackingMode: .value, startValue: 0, targetValue: 100,
+        GoalTemplate(id: "run", emoji: "🏃", colorHex: "#FF9F43", trackingMode: .value, startValue: 0, targetValue: 100,
                      isLowerBetter: false, unit: .km, recurrenceType: .daily, recurrenceCount: 3,
                      categoryDefaultKey: "health"),
-        GoalTemplate(id: "runYear", emoji: "🥾", trackingMode: .value, startValue: 0, targetValue: 500,
+        GoalTemplate(id: "runYear", emoji: "🥾", colorHex: "#10AC84", trackingMode: .value, startValue: 0, targetValue: 500,
                      isLowerBetter: false, unit: .km, recurrenceType: .daily, recurrenceCount: 3,
                      categoryDefaultKey: "health"),
-        GoalTemplate(id: "books", emoji: "📚", trackingMode: .value, startValue: 0, targetValue: 12,
+        GoalTemplate(id: "books", emoji: "📚", colorHex: "#5F27CD", trackingMode: .value, startValue: 0, targetValue: 12,
                      isLowerBetter: false, unit: .books, recurrenceType: .daily, recurrenceCount: 3,
                      categoryDefaultKey: nil),
-        GoalTemplate(id: "run10k", emoji: "🏅", trackingMode: .value, startValue: 0, targetValue: 10,
+        GoalTemplate(id: "run10k", emoji: "🏅", colorHex: "#FF6B6B", trackingMode: .value, startValue: 0, targetValue: 10,
                      isLowerBetter: false, unit: .km, recurrenceType: .daily, recurrenceCount: 3,
                      categoryDefaultKey: "health"),
-        GoalTemplate(id: "weight", emoji: "⚖️", trackingMode: .value, startValue: 5, targetValue: 0,
+        GoalTemplate(id: "weight", emoji: "⚖️", colorHex: "#54A0FF", trackingMode: .value, startValue: 5, targetValue: 0,
                      isLowerBetter: true, unit: .kg, recurrenceType: .daily, recurrenceCount: 3,
                      categoryDefaultKey: "health"),
-        GoalTemplate(id: "savings", emoji: "💰", trackingMode: .value, startValue: 0, targetValue: 10000,
+        GoalTemplate(id: "savings", emoji: "💰", colorHex: "#FECA57", trackingMode: .value, startValue: 0, targetValue: 10000,
                      isLowerBetter: false, unit: .czk, recurrenceType: .daily, recurrenceCount: 3,
                      categoryDefaultKey: "finance"),
-        GoalTemplate(id: "noSpend", emoji: "🚫", trackingMode: .value, startValue: 0, targetValue: 30,
+        GoalTemplate(id: "noSpend", emoji: "🚫", colorHex: "#8395A7", trackingMode: .value, startValue: 0, targetValue: 30,
                      isLowerBetter: false, unit: .days, recurrenceType: .daily, recurrenceCount: 3,
                      categoryDefaultKey: "finance"),
     ]

@@ -50,13 +50,14 @@ enum Analytics {
     /// is sent — the app works, the dashboard just stays empty.
     private static let namespace = "com.hrobek"
 
-    /// Simulator and debug runs would otherwise show up as real users. TelemetryDeck keeps test
-    /// signals out of production queries.
+    /// Debug runs, and TestFlight builds — including the device-farm sessions Apple's own beta
+    /// review spins up on hardware nobody here owns — would otherwise show up as real users.
+    /// TelemetryDeck keeps test signals out of production queries.
     private static var isTestMode: Bool {
         #if DEBUG
         true
         #else
-        false
+        isTestFlight
         #endif
     }
 

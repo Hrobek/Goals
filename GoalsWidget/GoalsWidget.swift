@@ -246,7 +246,9 @@ struct GoalsWidgetEntryView: View {
 /// The small widget is narrow enough that title and detail sharing a line truncates the title
 /// almost immediately, so there it drops to two lines instead: title on its own, detail and the
 /// progress bar together underneath. Slightly taller per row, but nothing gets cut off.
-private struct GoalRowView: View {
+///
+/// Not private - the full-page Today widget's goals section stacks these too.
+struct GoalRowView: View {
     @Environment(\.widgetFamily) private var family
     let goal: GoalSnapshot
 

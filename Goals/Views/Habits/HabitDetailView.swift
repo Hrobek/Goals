@@ -238,21 +238,24 @@ struct HabitDetailView: View {
     }
 
     /// A quota schedule is a running tally toward the period's target — one prominent `+1` and a
-    /// small `−` to undo, no exact-amount prompt.
+    /// small `−` to undo, no exact-amount prompt. `+1` stops once the period's target is met, so
+    /// the tally can't run past it (a "5×/week" habit settles at 5/5, not 6/5).
     private var quotaButtons: some View {
         HStack(spacing: 8) {
             Button {
                 HabitLogger.adjust(habit, by: 1, in: modelContext)
                 checkTick += 1
             } label: {
-                Label { Text(verbatim: "+1") } icon: { Image(systemName: "plus.circle") }
+                Text(verbatim: "+1")
                     .font(Theme.Typo.button)
                     .foregroundStyle(Theme.onAccent)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
                     .background(tint, in: .rect(cornerRadius: 12))
+                    .opacity(doneToday ? 0.5 : 1)
             }
             .buttonStyle(.plain)
+            .disabled(doneToday)
 
             Button {
                 HabitLogger.adjust(habit, by: -1, in: modelContext)
