@@ -46,7 +46,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "AA10000000000000000000A1"
             BuildableName = "GoalsWatch Watch App.app"
-            BlueprintName = "GoalsWatch Watch App"
             ReferencedContainer = "container:Goals.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -63,7 +62,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "AA10000000000000000000A1"
             BuildableName = "GoalsWatch Watch App.app"
-            BlueprintName = "GoalsWatch Watch App"
             ReferencedContainer = "container:Goals.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
