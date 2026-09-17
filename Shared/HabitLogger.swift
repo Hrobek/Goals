@@ -39,7 +39,13 @@ enum HabitLogger {
     ) -> Bool {
         let existing = habit.entry(on: now, calendar: calendar)
         let current = existing?.amount ?? 0
-        let updated = max(current + delta, 0)
+        var updated = max(current + delta, 0)
+        // A step bigger than what's left shouldn't be able to jump past the day's target in one
+        // tap - +25 at 0/20 pages lands on exactly 20, not 25. Not for a quota habit: its day can
+        // legitimately hold more than one contribution, so there's no per-day ceiling to clamp to.
+        if delta > 0, !habit.isQuota {
+            updated = min(updated, habit.effectiveTarget)
+        }
         guard updated != current else { return habit.isDone(on: now, calendar: calendar) }
 
         if updated == 0 {
@@ -56,10 +62,14 @@ enum HabitLogger {
     }
 
     /// One quick-add step for a value habit — the amount configured on the habit (also what one
-    /// widget tap adds).
+    /// widget tap adds). A no-op once the habit's already done, on any schedule: `isDone` already
+    /// knows how to ask that for a quota habit (the period's tally) as much as a plain daily one,
+    /// so this is the one place that keeps every tap-to-add surface — the Today row, the widget,
+    /// the Lock Screen button — from running an already-finished habit past its target.
     @discardableResult
     static func addQuick(_ habit: Habit, in context: ModelContext, now: Date = .now, calendar: Calendar = .current) -> Bool {
-        adjust(habit, by: habit.widgetQuickAmount, in: context, now: now, calendar: calendar)
+        guard !habit.isDone(on: now, calendar: calendar) else { return true }
+        return adjust(habit, by: habit.widgetQuickAmount, in: context, now: now, calendar: calendar)
     }
 
     /// One tap on a times-counter habit's control ("stretch 3× a day"): steps the count up by one

@@ -108,12 +108,15 @@ struct HabitDetailView: View {
                 dismiss()
             }
         }
+        // Adds to today's amount, the same as the quick-add chips right next to this button -
+        // it opens from a "+" and sits in the same row, so typing a number here has to add
+        // rather than overwrite, or it silently erases whatever was already logged today.
         .alert("habit.log.title", isPresented: $isShowingLogPrompt) {
             TextField(habit.targetText, text: $logAmountText)
                 .keyboardType(.decimalPad)
             Button("action.save") {
                 if let value = Double(logAmountText.replacingOccurrences(of: ",", with: ".")) {
-                    HabitLogger.setAmount(habit, to: value, in: modelContext)
+                    HabitLogger.adjust(habit, by: value, in: modelContext)
                     checkTick += 1
                 }
             }
@@ -408,7 +411,10 @@ struct HabitDetailView: View {
         .cardSurface(radius: Theme.Radius.panel, padding: 18)
     }
 
-    /// Bare row of `+N` steps and a `−`, exactly like `GoalDetailView.quickAddChips`.
+    /// Bare row of `+N` steps and a `−`, exactly like `GoalDetailView.quickAddChips`. The `+`
+    /// chips stop once today's target is met - same cap as the quota `+1` button - so this can't
+    /// run the day's amount past the target the way an unbounded tap could; `−` stays live so an
+    /// over-tap is still one tap away from undone.
     private var quickAddChips: some View {
         HStack(spacing: 8) {
             ForEach(quickSteps, id: \.self) { step in
@@ -429,8 +435,10 @@ struct HabitDetailView: View {
                                 .strokeBorder(Theme.textGhost, lineWidth: 1)
                         }
                         .foregroundStyle(Theme.text)
+                        .opacity(doneToday ? 0.5 : 1)
                 }
                 .buttonStyle(.plain)
+                .disabled(doneToday)
                 .accessibilityLabel(Text("a11y.quickAdd \(habit.quickAddLabel(step))"))
             }
 
@@ -453,7 +461,9 @@ struct HabitDetailView: View {
         }
     }
 
-    /// Full-width primary button, like the goal detail's "Log Value".
+    /// Full-width primary button, like the goal detail's "Log Value". Disabled once today's
+    /// target is met, same as the quick-add chips - typing in a bigger number is just another
+    /// way to run past the target, so it's gated the same way.
     private var logValueButton: some View {
         Button {
             logAmountText = ""
@@ -465,8 +475,10 @@ struct HabitDetailView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
                 .background(tint, in: .rect(cornerRadius: 12))
+                .opacity(doneToday ? 0.5 : 1)
         }
         .buttonStyle(.plain)
+        .disabled(doneToday)
     }
 
     private var quickSteps: [Double] {

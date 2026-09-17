@@ -319,14 +319,24 @@ struct GoalDetailView: View {
         }
     }
 
+    /// For a value goal, typing in a bigger number through this sheet is just another way past
+    /// the target, so it's gated the same as the quick-add chips once it's reached. A milestone
+    /// goal has no such overshoot to guard against - each milestone is its own checkbox - so its
+    /// "check in today" stays live.
+    private var isLogButtonDisabled: Bool {
+        goal.trackingMode == .value && goal.isTargetReached
+    }
+
     private var logButton: some View {
         Button {
             checkInSheetSnapshot = (goal.isCompleted, StreakCalculator.currentStreak(for: goal))
             isShowingCheckIn = true
         } label: {
             Label(logButtonTitle, systemImage: goal.trackingMode == .value ? "plus.circle" : "checkmark.circle")
+                .opacity(isLogButtonDisabled ? 0.5 : 1)
         }
         .buttonStyle(AccentButtonStyle())
+        .disabled(isLogButtonDisabled)
     }
 
     private var logButtonTitle: LocalizedStringKey {
@@ -528,7 +538,9 @@ struct GoalDetailView: View {
         }
     }
 
-    /// One-tap increments, pointing down for goals where lower is better.
+    /// One-tap increments, pointing down for goals where lower is better. Stop once the target's
+    /// reached - the goal is done, so there's nothing left to add - while the undo `−` stays live
+    /// for walking back an over-tap.
     private var quickAddChips: some View {
         let steps = GoalUnit(rawValue: goal.unitKey)?.quickAddSteps ?? [1, 2, 5, 10]
         return HStack(spacing: 8) {
@@ -550,8 +562,10 @@ struct GoalDetailView: View {
                                 .strokeBorder(Theme.textGhost, lineWidth: 1)
                         }
                         .foregroundStyle(Theme.text)
+                        .opacity(goal.isTargetReached ? 0.5 : 1)
                 }
                 .buttonStyle(.plain)
+                .disabled(goal.isTargetReached)
                 // "+250" spoken aloud is a number with a sign in front of it; what the button
                 // actually does — and in what unit — has to be said.
                 .accessibilityLabel(quickAddLabel(for: delta))
@@ -647,9 +661,18 @@ struct GoalDetailView: View {
     private func logDelta(_ delta: Double) {
         let previousValue = goal.currentValue
         loggingCheckIn {
-            ProgressLogger.record(value: max(goal.currentValue + delta, 0), for: goal, in: modelContext)
+            var updated = max(goal.currentValue + delta, 0)
+            // A step bigger than what's left shouldn't be able to jump past the target in one
+            // tap - +25 at 0/20 lands on exactly 20, not 25 - the same floor-clamp idea as the 0
+            // guard just above, mirrored at the other end.
+            if goal.isLowerBetter {
+                if delta < 0 { updated = max(updated, goal.targetValue) }
+            } else if delta > 0 {
+                updated = min(updated, goal.targetValue)
+            }
+            ProgressLogger.record(value: updated, for: goal, in: modelContext)
         }
-        // The floor clamp at 0 can make the applied delta smaller than the chip's own number —
+        // The clamp at either end can make the applied delta smaller than the chip's own number —
         // recording what actually happened, not what was asked for, keeps undo exact.
         lastLoggedDelta = goal.currentValue - previousValue
     }

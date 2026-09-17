@@ -178,9 +178,12 @@ struct MainTabView: View {
                 DragGesture(minimumDistance: 12)
                     .onChanged { value in
                         guard tabWidth > 0 else { return }
-                        var transaction = Transaction()
-                        transaction.disablesAnimations = true
-                        withTransaction(transaction) {
+                        // A flat, un-eased jump to every touch sample reads as jittery whenever
+                        // the sample rate dips below the display's frame rate - each step is a
+                        // hard cut rather than motion. A very stiff, near-zero-latency spring
+                        // fills those gaps with actual motion while still reading as 1:1 with the
+                        // finger - nothing here should feel like it's catching up.
+                        withAnimation(.interactiveSpring(response: 0.12, dampingFraction: 0.86, blendDuration: 0.05)) {
                             pillDragX = min(max(value.location.x, 0), width)
                         }
                     }
@@ -228,6 +231,12 @@ struct MainTabView: View {
                             .font(Theme.Typo.tab)
                     }
                     .foregroundStyle(isSelected ? Theme.accentBright : Theme.textFaint)
+                    // Real glass refracts whatever's scrolling behind the bar, so a fixed icon
+                    // color that read fine against the old opaque backdrop can wash out over a
+                    // bright patch. A soft halo in the theme's own ground color - dark in dark
+                    // mode, light in light mode - keeps the glyph legible without tying it to a
+                    // hardcoded color that would fight light mode.
+                    .shadow(color: Theme.ground.opacity(0.9), radius: 3)
                     .frame(maxWidth: .infinity)
                     .frame(height: 60)
                     .contentShape(.rect)

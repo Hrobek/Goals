@@ -217,6 +217,7 @@ struct HabitRow: View {
                 .contentShape(.capsule)
             }
             .buttonStyle(.plain)
+            .disabled(doneToday)
             .accessibilityLabel(Text("a11y.quickAdd \(habit.quickAddLabel(habit.widgetQuickAmount))"))
         }
     }
