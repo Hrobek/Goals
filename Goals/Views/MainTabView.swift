@@ -161,28 +161,23 @@ struct MainTabView: View {
                     .offset(x: pillOffset + 6)
                 tabBarButtons
             }
-            // `.simultaneousGesture`, not `.gesture`: VoiceOver and a plain tap still go through
-            // each button's own action untouched: this only adds the press-and-slide on top, for
-            // a pointer or touch drag. The pill is free to roam the whole bar as the finger
-            // moves - only on release does wherever it's sitting actually become the selection,
-            // so a drag can be walked back and forth without the page flipping through every tab
-            // it passes on the way.
+            // One gesture owns the whole bar - there's no per-tab `Button` underneath it
+            // anymore. Two independent recognizers on the same touch (a `Button`'s own tap next
+            // to this drag) was the actual cause of both older glitches: occasionally the button
+            // just wouldn't register at all (SwiftUI doesn't reliably let a plain tap and a
+            // simultaneous drag recognizer both claim the same touch), and when it did, its
+            // separately-triggered animation could race the drag's, which is what "comes in from
+            // the wrong side" was. One recognizer can't race itself, and `minimumDistance: 0`
+            // means the very first touch sample already drives the pill - the earlier 12pt dead
+            // zone before tracking kicked in was the "jerky on the first grab" feeling.
             //
-            // `minimumDistance: 12` on purpose, not 0: a plain tap should never touch `pillDragX`
-            // at all. With 0 it did - the tap's touch-down snapped the pill there instantly
-            // (dragging never animates), and then the button's own action *also* fired and could
-            // kick off a second, competing animated glide from wherever the pill still visually
-            // was, which is exactly the "comes in from the wrong side" glitch. Past that small
-            // threshold it's a deliberate drag, so 1:1 tracking is the whole point.
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 12)
+            // It's still safe to let a plain tap flow through here: `selection` itself only ever
+            // changes in `onEnded`, so a tap's touch-down just previews the pill sliding over,
+            // and lifting immediately commits it - never a mid-drag page flip.
+            .gesture(
+                DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         guard tabWidth > 0 else { return }
-                        // A flat, un-eased jump to every touch sample reads as jittery whenever
-                        // the sample rate dips below the display's frame rate - each step is a
-                        // hard cut rather than motion. A very stiff, near-zero-latency spring
-                        // fills those gaps with actual motion while still reading as 1:1 with the
-                        // finger - nothing here should feel like it's catching up.
                         withAnimation(.interactiveSpring(response: 0.12, dampingFraction: 0.86, blendDuration: 0.05)) {
                             pillDragX = min(max(value.location.x, 0), width)
                         }
@@ -205,44 +200,54 @@ struct MainTabView: View {
         .frame(height: 60)
     }
 
+    /// Plain content, not `Button` - `tabBarRow`'s own drag gesture is the only thing that reacts
+    /// to touch here (see the comment on that gesture for why two recognizers on the same touch
+    /// was actively buggy). VoiceOver still gets a proper button: the traits plus an explicit
+    /// accessibility action stand in for the tap a `Button` would otherwise have supplied.
     private var tabBarButtons: some View {
         HStack(spacing: 0) {
             ForEach(MainTab.allCases, id: \.self) { tab in
                 let isSelected = selection == tab
-                Button {
-                    withAnimation(.smooth(duration: 0.3)) { selection = tab }
-                } label: {
-                    VStack(spacing: 3) {
-                        // Goals keeps the app's own mark rather than a symbol — it's the tab the
-                        // whole app is named after. Habits sits right next to it as an equal.
-                        if tab == .goals {
-                            GoalsMark(
-                                size: 21,
-                                tone: .mono,
-                                color: isSelected ? Theme.accentBright : Theme.textFaint
-                            )
+                // `Theme.textFaint` is a fixed mid-gray in both appearances, chosen to be quiet
+                // against the old *opaque* bar - against real glass showing through, "quiet" can
+                // tip into "not actually visible" depending on what's behind it. `.primary` is
+                // the adaptive, always-legible label color (near-white in dark mode, near-black
+                // in light) instead of a hardcoded white that would vanish in light mode.
+                let restingColor = Color.primary
+                VStack(spacing: 3) {
+                    // Goals keeps the app's own mark rather than a symbol — it's the tab the
+                    // whole app is named after. Habits sits right next to it as an equal.
+                    if tab == .goals {
+                        GoalsMark(
+                            size: 21,
+                            tone: .mono,
+                            color: isSelected ? Theme.accentBright : restingColor
+                        )
+                        .frame(height: 22)
+                    } else {
+                        Image(systemName: isSelected ? tab.selectedSymbol : tab.symbol)
+                            .font(.system(size: 20, weight: isSelected ? .semibold : .regular))
                             .frame(height: 22)
-                        } else {
-                            Image(systemName: isSelected ? tab.selectedSymbol : tab.symbol)
-                                .font(.system(size: 20, weight: isSelected ? .semibold : .regular))
-                                .frame(height: 22)
-                        }
-                        Text(tab.title)
-                            .font(Theme.Typo.tab)
                     }
-                    .foregroundStyle(isSelected ? Theme.accentBright : Theme.textFaint)
-                    // Real glass refracts whatever's scrolling behind the bar, so a fixed icon
-                    // color that read fine against the old opaque backdrop can wash out over a
-                    // bright patch. A soft halo in the theme's own ground color - dark in dark
-                    // mode, light in light mode - keeps the glyph legible without tying it to a
-                    // hardcoded color that would fight light mode.
-                    .shadow(color: Theme.ground.opacity(0.9), radius: 3)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 60)
-                    .contentShape(.rect)
+                    Text(tab.title)
+                        .font(Theme.Typo.tab)
                 }
-                .buttonStyle(.plain)
+                .foregroundStyle(isSelected ? Theme.accentBright : restingColor)
+                // Real glass refracts whatever's scrolling behind the bar, so a fixed icon
+                // color that read fine against the old opaque backdrop can wash out over a
+                // bright patch. A soft halo in the theme's own ground color - dark in dark
+                // mode, light in light mode - keeps the glyph legible without tying it to a
+                // hardcoded color that would fight light mode.
+                .shadow(color: Theme.ground.opacity(0.9), radius: 3)
+                .frame(maxWidth: .infinity)
+                .frame(height: 60)
+                .contentShape(.rect)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text(tab.title))
                 .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+                .accessibilityAction {
+                    withAnimation(.smooth(duration: 0.3)) { selection = tab }
+                }
             }
         }
     }
