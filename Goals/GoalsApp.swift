@@ -9,9 +9,13 @@ import UserNotifications
 
 @main
 struct GoalsApp: App {
-    @State private var profile = Profile()
-    @State private var purchaseManager = PurchaseManager()
-    @State private var syncMonitor = SyncMonitor()
+    // Plain `let`, not `@State`: `GoalsApp` is built exactly once for the process's life, and
+    // each of these is an `@Observable` reference type, so there's no reassignment for `@State`
+    // to preserve across rebuilds. `@State` would only be safe to read after SwiftUI installs it
+    // on the view - `init()` needs `profile.id` immediately, before that ever happens.
+    private let profile = Profile()
+    private let purchaseManager = PurchaseManager()
+    private let syncMonitor = SyncMonitor()
     private let modelContainer = SharedStore.container
 
     init() {
