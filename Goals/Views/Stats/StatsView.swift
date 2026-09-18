@@ -78,6 +78,32 @@ struct StatsView: View {
         trackedHabits.flatMap(\.scheduleDates)
     }
 
+    /// Every check-in and habit-done date across the board - the raw material for the Pro cards
+    /// that look at the whole picture instead of one goal at a time.
+    private var allDoneDates: [Date] {
+        trackedCheckIns.map(\.date) + habitDoneDates
+    }
+
+    /// The longest run any goal or habit has ever had, not just the one still going. Completed
+    /// goals are included here (unlike `activeGoals`) - a finished goal's frozen streak can still
+    /// be the record.
+    private var longestStreakEver: Int {
+        let goalBest = trackedGoals.map { StreakCalculator.longestStreak(for: $0) }.max() ?? 0
+        let habitBest = trackedHabits.map { StreakCalculator.longestStreak(for: $0) }.max() ?? 0
+        return max(goalBest, habitBest)
+    }
+
+    /// The most check-ins and habit entries that ever landed in a single calendar week.
+    private var bestWeekCount: Int {
+        let calendar = Calendar.current
+        var counts: [Date: Int] = [:]
+        for date in allDoneDates {
+            guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: date)?.start else { continue }
+            counts[weekStart, default: 0] += 1
+        }
+        return counts.values.max() ?? 0
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -166,20 +192,26 @@ struct StatsView: View {
         }
     }
 
+    /// The "step back and see the whole picture" area: a year-long activity heatmap, the all-time
+    /// records, the weekday pattern, and the week-over-week trend chart. One Pro pill covers the
+    /// whole stack rather than repeating it on every card.
     @ViewBuilder
     private var trendsSection: some View {
-        if purchaseManager.isProUnlocked {
-            // "Pro" is the tier's name, not a word to translate.
-            LabeledSection("stats.trends.title") {
-                AccentPill(text: "Pro")
-            } content: {
-                TrendsSection(checkIns: trackedCheckIns)
-            }
-        } else {
-            LabeledSection("stats.trends.title") {
+        // "Pro" is the tier's name, not a word to translate.
+        LabeledSection("stats.pro.title") {
+            AccentPill(text: "Pro")
+        } content: {
+            if purchaseManager.isProUnlocked {
+                VStack(spacing: Theme.Space.card) {
+                    YearInPixelsCard(doneDates: allDoneDates)
+                    PersonalRecordsCard(longestStreak: longestStreakEver, bestWeek: bestWeekCount, totalCheckIns: allDoneDates.count)
+                    WeekdayPatternCard(doneDates: allDoneDates)
+                    TrendsSection(checkIns: trackedCheckIns)
+                }
+            } else {
                 ProLockedCard(
-                    title: "stats.trends.title",
-                    message: "stats.trends.locked")
+                    title: "stats.pro.title",
+                    message: "stats.pro.locked")
             }
         }
     }
@@ -285,14 +317,16 @@ private struct WeeklySummaryCard: View {
         return checkInDates.filter { interval.contains($0) }.count
     }
 
-    private var lastWeekCount: Int {
-        guard let thisWeek = calendar.dateInterval(of: .weekOfYear, for: .now),
-              let previousAnchor = calendar.date(byAdding: .weekOfYear, value: -1, to: thisWeek.start),
-              let interval = calendar.dateInterval(of: .weekOfYear, for: previousAnchor) else { return 0 }
-        return checkInDates.filter { interval.contains($0) }.count
+    /// Last week's count up through the *same point in the week* as right now - not the full
+    /// week. Comparing a Monday's one day of check-ins against all seven of last week made the
+    /// delta swing wildly negative every Monday; this way Monday compares to last Monday.
+    private var lastWeekPaceCount: Int {
+        guard let previousMoment = calendar.date(byAdding: .weekOfYear, value: -1, to: .now),
+              let previousInterval = calendar.dateInterval(of: .weekOfYear, for: previousMoment) else { return 0 }
+        return checkInDates.filter { $0 >= previousInterval.start && $0 < previousMoment }.count
     }
 
-    private var delta: Int { thisWeekCount - lastWeekCount }
+    private var delta: Int { thisWeekCount - lastWeekPaceCount }
 
     var body: some View {
         HStack(alignment: .bottom) {
@@ -307,7 +341,7 @@ private struct WeeklySummaryCard: View {
 
             Spacer()
 
-            if lastWeekCount > 0 || thisWeekCount > 0 {
+            if lastWeekPaceCount > 0 || thisWeekCount > 0 {
                 HStack(spacing: 5) {
                     Image(systemName: delta >= 0 ? "arrow.up.right" : "arrow.down.right")
                         .font(.system(size: 13))
@@ -339,7 +373,7 @@ private struct WeeklySummaryCard: View {
     /// shows it (a signed number reads fine either way, and it's what `MonthComparisonRow` does too).
     private var accessibilityValue: String {
         let countPhrase = String(localized: "stats.weekly.checkIns \(thisWeekCount)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
-        guard lastWeekCount > 0 || thisWeekCount > 0 else { return countPhrase }
+        guard lastWeekPaceCount > 0 || thisWeekCount > 0 else { return countPhrase }
         return "\(countPhrase), \(deltaText)"
     }
 }

@@ -76,7 +76,7 @@ struct WeekReviewView: View {
 
     /// Re-render the share card whenever the week or its totals change.
     private var shareSignature: String {
-        "\(weekOffset)|\(review.done)|\(review.planned)|\(review.lines.count)"
+        "\(weekOffset)|\(review.done)|\(review.plannedFullWeek)|\(review.lines.count)"
     }
 
     // MARK: - Adherence
@@ -90,7 +90,7 @@ struct WeekReviewView: View {
                     Text("\(review.done)")
                         .font(Theme.Typo.statMedium)
                         .foregroundStyle(Theme.text)
-                    Text(verbatim: "/ \(review.planned)")
+                    Text(verbatim: "/ \(review.plannedFullWeek)")
                         .font(Theme.Typo.statSmall)
                         .foregroundStyle(Theme.textFaint)
                 }
@@ -105,7 +105,7 @@ struct WeekReviewView: View {
         .cardSurface(padding: 18)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("weekReview.adherence.caption"))
-        .accessibilityValue(Text("today.progress \(review.done) \(review.planned)"))
+        .accessibilityValue(Text("today.progress \(review.done) \(review.plannedFullWeek)"))
     }
 
     // MARK: - Activity strip
@@ -130,7 +130,7 @@ struct WeekReviewView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("weekReview.activity"))
-        .accessibilityValue(Text("today.progress \(review.done) \(review.planned)"))
+        .accessibilityValue(Text("today.progress \(review.done) \(review.plannedFullWeek)"))
     }
 
     /// Calendar weekday number (1 = Sunday) for the Nth column, honouring `firstWeekday`.

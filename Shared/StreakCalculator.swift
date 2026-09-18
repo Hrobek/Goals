@@ -26,6 +26,97 @@ enum StreakCalculator {
         }
     }
 
+    /// The longest run this schedule has ever had, not just the one still going - a finished goal's
+    /// best stretch, or the record a broken streak can't take away. Same day/quota rules as
+    /// `currentStreak`, just walked forward from `startDate` instead of back from today so every
+    /// past run gets a chance to be the max.
+    static func longestStreak(for schedule: some Scheduled, calendar: Calendar = .current, referenceDate: Date = .now) -> Int {
+        let vacation = Vacation.current()
+        switch schedule.recurrenceType {
+        case .daily, .specificWeekdays, .specificDaysOfMonth:
+            return longestDayBasedStreak(for: schedule, vacation: vacation, calendar: calendar, referenceDate: referenceDate)
+        case .timesPerWeek:
+            return longestPeriodBasedStreak(for: schedule, vacation: vacation, component: .weekOfYear, calendar: calendar, referenceDate: referenceDate)
+        case .timesPerMonth:
+            return longestPeriodBasedStreak(for: schedule, vacation: vacation, component: .month, calendar: calendar, referenceDate: referenceDate)
+        }
+    }
+
+    private static func longestDayBasedStreak(for schedule: some Scheduled, vacation: Vacation, calendar: Calendar, referenceDate: Date) -> Int {
+        let doneDays = Set(schedule.scheduleDates.map { calendar.startOfDay(for: $0) })
+        let frozenDays = schedule.isAvoid ? [] : FreezeLedger.frozenDays(for: schedule.id)
+        let startFloor = calendar.startOfDay(for: schedule.startDate)
+        let today = calendar.startOfDay(for: referenceDate)
+
+        func counts(_ day: Date) -> Bool {
+            Recurrence.isDayScheduled(day, for: schedule, calendar: calendar)
+                && !vacation.pauses(schedule.id, on: day, calendar: calendar)
+        }
+        func isMet(_ day: Date) -> Bool { doneDays.contains(day) || frozenDays.contains(day) }
+
+        guard startFloor <= today else { return 0 }
+        let totalDays = (calendar.dateComponents([.day], from: startFloor, to: today).day ?? 0) + 1
+
+        var best = 0
+        var running = 0
+        var cursor = startFloor
+        var iterations = 0
+
+        while iterations < totalDays {
+            iterations += 1
+            if counts(cursor) {
+                if isMet(cursor) {
+                    running += 1
+                    best = max(best, running)
+                } else if cursor == today, !schedule.isAvoid {
+                    // Same grace as `currentStreak`: today not done yet doesn't end a run in progress.
+                } else {
+                    running = 0
+                }
+            }
+            guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
+            cursor = next
+        }
+        return best
+    }
+
+    private static func longestPeriodBasedStreak(
+        for schedule: some Scheduled,
+        vacation: Vacation,
+        component: Calendar.Component,
+        calendar: Calendar,
+        referenceDate: Date
+    ) -> Int {
+        guard schedule.recurrenceCount > 0,
+              let startInterval = calendar.dateInterval(of: component, for: schedule.startDate),
+              let currentInterval = calendar.dateInterval(of: component, for: referenceDate) else {
+            return 0
+        }
+
+        let doneDates = schedule.scheduleDates
+        var best = 0
+        var running = 0
+        var interval = startInterval
+        var iterations = 0
+        let maxIterations = 1000
+
+        while interval.start < currentInterval.end, iterations < maxIterations {
+            iterations += 1
+            let isCurrentPeriod = interval.start == currentInterval.start
+            let count = doneDates.filter { interval.contains($0) }.count
+            if count >= schedule.recurrenceCount || vacation.pausesEntirePeriod(schedule.id, interval, calendar: calendar) {
+                running += 1
+                best = max(best, running)
+            } else if !isCurrentPeriod {
+                running = 0
+            }
+            guard let nextAnchor = calendar.date(byAdding: component, value: 1, to: interval.start),
+                  let nextInterval = calendar.dateInterval(of: component, for: nextAnchor) else { break }
+            interval = nextInterval
+        }
+        return best
+    }
+
     private static func dayBasedStreak(for schedule: some Scheduled, vacation: Vacation, calendar: Calendar, referenceDate: Date) -> Int {
         let doneDays = Set(schedule.scheduleDates.map { calendar.startOfDay(for: $0) })
         // A day rescued by a streak freeze counts exactly like a done day. Avoid habits are never

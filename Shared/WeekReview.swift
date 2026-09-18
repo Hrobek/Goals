@@ -40,18 +40,21 @@ struct WeekReview {
     /// 0 = the current week, negative = weeks back.
     let weekOffset: Int
     let lines: [Line]
+    /// The whole week's target, not capped at today the way each `Line.planned` is - the ring at
+    /// the top of the review answers "how is this week shaping up", and a Monday shouldn't show a
+    /// denominator one-seventh the size just because most of the week hasn't happened yet.
+    let plannedFullWeek: Int
     /// Check-ins and habit entries per day of the week, in the calendar's own weekday order
     /// (index 0 is the first day of the week).
     let dailyCounts: [Int]
     /// Streaks that crossed a threshold this week: the item's title and the threshold it reached.
     let milestones: [(title: String, days: Int)]
 
-    var planned: Int { lines.reduce(0) { $0 + $1.planned } }
     var done: Int { lines.reduce(0) { $0 + $1.done } }
-    /// Share of planned check-ins that got done, 0…1.
+    /// Share of the full week's target that's done, 0…1.
     var adherence: Double {
-        guard planned > 0 else { return 0 }
-        return min(Double(done) / Double(planned), 1)
+        guard plannedFullWeek > 0 else { return 0 }
+        return min(Double(done) / Double(plannedFullWeek), 1)
     }
 
     var moved: [Line] { lines.filter(\.moved).sorted { $0.done > $1.done } }
@@ -82,6 +85,8 @@ struct WeekReview {
         var lines: [Line] = []
         lines.reserveCapacity(activeGoals.count + activeHabits.count)
 
+        var plannedFullWeek = 0
+
         for goal in activeGoals {
             lines.append(Line(
                 id: goal.id,
@@ -93,6 +98,7 @@ struct WeekReview {
                 done: doneCount(for: goal, in: interval),
                 streak: StreakCalculator.currentStreak(for: goal, calendar: calendar, referenceDate: now)
             ))
+            plannedFullWeek += plannedCount(for: goal, start: goal.startDate, in: interval, now: now, capToday: false, vacation: vacation, calendar: calendar)
         }
         for habit in activeHabits {
             lines.append(Line(
@@ -105,6 +111,7 @@ struct WeekReview {
                 done: doneCount(for: habit, in: interval),
                 streak: StreakCalculator.currentStreak(for: habit, calendar: calendar, referenceDate: now)
             ))
+            plannedFullWeek += plannedCount(for: habit, start: habit.startDate, in: interval, now: now, capToday: false, vacation: vacation, calendar: calendar)
         }
 
         let allDates = activeGoals.flatMap(\.scheduleDates) + activeHabits.flatMap(\.scheduleDates)
@@ -134,6 +141,7 @@ struct WeekReview {
             interval: interval,
             weekOffset: weekOffset,
             lines: lines,
+            plannedFullWeek: plannedFullWeek,
             dailyCounts: daily,
             milestones: milestones
         )
@@ -141,19 +149,21 @@ struct WeekReview {
 
     /// How many times `schedule` was due in `interval`. Day-based types count their scheduled days
     /// in the window; a weekly quota is one target for the week, a monthly quota is prorated to a
-    /// week. The window starts no earlier than the item's start date and, for the current week,
-    /// ends at the end of today.
+    /// week. The window starts no earlier than the item's start date and, when `capToday` is true
+    /// (the default, used for each line's own moved/stalled classification), ends at the end of
+    /// today rather than counting a day that hasn't happened yet as missed.
     static func plannedCount(
         for schedule: some Scheduled,
         start: Date,
         in interval: DateInterval,
         now: Date,
+        capToday: Bool = true,
         vacation: Vacation = .current(),
         calendar: Calendar
     ) -> Int {
         let lower = max(interval.start, calendar.startOfDay(for: start))
         let endOfToday = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? interval.end
-        let upper = min(interval.end, endOfToday)
+        let upper = capToday ? min(interval.end, endOfToday) : interval.end
         guard lower < upper else { return 0 }
 
         switch schedule.recurrenceType {

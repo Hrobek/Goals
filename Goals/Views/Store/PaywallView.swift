@@ -32,6 +32,7 @@ struct PaywallView: View {
     private let benefits: [(symbol: String, title: LocalizedStringKey, body: LocalizedStringKey)] = [
         ("target", "goals.paywall.title", "goals.paywall.locked"),
         ("repeat", "habits.paywall.title", "habits.paywall.locked"),
+        ("square.grid.3x3.fill", "stats.pro.title", "stats.pro.locked"),
         ("chart.line.uptrend.xyaxis", "stats.trends.title", "stats.trends.locked"),
         ("sparkles", "pace.title", "pace.locked"),
         ("chart.xyaxis.line", "goalDetail.chart.title", "goalDetail.chart.locked"),

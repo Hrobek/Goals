@@ -95,7 +95,7 @@ struct ShareCardView: View {
     private var checkInsText: String {
         String(
             format: String(localized: "shareCard.checkIns %lld %lld", defaultValue: "%1$lld / %2$lld check-ins", bundle: AppLanguage.currentBundle, locale: locale),
-            review.done, review.planned
+            review.done, review.plannedFullWeek
         )
     }
 
@@ -287,6 +287,7 @@ enum ShareCard {
         interval: Calendar.current.dateInterval(of: .weekOfYear, for: .now)!,
         weekOffset: 0,
         lines: [],
+        plannedFullWeek: 14,
         dailyCounts: [2, 0, 3, 1, 0, 4, 1],
         milestones: []
     ))

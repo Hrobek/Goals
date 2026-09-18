@@ -18,6 +18,11 @@ struct TrendsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            Text("stats.trends.title")
+                .font(Theme.Typo.footnote)
+                .foregroundStyle(Theme.textFaint)
+                .padding(.bottom, 10)
+
             MonthComparisonRow(checkIns: checkIns)
 
             Chart(weeklyPoints) { point in
