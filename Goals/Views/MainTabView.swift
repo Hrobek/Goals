@@ -233,12 +233,6 @@ struct MainTabView: View {
                         .font(Theme.Typo.tab)
                 }
                 .foregroundStyle(isSelected ? Theme.accentBright : restingColor)
-                // Real glass refracts whatever's scrolling behind the bar, so a fixed icon
-                // color that read fine against the old opaque backdrop can wash out over a
-                // bright patch. A soft halo in the theme's own ground color - dark in dark
-                // mode, light in light mode - keeps the glyph legible without tying it to a
-                // hardcoded color that would fight light mode.
-                .shadow(color: Theme.ground.opacity(0.9), radius: 3)
                 .frame(maxWidth: .infinity)
                 .frame(height: 60)
                 .contentShape(.rect)
