@@ -5,6 +5,7 @@
 
 import SwiftUI
 import SwiftData
+import WidgetKit
 
 /// Picks between the Today list and the "open your iPhone" prompt, the only branch the watch app
 /// has. The prompt shows until an identity is resolved — normally the moment the paired phone
@@ -42,6 +43,11 @@ struct WatchRootView: View {
     private func refresh() {
         languageRaw = AppLanguage.current.rawValue
         resolveIdentity()
+        // The complication only reloads on a check-in poke or a fresh identity push - if it went
+        // stale for some other reason (an ownership migration reassigning rows after a phone
+        // reinstall, say), the watch face keeps showing the old snapshot even once the app itself
+        // is looking at correct data. Opening the app is a cheap, natural moment to nudge it too.
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     /// Order of preference: a cached id, then the owner of any row CloudKit has already synced
