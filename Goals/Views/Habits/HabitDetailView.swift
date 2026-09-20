@@ -417,7 +417,7 @@ struct HabitDetailView: View {
     /// over-tap is still one tap away from undone.
     private var quickAddChips: some View {
         HStack(spacing: 8) {
-            ForEach(quickSteps, id: \.self) { step in
+            ForEach(quickStepsIncludingWidget, id: \.self) { step in
                 Button {
                     HabitLogger.adjust(habit, by: step, in: modelContext)
                     checkTick += 1
@@ -483,6 +483,15 @@ struct HabitDetailView: View {
 
     private var quickSteps: [Double] {
         GoalUnit(rawValue: habit.unitKey)?.quickAddSteps ?? [1, 2, 5, 10]
+    }
+
+    /// The unit's preset steps, plus the habit's own widget/row amount if it isn't one of them
+    /// already - so the exact one-tap action the widget performs is available here too, instead of
+    /// only being visible by opening Edit to check the number.
+    private var quickStepsIncludingWidget: [Double] {
+        let presets = quickSteps
+        guard !presets.contains(habit.widgetQuickAmount) else { return presets }
+        return (presets + [habit.widgetQuickAmount]).sorted()
     }
 
     /// The big number in the progress panel — the period tally for a quota schedule, today's

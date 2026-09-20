@@ -12,8 +12,6 @@ struct GoalsWidgetBundle: WidgetBundle {
         GoalsWidget()
         SingleGoalWidget()
         HabitsWidget()
-        ActivityWidget()
-        ProgressChartWidget()
         // iOS 27's full-page extra-large portrait size - a combined Today widget only makes sense
         // once that size exists to hold both lists.
         if #available(iOS 27.0, *) {

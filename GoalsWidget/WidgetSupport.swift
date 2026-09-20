@@ -12,8 +12,6 @@ import AppIntents
 
 enum WidgetKind {
     static let goals = "GoalsWidget"
-    static let activity = "GoalsActivityWidget"
-    static let progressChart = "GoalsProgressChartWidget"
 }
 
 extension WidgetFamily {

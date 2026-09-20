@@ -542,7 +542,7 @@ struct GoalDetailView: View {
     /// reached - the goal is done, so there's nothing left to add - while the undo `−` stays live
     /// for walking back an over-tap.
     private var quickAddChips: some View {
-        let steps = GoalUnit(rawValue: goal.unitKey)?.quickAddSteps ?? [1, 2, 5, 10]
+        let steps = quickAddStepsIncludingWidget
         return HStack(spacing: 8) {
             ForEach(steps, id: \.self) { step in
                 let delta = goal.isLowerBetter ? -step : step
@@ -572,6 +572,15 @@ struct GoalDetailView: View {
             }
             undoQuickActionButton
         }
+    }
+
+    /// The unit's preset steps, plus the goal's own widget/Today-row amount if it isn't one of them
+    /// already - so the exact one-tap action the widget performs is available here too, instead of
+    /// only being visible by opening Edit to check the number.
+    private var quickAddStepsIncludingWidget: [Double] {
+        let presets = GoalUnit(rawValue: goal.unitKey)?.quickAddSteps ?? [1, 2, 5, 10]
+        guard goal.widgetAction == .quickAction, !presets.contains(goal.widgetQuickAmount) else { return presets }
+        return (presets + [goal.widgetQuickAmount]).sorted()
     }
 
     /// What the next tap of "undo" reverses: whichever quick-add chip was tapped last in this

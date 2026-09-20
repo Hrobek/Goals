@@ -140,6 +140,13 @@ struct WatchTodayView: View {
             }
             nowDone = WatchLogAction.toggle(habit, in: modelContext)
         } else if let goal = goals.first(where: { $0.id == item.id }) {
+            guard goal.widgetAction != .openGoal else {
+                // The widget shows no action button for these - just a link to the phone - and the
+                // watch has nowhere to open, so it stays a no-op here too rather than silently
+                // running the quick action the goal owner turned off.
+                WKInterfaceDevice.current().play(.failure)
+                return
+            }
             _ = WatchLogAction.quickAction(goal, in: modelContext)
             nowDone = goal.hasCheckIn(on: .now)
         } else {
