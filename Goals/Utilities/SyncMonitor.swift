@@ -6,6 +6,7 @@
 import Foundation
 import Observation
 import CoreData
+import WidgetKit
 import os
 #if canImport(CloudKit)
 import CloudKit
@@ -131,6 +132,15 @@ final class SyncMonitor {
         if event.type == .import || event.type == .export {
             lastSync = endDate
             defaults?.set(endDate, forKey: Self.lastSyncKey)
+        }
+
+        // An import just landed rows this device didn't write itself - from another iPhone, or
+        // from the watch, which has no App Group shared with this one and so can only ever reach
+        // this device's widgets by way of CloudKit. Nothing else reloads them once the app isn't
+        // in the foreground, so a check-off from the wrist would otherwise sit invisible on the
+        // Home Screen widget until the app happened to be opened.
+        if event.type == .import {
+            WidgetCenter.shared.reloadAllTimelines()
         }
     }
 

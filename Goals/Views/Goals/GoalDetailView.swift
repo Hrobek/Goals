@@ -101,6 +101,7 @@ struct GoalDetailView: View {
                     paceRow
                     logButton
                     completedToggle
+                    widgetActionSummary
                 }
 
                 StreakFreezeCard(schedule: goal, isHabit: false, userId: goal.ownerId, tint: Theme.accent, refreshKey: logTick)
@@ -358,6 +359,28 @@ struct GoalDetailView: View {
                     }
                 }
         }
+    }
+
+    /// What one tap on the widget (or the Today row) actually does, spelled out here too - so
+    /// changing it in Edit isn't the only place it's ever visible.
+    private var widgetActionSummary: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "square.grid.2x2")
+                .font(.system(size: 11))
+            Text(widgetActionSummaryText)
+                .font(Theme.Typo.footnote)
+        }
+        .foregroundStyle(Theme.textFaint)
+        .padding(.horizontal, 4)
+    }
+
+    private var widgetActionSummaryText: String {
+        guard goal.widgetAction == .quickAction, goal.trackingMode == .value else {
+            return goal.widgetAction.localizedName
+        }
+        let sign = goal.isLowerBetter ? "-" : "+"
+        let amount = sign + goal.valueWithUnit(goal.widgetQuickAmount, formattedValue: formattedValue(goal.widgetQuickAmount))
+        return "\(goal.widgetAction.localizedName) · \(amount)"
     }
 
     /// A plain-language pace readout ("aim for 4 km a day" / "you'll get there around March") —

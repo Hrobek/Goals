@@ -45,7 +45,9 @@ struct HabitCheckInIntent: AppIntent {
         }
 
         // An avoid habit is never logged from a widget — recording a slip has to be deliberate.
-        guard !habit.isAvoid else { return .result() }
+        // Neither is one set to "Open habit" - the ring is a `Link` for those, not this intent's
+        // button, but the guard stays here too in case anything else ever dispatches it directly.
+        guard !habit.isAvoid, habit.widgetAction != .openHabit else { return .result() }
 
         switch habit.widgetAction {
         case .complete:
@@ -59,6 +61,8 @@ struct HabitCheckInIntent: AppIntent {
                 // A "times" counter or a quota schedule: one tap is one more tick.
                 HabitLogger.cycle(habit, in: context)
             }
+        case .openHabit:
+            break
         }
 
         do {

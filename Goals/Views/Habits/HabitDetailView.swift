@@ -76,6 +76,7 @@ struct HabitDetailView: View {
                 header
                 todayControl
                 if !habit.isAvoid {
+                    widgetActionSummary
                     StreakFreezeCard(schedule: habit, isHabit: true, userId: habit.ownerId, tint: tint, refreshKey: checkTick)
                 }
                 activitySection
@@ -490,8 +491,28 @@ struct HabitDetailView: View {
     /// only being visible by opening Edit to check the number.
     private var quickStepsIncludingWidget: [Double] {
         let presets = quickSteps
-        guard !presets.contains(habit.widgetQuickAmount) else { return presets }
+        guard habit.widgetAction == .checkOff, !presets.contains(habit.widgetQuickAmount) else { return presets }
         return (presets + [habit.widgetQuickAmount]).sorted()
+    }
+
+    /// What one tap on the widget (or the Today row) actually does, spelled out here too - so
+    /// changing it in Edit isn't the only place it's ever visible.
+    private var widgetActionSummary: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "square.grid.2x2")
+                .font(.system(size: 11))
+            Text(widgetActionSummaryText)
+                .font(Theme.Typo.footnote)
+        }
+        .foregroundStyle(Theme.textFaint)
+        .padding(.horizontal, 4)
+    }
+
+    private var widgetActionSummaryText: String {
+        guard habit.widgetAction == .checkOff, habit.hasUnit, !habit.isQuota else {
+            return habit.widgetAction.localizedName
+        }
+        return "\(habit.widgetAction.localizedName) · +\(habit.quickAddLabel(habit.widgetQuickAmount))"
     }
 
     /// The big number in the progress panel — the period tally for a quota schedule, today's

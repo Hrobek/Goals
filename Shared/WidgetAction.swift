@@ -33,6 +33,9 @@ enum HabitWidgetAction: String, CaseIterable, Identifiable {
     /// One tap finishes the current occurrence outright — the day for a daily habit, the whole
     /// week/month tally for a quota schedule.
     case complete
+    /// No logging from the Home Screen at all - a tap just opens the habit, the same as an avoid
+    /// habit always does.
+    case openHabit
 
     var id: String { rawValue }
 
@@ -40,6 +43,7 @@ enum HabitWidgetAction: String, CaseIterable, Identifiable {
         switch self {
         case .checkOff: String(localized: "habit.action.checkOff", defaultValue: "Check off", bundle: AppLanguage.currentBundle)
         case .complete: String(localized: "habit.action.complete", defaultValue: "Complete", bundle: AppLanguage.currentBundle)
+        case .openHabit: String(localized: "habit.action.open", defaultValue: "Open habit", bundle: AppLanguage.currentBundle)
         }
     }
 }

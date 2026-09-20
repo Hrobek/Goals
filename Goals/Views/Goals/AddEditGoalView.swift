@@ -401,7 +401,7 @@ struct AddEditGoalView: View {
     }
 
     private var widgetSection: some View {
-        LabeledSection("widget.title") {
+        LabeledSection("tapAction.title") {
             VStack(alignment: .leading, spacing: 8) {
                 SegmentStrip(
                     options: WidgetAction.allCases,

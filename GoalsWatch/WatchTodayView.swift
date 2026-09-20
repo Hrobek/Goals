@@ -134,8 +134,10 @@ struct WatchTodayView: View {
     private func log(_ item: TodaySchedule.Item) {
         let nowDone: Bool
         if item.isHabit, let habit = habits.first(where: { $0.id == item.id }) {
-            if habit.isAvoid {
-                WKInterfaceDevice.current().play(.failure)   // avoid habits aren't logged from the wrist
+            guard !habit.isAvoid, habit.widgetAction != .openHabit else {
+                // Avoid habits never log from the wrist, and neither does one set to "Open habit" -
+                // same no-op the widget gives it, since the watch has nowhere to open either.
+                WKInterfaceDevice.current().play(.failure)
                 return
             }
             nowDone = WatchLogAction.toggle(habit, in: modelContext)

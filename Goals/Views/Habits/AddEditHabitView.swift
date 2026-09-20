@@ -144,6 +144,14 @@ struct AddEditHabitView: View {
         return isTimesCounter ? "habit.field.tracking.counter.hint" : "habit.field.tracking.checkbox.hint"
     }
 
+    private var widgetActionHint: LocalizedStringKey {
+        switch widgetAction {
+        case .checkOff: "habit.action.checkOff.hint"
+        case .complete: "habit.action.complete.hint"
+        case .openHabit: "habit.action.open.hint"
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -221,14 +229,14 @@ struct AddEditHabitView: View {
                                 .padding(.horizontal, 4)
                         }
                     }
-                    LabeledSection("widget.title") {
+                    LabeledSection("tapAction.title") {
                         VStack(alignment: .leading, spacing: 8) {
                             SegmentStrip(
                                 options: HabitWidgetAction.allCases,
                                 selection: $widgetAction.animation(),
                                 title: { $0.localizedName }
                             )
-                            Text(widgetAction == .complete ? "habit.action.complete.hint" : "habit.action.checkOff.hint")
+                            Text(widgetActionHint)
                                 .font(Theme.Typo.footnote)
                                 .foregroundStyle(Theme.textGhost)
                                 .fixedSize(horizontal: false, vertical: true)

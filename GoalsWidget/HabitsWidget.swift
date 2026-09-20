@@ -21,6 +21,8 @@ struct HabitSnapshot: Identifiable, Hashable {
     /// An avoid habit — the ring shows its clean state, and a tap opens the app rather than logging
     /// a slip from the Home Screen by accident.
     var isAvoid = false
+    /// The habit's own widget action is "Open habit" - same no-logging treatment as an avoid habit.
+    var opensApp = false
     /// "+250" style label for a value habit's tap; empty for a checkbox habit.
     let quickAddLabel: String
 
@@ -29,6 +31,9 @@ struct HabitSnapshot: Identifiable, Hashable {
 
     var isDone: Bool { amountToday >= target }
     var progress: Double { target > 0 ? min(amountToday / target, 1) : 0 }
+    /// A tap should open the app instead of logging - either because logging by accident would be
+    /// bad (avoid), or because the habit owner turned quick logging off for this habit.
+    var linksToApp: Bool { isAvoid || opensApp }
 }
 
 struct HabitsEntry: TimelineEntry {
@@ -65,6 +70,7 @@ extension HabitSnapshot {
             streak: habit.currentStreak,
             isCheckbox: habit.isCheckbox,
             isAvoid: habit.isAvoid,
+            opensApp: habit.widgetAction == .openHabit,
             quickAddLabel: habit.isCheckbox ? "" : "+\(habit.numberOnly(habit.widgetQuickAmount))",
             amountToday: amount,
             target: target
@@ -268,7 +274,7 @@ struct HabitsWidgetEntryView: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(Text(habit.title))
 
-                if habit.isAvoid {
+                if habit.linksToApp {
                     HStack(spacing: 3) {
                         Image(systemName: "flame.fill").font(.system(size: 12))
                         Text("\(habit.streak)").font(.system(size: 15, weight: .semibold)).monospacedDigit()
@@ -289,15 +295,15 @@ struct HabitsWidgetEntryView: View {
     }
 }
 
-/// One habit's ring, made tappable: a `Link` to the habit for an avoid habit (no logging from the
-/// Home Screen - a stray tap shouldn't record a slip), a check-in button for every other kind.
-/// Not private - the full-page Today widget reuses it in its own grid.
+/// One habit's ring, made tappable: a `Link` to the habit for an avoid habit or one set to "Open
+/// habit" (no logging from the Home Screen), a check-in button for every other kind. Not private -
+/// the full-page Today widget reuses it in its own grid.
 struct HabitRingButton: View {
     let habit: HabitSnapshot
     let diameter: CGFloat
 
     var body: some View {
-        if habit.isAvoid {
+        if habit.linksToApp {
             Link(destination: GoalLink.habit(for: habit.id)) {
                 RingShape(habit: habit, diameter: diameter)
             }
