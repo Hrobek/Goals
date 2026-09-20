@@ -32,6 +32,17 @@ struct GoalsApp: App {
 
         // So tapping a goal or habit reminder opens that goal or habit, not just the app.
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
+
+        // HealthKit isn't available to the widget extensions, so `HabitLogger`/`ProgressLogger`
+        // (which compile into those too) only carry the hook variable - the actual HealthKit code
+        // is wired in from here, the app target, the one place it's guaranteed to be available.
+        HabitLogger.healthWriteHook = { habit, entry, delta in
+            HealthKitWriteSync.mirror(habit: habit, entry: entry, delta: delta)
+        }
+        ProgressLogger.healthWriteHook = { goal, checkIn, delta in
+            HealthKitWriteSync.mirror(goal: goal, checkIn: checkIn, delta: delta)
+        }
+        HealthKitSyncEngine.startObserving(context: modelContainer.mainContext)
     }
 
     var body: some Scene {

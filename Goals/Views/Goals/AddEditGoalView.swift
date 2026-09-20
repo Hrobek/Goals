@@ -50,6 +50,8 @@ struct AddEditGoalView: View {
     @State private var reminderWeekdays: Set<Int>
     @State private var widgetAction: WidgetAction
     @State private var widgetAmountText: String
+    @State private var healthMetric: HealthKitMetric?
+    @State private var healthDirection: HealthKitDirection?
 
     @State private var isShowingPermissionAlert = false
     @State private var isShowingEmojiPicker = false
@@ -106,6 +108,8 @@ struct AddEditGoalView: View {
         _widgetAmountText = State(initialValue: String(format: "%g", goal?.widgetQuickAmount
             ?? GoalUnit(rawValue: goal?.unitKey ?? template?.unit.rawValue ?? GoalUnit.times.rawValue)?.quickAddSteps.first
             ?? 1.0))
+        _healthMetric = State(initialValue: goal?.healthKitMetric)
+        _healthDirection = State(initialValue: goal?.healthKitDirection)
     }
 
     private var parsedStartValue: Double {
@@ -161,6 +165,22 @@ struct AddEditGoalView: View {
                     Button("action.save") { save() }
                         .foregroundStyle(isValid ? Theme.accentText : Theme.textGhost)
                         .disabled(!isValid)
+                }
+            }
+            .onChange(of: unitSelection) { _, newUnit in
+                // A metric linked for the old unit rarely still fits the new one, so a unit change
+                // just drops the link rather than trying to guess a replacement.
+                if let unit = GoalUnit(rawValue: newUnit.unitKey), let direction = healthDirection,
+                   !unit.healthKitMetrics(for: direction).contains(where: { $0 == healthMetric }) {
+                    healthMetric = nil
+                    healthDirection = nil
+                }
+            }
+            .onChange(of: trackingMode) { _, newMode in
+                // A milestone goal has no quantity for Health to feed or receive.
+                if newMode == .milestones {
+                    healthMetric = nil
+                    healthDirection = nil
                 }
             }
             .onChange(of: isReminderOn) { _, isOn in
@@ -318,6 +338,13 @@ struct AddEditGoalView: View {
                             .foregroundStyle(Theme.accentText)
                             .padding(.horizontal, 4)
                     }
+                    HealthLinkSection(
+                        unitKey: unitSelection.unitKey,
+                        metric: $healthMetric,
+                        direction: $healthDirection,
+                        isProUnlocked: purchaseManager.isProUnlocked,
+                        restrictWriteToMostRecent: true
+                    )
                 case .milestones:
                     milestonesCard
                 }
@@ -444,6 +471,10 @@ struct AddEditGoalView: View {
         let target = parsedTargetValue ?? 1
         let sortedWeekdays = recurrenceWeekdays.sorted()
         let sortedDaysOfMonth = recurrenceDaysOfMonth.sorted()
+        let previousMetric = goal?.healthKitMetric
+        let previousDirection = goal?.healthKitDirection
+        let effectiveHealthMetric = trackingMode == .value ? healthMetric : nil
+        let effectiveHealthDirection = trackingMode == .value ? healthDirection : nil
 
         let saved: Goal
         if let goal {
@@ -471,6 +502,8 @@ struct AddEditGoalView: View {
             goal.recurrenceWeekdays = sortedWeekdays
             goal.recurrenceDaysOfMonth = sortedDaysOfMonth
             goal.recurrenceCount = recurrenceCount
+            goal.healthKitMetric = effectiveHealthMetric
+            goal.healthKitDirection = effectiveHealthDirection
             saved = goal
         } else {
             let newGoal = Goal(
@@ -520,10 +553,25 @@ struct AddEditGoalView: View {
         if trackingMode == .milestones {
             syncMilestones(for: saved)
         }
+        if goal == nil {
+            saved.healthKitMetric = effectiveHealthMetric
+            saved.healthKitDirection = effectiveHealthDirection
+        }
 
         let context = modelContext
         let userId = userId
         Task { await NotificationScheduler.syncAll(context: context, userId: userId) }
+
+        if saved.healthKitMetric != previousMetric || saved.healthKitDirection != previousDirection {
+            let goalID = saved.id
+            Task {
+                try? await HealthKitAuthManager.requestAuthorization(for: context)
+                HealthKitSyncEngine.startObserving(context: context)
+                if let linkedGoal = try? context.fetch(FetchDescriptor<Goal>(predicate: #Predicate { $0.id == goalID })).first {
+                    await HealthKitSyncEngine.syncGoal(linkedGoal, in: context)
+                }
+            }
+        }
         dismiss()
     }
 

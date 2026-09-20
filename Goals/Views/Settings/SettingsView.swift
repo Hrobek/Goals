@@ -160,6 +160,13 @@ struct SettingsView: View {
                     linkRow(label: "backup.title", icon: "arrow.up.arrow.down")
                 }
                 .buttonStyle(.plain)
+                RowDivider()
+                NavigationLink {
+                    HealthSettingsView(userId: profile.id)
+                } label: {
+                    linkRow(label: "health.link.title", icon: "heart")
+                }
+                .buttonStyle(.plain)
             }
         }
     }

@@ -54,6 +54,8 @@ final class Habit {
     private var widgetActionRawValue: String?
     /// A habit you're trying to *not* do. Nil (→ false) for every habit written before this shipped.
     private var storedIsAvoid: Bool?
+    private var healthKitMetricRawValue: String?
+    private var healthKitDirectionRawValue: String?
 
     // Stored optional for CloudKit; read through the non-optional accessor below.
     @Relationship(deleteRule: .cascade, originalName: "entries", inverse: \HabitEntry.habit)
@@ -142,6 +144,25 @@ final class Habit {
         get { storedIsAvoid ?? false }
         set { storedIsAvoid = newValue }
     }
+
+    /// The Health metric this habit is linked to, if any. `nil` means plain manual logging.
+    var healthKitMetric: HealthKitMetric? {
+        get { healthKitMetricRawValue.flatMap(HealthKitMetric.init(rawValue:)) }
+        set { healthKitMetricRawValue = newValue?.rawValue }
+    }
+
+    /// `.read` mirrors Health into this habit (Health is the source of truth, no manual taps);
+    /// `.write` mirrors this habit's taps into Health instead. `nil` alongside a non-nil
+    /// `healthKitMetric` is treated as unlinked - a link is only live once both are set.
+    var healthKitDirection: HealthKitDirection? {
+        get { healthKitDirectionRawValue.flatMap(HealthKitDirection.init(rawValue:)) }
+        set { healthKitDirectionRawValue = newValue?.rawValue }
+    }
+
+    /// Whether this habit has a live Health link - both a metric and a direction chosen. Quota and
+    /// avoid habits never carry one: a per-period tally and a "no slip today" streak don't map onto
+    /// a daily external quantity, so the editor never offers the picker for them.
+    var isHealthLinked: Bool { healthKitMetric != nil && healthKitDirection != nil }
 
     var isReminderOn: Bool {
         get { storedIsReminderOn ?? false }

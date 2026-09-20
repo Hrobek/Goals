@@ -20,6 +20,13 @@
 	<array>
 		<string>com.apple.coredata.cloudkit.activity</string>
 	</array>
+	<!-- HealthKit: only asked for the specific metrics a habit/goal is actually linked to, never a
+	     blanket request. Share is for the metrics the app writes on the user's behalf (water,
+	     mindful minutes, weight); Update is HealthKit's key for exactly that same write access. -->
+	<key>NSHealthShareUsageDescription</key>
+	<string>Goals reads the health metrics you link to a habit or goal (like steps or workouts) so it can check them off for you automatically.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Goals writes to Health only for habits or goals you set to log there yourself, like water intake or weight.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

@@ -221,22 +221,33 @@ struct HabitDetailView: View {
 
     @ViewBuilder
     private var todayControl: some View {
-        if habit.isAvoid {
-            avoidPanel
-        } else if habit.widgetAction == .complete {
-            completeButton
-        } else if habit.isCheckbox {
-            checkboxButton
-        } else if habit.isQuota {
-            VStack(spacing: Theme.Space.card) {
-                progressPanel
-                quotaButtons
+        VStack(spacing: 8) {
+            if habit.isAvoid {
+                avoidPanel
+            } else if habit.widgetAction == .complete {
+                completeButton
+            } else if habit.isCheckbox {
+                checkboxButton
+            } else if habit.isQuota {
+                VStack(spacing: Theme.Space.card) {
+                    progressPanel
+                    quotaButtons
+                }
+            } else {
+                VStack(spacing: Theme.Space.card) {
+                    progressPanel
+                    quickAddChips
+                    logValueButton
+                }
             }
-        } else {
-            VStack(spacing: Theme.Space.card) {
-                progressPanel
-                quickAddChips
-                logValueButton
+            // A `.read`-linked habit's amount comes from Health, not a tap here - every control
+            // above is a no-op for it (see `HabitLogger`'s guards), so say so rather than leaving
+            // a button that quietly does nothing.
+            if habit.healthKitDirection == .read {
+                Label("health.link.hint.read", systemImage: "heart.fill")
+                    .font(Theme.Typo.footnote)
+                    .foregroundStyle(Theme.textGhost)
+                    .labelStyle(.titleAndIcon)
             }
         }
     }

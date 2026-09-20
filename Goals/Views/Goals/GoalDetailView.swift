@@ -95,12 +95,16 @@ struct GoalDetailView: View {
 
                 VStack(alignment: .leading, spacing: Theme.Space.card) {
                     progressPanel
-                    if goal.trackingMode == .value {
-                        quickAddChips
+                    if goal.healthKitDirection == .read {
+                        healthLinkCaption
+                    } else {
+                        if goal.trackingMode == .value {
+                            quickAddChips
+                        }
+                        logButton
+                        completedToggle
                     }
                     paceRow
-                    logButton
-                    completedToggle
                     widgetActionSummary
                 }
 
@@ -342,6 +346,16 @@ struct GoalDetailView: View {
 
     private var logButtonTitle: LocalizedStringKey {
         goal.trackingMode == .value ? "goalDetail.logValue" : "goalDetail.checkInToday"
+    }
+
+    /// Shown instead of every manual logging control for a `.read`-linked goal: `currentValue`
+    /// comes from `HealthKitSyncEngine`, not a tap here, and `ProgressLogger`'s user-facing entry
+    /// points already no-op for it - this just says why the usual buttons aren't there.
+    private var healthLinkCaption: some View {
+        Label("health.link.hint.read", systemImage: "heart.fill")
+            .font(Theme.Typo.footnote)
+            .foregroundStyle(Theme.textGhost)
+            .labelStyle(.titleAndIcon)
     }
 
     private var completedToggle: some View {

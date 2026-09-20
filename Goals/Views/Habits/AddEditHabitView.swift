@@ -38,6 +38,8 @@ struct AddEditHabitView: View {
     @State private var reminderFrequency: ReminderFrequency
     @State private var reminderTimes: [Date]
     @State private var reminderWeekdays: Set<Int>
+    @State private var healthMetric: HealthKitMetric?
+    @State private var healthDirection: HealthKitDirection?
 
     @State private var isShowingPermissionAlert = false
     @State private var isShowingEmojiPicker = false
@@ -77,6 +79,8 @@ struct AddEditHabitView: View {
             Calendar.current.date(bySettingHour: total / 60, minute: total % 60, second: 0, of: .now) ?? .now
         })
         _reminderWeekdays = State(initialValue: Set(habit?.reminderWeekdays ?? []))
+        _healthMetric = State(initialValue: habit?.healthKitMetric)
+        _healthDirection = State(initialValue: habit?.healthKitDirection)
     }
 
     /// A habit measured in a real unit (ml, pages…) rather than the bare "times".
@@ -243,6 +247,14 @@ struct AddEditHabitView: View {
                                 .padding(.horizontal, 4)
                         }
                     }
+                    if !isQuotaSchedule {
+                        HealthLinkSection(
+                            unitKey: unitSelection.unitKey,
+                            metric: $healthMetric,
+                            direction: $healthDirection,
+                            isProUnlocked: purchaseManager.isProUnlocked
+                        )
+                    }
                     } // !isAvoid
                     LabeledSection("reminder.title") {
                         ReminderEditor(
@@ -279,6 +291,13 @@ struct AddEditHabitView: View {
                 }
             }
             .onChange(of: unitSelection) { oldUnit, newUnit in
+                // A metric linked for the old unit rarely still fits the new one (km -> pages),
+                // so a unit change just drops the link rather than trying to guess a replacement.
+                if let unit = GoalUnit(rawValue: newUnit.unitKey), let direction = healthDirection,
+                   !unit.healthKitMetrics(for: direction).contains(where: { $0 == healthMetric }) {
+                    healthMetric = nil
+                    healthDirection = nil
+                }
                 if newUnit == .preset(.times) {
                     // Back to a plain counter: a wheel-picked "4000" makes no sense as a times target.
                     if (Double(targetAmountText.replacingOccurrences(of: ",", with: ".")) ?? 1) > 30 {
@@ -297,6 +316,11 @@ struct AddEditHabitView: View {
                 if (newType == .timesPerWeek || newType == .timesPerMonth), !isUnitHabit {
                     targetAmountText = "1"
                 }
+                if newType == .timesPerWeek || newType == .timesPerMonth {
+                    // A quota's per-period tally doesn't map onto a daily external quantity.
+                    healthMetric = nil
+                    healthDirection = nil
+                }
             }
             .onChange(of: isAvoid) { _, avoid in
                 // An avoid habit can't be a quota, and always tracks as a plain yes/no.
@@ -306,6 +330,8 @@ struct AddEditHabitView: View {
                     }
                     unitSelection = .preset(.times)
                     targetAmountText = "1"
+                    healthMetric = nil
+                    healthDirection = nil
                 }
             }
             .onChange(of: isReminderOn) { _, isOn in
@@ -452,6 +478,9 @@ struct AddEditHabitView: View {
             effectiveRecurrence = .daily
         }
 
+        let previousMetric = habit?.healthKitMetric
+        let previousDirection = habit?.healthKitDirection
+
         let saved: Habit
         if let habit {
             habit.title = trimmedTitle
@@ -468,6 +497,8 @@ struct AddEditHabitView: View {
             habit.recurrenceWeekdays = sortedWeekdays
             habit.recurrenceDaysOfMonth = sortedDaysOfMonth
             habit.recurrenceCount = recurrenceCount
+            habit.healthKitMetric = isAvoid ? nil : healthMetric
+            habit.healthKitDirection = isAvoid ? nil : healthDirection
             saved = habit
         } else {
             let newHabit = Habit(
@@ -498,10 +529,26 @@ struct AddEditHabitView: View {
         saved.reminderFrequency = reminderFrequency
         saved.reminderTimes = minutes.isEmpty ? [9 * 60] : minutes
         saved.reminderWeekdays = Array(reminderWeekdays)
+        if habit == nil {
+            saved.healthKitMetric = isAvoid ? nil : healthMetric
+            saved.healthKitDirection = isAvoid ? nil : healthDirection
+        }
 
         let context = modelContext
         let userId = userId
         Task { await NotificationScheduler.syncAll(context: context, userId: userId) }
+
+        if saved.healthKitMetric != previousMetric || saved.healthKitDirection != previousDirection {
+            let habitID = saved.id
+            Task {
+                try? await HealthKitAuthManager.requestAuthorization(for: context)
+                HealthKitSyncEngine.startObserving(context: context)
+                if let linkedHabit = try? context.fetch(FetchDescriptor<Habit>(predicate: #Predicate { $0.id == habitID })).first {
+                    await HealthKitSyncEngine.backfillHabit(linkedHabit, in: context)
+                    await HealthKitSyncEngine.syncHabit(linkedHabit, in: context)
+                }
+            }
+        }
         dismiss()
     }
 

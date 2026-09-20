@@ -10,6 +10,12 @@ import WidgetKit
 /// Single entry point for "I made progress today", shared by the quick-add buttons and the
 /// log sheet. Keeps at most one check-in per day so streaks count days, not taps.
 enum ProgressLogger {
+    /// Set once at launch by the app target (never the widget extensions - HealthKit isn't
+    /// available there, and this file has to stay importable by them). Fires after `currentValue`
+    /// changes on a `.write`-linked goal, with the net change and the check-in that change landed
+    /// on, so the hook can mirror exactly that delta into Health.
+    static var healthWriteHook: ((_ goal: Goal, _ checkIn: CheckIn, _ delta: Double) -> Void)?
+
     /// The goal's one-tap action, as configured on the goal. Shared by the widget button and any
     /// in-app shortcut so both leave the same trace.
     @discardableResult
@@ -19,6 +25,9 @@ enum ProgressLogger {
         now: Date = .now,
         calendar: Calendar = .current
     ) -> Bool {
+        // Health is the source of truth for a `.read`-linked goal - only `HealthKitSyncEngine`
+        // (via `record`) may change its value, so every tap-driven surface is a no-op.
+        guard goal.healthKitDirection != .read else { return false }
         if goal.widgetAction == .complete {
             guard !goal.isCompleted else { return false }
             markCompleted(goal)
@@ -55,11 +64,12 @@ enum ProgressLogger {
         now: Date = .now,
         calendar: Calendar = .current
     ) -> Bool {
-        guard goal.trackingMode == .value else { return false }
+        guard goal.trackingMode == .value, goal.healthKitDirection != .read else { return false }
 
         let delta = delta ?? (goal.isLowerBetter ? goal.widgetQuickAmount : -goal.widgetQuickAmount)
         let newValue = max(goal.currentValue + delta, 0)
         guard newValue != goal.currentValue else { return false }
+        let actualDelta = newValue - goal.currentValue
 
         goal.currentValue = newValue
         if goal.isCompleted, !goal.isTargetReached {
@@ -72,6 +82,7 @@ enum ProgressLogger {
             .valueSnapshot ?? 0
 
         if let today = goal.checkIns.first(where: { calendar.isDate($0.date, inSameDayAs: now) }) {
+            mirrorHealthDelta(goal, checkIn: today, delta: actualDelta)
             if newValue > priorValue {
                 today.date = now
                 today.valueSnapshot = newValue
@@ -97,6 +108,7 @@ enum ProgressLogger {
         now: Date = .now,
         calendar: Calendar = .current
     ) -> Bool {
+        guard goal.healthKitDirection != .read else { return milestone.isCompleted }
         milestone.isCompleted.toggle()
         if milestone.isCompleted {
             if goal.isTargetReached {
@@ -119,6 +131,7 @@ enum ProgressLogger {
         now: Date = .now,
         calendar: Calendar = .current
     ) {
+        let priorValue = goal.currentValue
         if let newValue {
             goal.currentValue = newValue
             if goal.isTargetReached {
@@ -129,6 +142,7 @@ enum ProgressLogger {
         let trimmedNote = note?.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolvedNote = (trimmedNote?.isEmpty ?? true) ? nil : trimmedNote
 
+        let checkIn: CheckIn
         if let today = goal.checkIns.first(where: { calendar.isDate($0.date, inSameDayAs: now) }) {
             today.date = now
             if newValue != nil {
@@ -137,19 +151,31 @@ enum ProgressLogger {
             if let resolvedNote {
                 today.note = resolvedNote
             }
+            checkIn = today
         } else {
-            context.insert(CheckIn(
+            let inserted = CheckIn(
                 ownerId: goal.ownerId,
                 date: now,
                 note: resolvedNote,
                 valueSnapshot: newValue == nil ? nil : goal.currentValue,
                 goal: goal
-            ))
+            )
+            context.insert(inserted)
+            checkIn = inserted
+        }
+
+        if let newValue, newValue != priorValue {
+            mirrorHealthDelta(goal, checkIn: checkIn, delta: newValue - priorValue)
         }
 
         Analytics.send(.checkInLogged, [.trackingMode: goal.trackingMode.rawValue])
         WidgetCenter.shared.reloadAllTimelines()
         NotificationCenter.default.post(name: .checkInDidChange, object: nil)
+    }
+
+    private static func mirrorHealthDelta(_ goal: Goal, checkIn: CheckIn, delta: Double) {
+        guard delta != 0, goal.healthKitDirection == .write, goal.healthKitMetric != nil else { return }
+        healthWriteHook?(goal, checkIn, delta)
     }
 
     /// Guarded, so a goal that's already done doesn't report finishing again — a later check-in on

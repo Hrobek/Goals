@@ -105,6 +105,25 @@ final class Goal {
     private var storedReminderTimes: [Int]?
     private var widgetActionRawValue: String?
     private var storedWidgetQuickAmount: Double?
+    private var healthKitMetricRawValue: String?
+    private var healthKitDirectionRawValue: String?
+
+    /// The Health metric this goal is linked to, if any. `nil` means plain manual logging.
+    var healthKitMetric: HealthKitMetric? {
+        get { healthKitMetricRawValue.flatMap(HealthKitMetric.init(rawValue:)) }
+        set { healthKitMetricRawValue = newValue?.rawValue }
+    }
+
+    /// `.read` mirrors Health into `currentValue` (Health is the source of truth, no manual
+    /// logging); `.write` mirrors each logged value into Health instead.
+    var healthKitDirection: HealthKitDirection? {
+        get { healthKitDirectionRawValue.flatMap(HealthKitDirection.init(rawValue:)) }
+        set { healthKitDirectionRawValue = newValue?.rawValue }
+    }
+
+    /// Whether this goal has a live Health link. Milestone-tracked goals never carry one - there's
+    /// no quantity for Health to feed or receive.
+    var isHealthLinked: Bool { healthKitMetric != nil && healthKitDirection != nil }
 
     var trackingMode: GoalTrackingMode {
         get { trackingModeRawValue.flatMap(GoalTrackingMode.init(rawValue:)) ?? .value }

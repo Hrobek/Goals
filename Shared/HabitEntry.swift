@@ -17,6 +17,10 @@ final class HabitEntry {
     /// Kept only so an older row still opens; new writes go through `storedAmount`.
     var count: Int = 1
     private var storedAmount: Double?
+    /// UUIDs (as strings - SwiftData/CloudKit arrays stick to primitive scalars) of the HealthKit
+    /// samples this entry wrote, for a `.write`-linked habit. Lets a later undo or edit delete
+    /// exactly the samples this entry is responsible for, instead of guessing at Health's own data.
+    private var storedHealthKitSampleIDs: [String]?
     var habit: Habit?
 
     init(id: UUID = UUID(), ownerId: UUID, date: Date = .now, amount: Double = 1, habit: Habit? = nil) {
@@ -36,5 +40,10 @@ final class HabitEntry {
             storedAmount = newValue
             count = Int(newValue.rounded())
         }
+    }
+
+    var healthKitSampleIDs: [String] {
+        get { storedHealthKitSampleIDs ?? [] }
+        set { storedHealthKitSampleIDs = newValue.isEmpty ? nil : newValue }
     }
 }

@@ -10,6 +10,18 @@ import WidgetKit
 /// Single entry point for "I did this habit today", shared by the in-app row/detail and the
 /// widget button. Keeps at most one `HabitEntry` per day.
 enum HabitLogger {
+    /// Set once at launch by the app target (never the widget extensions - HealthKit isn't
+    /// available there, and this file has to stay importable by them). Fires after every change to
+    /// a habit's logged amount for a `.write`-linked habit, with the net change for the day and the
+    /// entry that change landed on, so the hook can mirror exactly that delta into Health and record
+    /// which sample(s) it wrote on the entry itself.
+    static var healthWriteHook: ((_ habit: Habit, _ entry: HabitEntry, _ delta: Double) -> Void)?
+
+    private static func mirrorHealthDelta(_ habit: Habit, entry: HabitEntry, delta: Double) {
+        guard delta != 0, habit.healthKitDirection == .write, habit.healthKitMetric != nil else { return }
+        healthWriteHook?(habit, entry, delta)
+    }
+
     /// One tap on a **checkbox** habit's control: toggles today's entry on or off.
     @discardableResult
     static func toggleToday(
@@ -18,10 +30,15 @@ enum HabitLogger {
         now: Date = .now,
         calendar: Calendar = .current
     ) -> Bool {
+        // Health is the source of truth for a `.read`-linked habit - only `HealthKitSyncEngine`
+        // (via `setAmount`) may change its logged amount, so every tap-driven surface is a no-op.
+        guard habit.healthKitDirection != .read else { return habit.isDone(on: now, calendar: calendar) }
         if let existing = habit.entry(on: now, calendar: calendar) {
+            mirrorHealthDelta(habit, entry: existing, delta: -existing.amount)
             context.delete(existing)
         } else {
-            insert(amount: 1, for: habit, in: context, now: now)
+            let entry = insert(amount: 1, for: habit, in: context, now: now)
+            mirrorHealthDelta(habit, entry: entry, delta: 1)
         }
         finish()
         return habit.isDone(on: now, calendar: calendar)
@@ -37,6 +54,7 @@ enum HabitLogger {
         now: Date = .now,
         calendar: Calendar = .current
     ) -> Bool {
+        guard habit.healthKitDirection != .read else { return habit.isDone(on: now, calendar: calendar) }
         let existing = habit.entry(on: now, calendar: calendar)
         let current = existing?.amount ?? 0
         var updated = max(current + delta, 0)
@@ -47,14 +65,20 @@ enum HabitLogger {
             updated = min(updated, habit.effectiveTarget)
         }
         guard updated != current else { return habit.isDone(on: now, calendar: calendar) }
+        let netDelta = updated - current
 
         if updated == 0 {
-            if let existing { context.delete(existing) }
+            if let existing {
+                mirrorHealthDelta(habit, entry: existing, delta: netDelta)
+                context.delete(existing)
+            }
         } else if let existing {
             existing.amount = updated
             existing.date = now
+            mirrorHealthDelta(habit, entry: existing, delta: netDelta)
         } else {
-            insert(amount: updated, for: habit, in: context, now: now)
+            let entry = insert(amount: updated, for: habit, in: context, now: now)
+            mirrorHealthDelta(habit, entry: entry, delta: netDelta)
         }
 
         finish()
@@ -110,6 +134,7 @@ enum HabitLogger {
         now: Date = .now,
         calendar: Calendar = .current
     ) {
+        guard habit.healthKitDirection != .read else { return }
         if habit.isDone(on: now, calendar: calendar) {
             if let today = habit.entry(on: now, calendar: calendar) {
                 context.delete(today)
@@ -137,22 +162,29 @@ enum HabitLogger {
     ) {
         let clamped = max(value, 0)
         if let existing = habit.entry(on: now, calendar: calendar) {
+            let netDelta = clamped - existing.amount
             if clamped == 0 {
+                mirrorHealthDelta(habit, entry: existing, delta: netDelta)
                 context.delete(existing)
             } else {
                 existing.amount = clamped
                 existing.date = now
+                mirrorHealthDelta(habit, entry: existing, delta: netDelta)
             }
         } else if clamped > 0 {
-            insert(amount: clamped, for: habit, in: context, now: now)
+            let entry = insert(amount: clamped, for: habit, in: context, now: now)
+            mirrorHealthDelta(habit, entry: entry, delta: clamped)
         }
         finish()
     }
 
     // MARK: - Private
 
-    private static func insert(amount: Double, for habit: Habit, in context: ModelContext, now: Date) {
-        context.insert(HabitEntry(ownerId: habit.ownerId, date: now, amount: amount, habit: habit))
+    @discardableResult
+    private static func insert(amount: Double, for habit: Habit, in context: ModelContext, now: Date) -> HabitEntry {
+        let entry = HabitEntry(ownerId: habit.ownerId, date: now, amount: amount, habit: habit)
+        context.insert(entry)
+        return entry
     }
 
     private static func finish() {

@@ -134,6 +134,9 @@ struct RootView: View {
                 pushIdentityToWatch()
                 reconcileStreakFreezes()
                 Task { await NotificationScheduler.syncAll(context: modelContext, userId: profile.id) }
+                // Background delivery covers most of this already, but a foreground refresh is a
+                // cheap belt-and-braces pass for whatever arrived while the app wasn't running.
+                Task { await HealthKitSyncEngine.syncAll(context: modelContext) }
                 // The rating prompt itself no longer lives here — it fires from the moment a goal
                 // is finished (see `GoalDetailView.requestReviewIfEarned`), right after the
                 // celebration overlay, rather than on any old app launch.
