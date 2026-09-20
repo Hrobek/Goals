@@ -541,15 +541,19 @@ struct AddEditHabitView: View {
         if saved.healthKitMetric != previousMetric || saved.healthKitDirection != previousDirection {
             let habitID = saved.id
             Task {
+                // The system Health permission sheet needs this view still on screen to present
+                // itself against - dismissing first raced it and the sheet silently never showed.
                 try? await HealthKitAuthManager.requestAuthorization(for: context)
+                dismiss()
                 HealthKitSyncEngine.startObserving(context: context)
                 if let linkedHabit = try? context.fetch(FetchDescriptor<Habit>(predicate: #Predicate { $0.id == habitID })).first {
                     await HealthKitSyncEngine.backfillHabit(linkedHabit, in: context)
                     await HealthKitSyncEngine.syncHabit(linkedHabit, in: context)
                 }
             }
+        } else {
+            dismiss()
         }
-        dismiss()
     }
 
     /// One past the current highest, so a new habit lands at the bottom of the list.

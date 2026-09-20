@@ -565,14 +565,18 @@ struct AddEditGoalView: View {
         if saved.healthKitMetric != previousMetric || saved.healthKitDirection != previousDirection {
             let goalID = saved.id
             Task {
+                // The system Health permission sheet needs this view still on screen to present
+                // itself against - dismissing first raced it and the sheet silently never showed.
                 try? await HealthKitAuthManager.requestAuthorization(for: context)
+                dismiss()
                 HealthKitSyncEngine.startObserving(context: context)
                 if let linkedGoal = try? context.fetch(FetchDescriptor<Goal>(predicate: #Predicate { $0.id == goalID })).first {
                     await HealthKitSyncEngine.syncGoal(linkedGoal, in: context)
                 }
             }
+        } else {
+            dismiss()
         }
-        dismiss()
     }
 
     /// Applies the edited drafts onto the goal: drops removed milestones, renames the kept ones
