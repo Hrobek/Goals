@@ -8844,13 +8844,13 @@
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zdraví je teď zdrojem pravdy pro tohle - doplňuje se samo a nejde to zapsat ručně."
+            "value" : "Zdraví je teď zdrojem pravdy pro tohle a nejde to zapsat ručně. Pokud se čísla nezobrazují, zkontroluj v appce Zdraví → Přístup zařízení a datům → Goals, že je přístup zapnutý - iOS o to appku požádá jen jednou."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Health is now the source of truth for this - it fills in automatically and can't be logged by hand."
+            "value" : "Health is now the source of truth for this and can't be logged by hand. If the numbers don't show up, check Health → Data Access & Devices → Goals to make sure access is on - iOS only asks once."
           }
         }
       }
@@ -12103,13 +12103,13 @@
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Propojené habity a cíle se synchronizují na pozadí a při každém otevření appky."
+            "value" : "Propojené habity a cíle se synchronizují na pozadí a při každém otevření appky. \"Naposledy synchronizováno\" znamená jen, že sync proběhl - pokud čísla přesto nesedí, zkontroluj v appce Zdraví → Přístup zařízení a datům → Goals, že je přístup zapnutý."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Linked habits and goals sync in the background, and every time you open the app."
+            "value" : "Linked habits and goals sync in the background, and every time you open the app. \"Last synced\" only means a sync ran - if the numbers still look wrong, check Health → Data Access & Devices → Goals to make sure access is on."
           }
         }
       }

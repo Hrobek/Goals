@@ -213,10 +213,9 @@ struct HabitsWidgetEntryView: View {
                 .widgetURL(GoalLink.habits)
         } else {
             // Size the rings to the actual space: fill each grid cell in whichever dimension is
-            // tighter, so they're as large as 5-per-row allows. On the large widget, which has
-            // room for far more rows than most people have habits, any leftover height sits below
-            // the grid rather than splitting it away from the top; the small and medium widgets
-            // rarely have a partial grid, so there it's still centered.
+            // tighter, so they're as large as 5-per-row allows. Top-aligned on every size, so a
+            // partial grid (fewer habits than the family's row limit) sits at the top with any
+            // leftover space below it, rather than drifting to the middle.
             GeometryReader { geo in
                 let columns = CGFloat(columnCount)
                 let rowCount = max(1, Int((Double(entry.habits.count) / Double(columnCount)).rounded(.up)))
@@ -231,7 +230,7 @@ struct HabitsWidgetEntryView: View {
                         HabitRingButton(habit: habit, diameter: diameter)
                     }
                 }
-                .frame(width: geo.size.width, height: geo.size.height, alignment: family == .systemLarge ? .top : .center)
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
             }
             .padding(gap)
         }
