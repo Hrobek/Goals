@@ -14,18 +14,27 @@ import SwiftData
 /// Plain (non-isolated) like `HabitLogger` itself — callers run it on the main thread, where the
 /// watch app's `ModelContext` lives.
 enum WatchLogAction {
-    /// Logs today's progress for the habit. Mirrors `HabitCheckInIntent.perform()`.
+    /// Logs today's progress for the habit, running whichever one-tap action the habit is
+    /// configured for. Mirrors `HabitCheckInIntent.perform()`.
     /// Returns whether the day is now done (for the success haptic).
     @discardableResult
     static func toggle(_ habit: Habit, in context: ModelContext) -> Bool {
         guard !habit.isAvoid else { return habit.isDone(on: .now) }
 
-        if habit.isCheckbox {
-            HabitLogger.toggleToday(habit, in: context)
-        } else if habit.hasUnit {
-            HabitLogger.addQuick(habit, in: context)
-        } else {
-            HabitLogger.cycle(habit, in: context)
+        switch habit.widgetAction {
+        case .complete:
+            HabitLogger.completeOccurrence(habit, in: context)
+        case .checkOff:
+            if habit.isCheckbox {
+                HabitLogger.toggleToday(habit, in: context)
+            } else if habit.hasUnit {
+                HabitLogger.addQuick(habit, in: context)
+            } else {
+                // A "times" counter or a quota schedule: one tap is one more tick.
+                HabitLogger.cycle(habit, in: context)
+            }
+        case .openHabit:
+            break // Caller already filters these out - see `WatchTodayView.log`.
         }
         save(context)
         return habit.isDone(on: .now)

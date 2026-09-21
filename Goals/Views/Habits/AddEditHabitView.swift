@@ -214,8 +214,6 @@ struct AddEditHabitView: View {
                                 if isUnitHabit {
                                     RowDivider()
                                     TextFieldRow(label: "habit.field.dailyTarget", text: $targetAmountText, keyboard: .decimalPad, suffix: unitSelection.displayText)
-                                    RowDivider()
-                                    TextFieldRow(label: "habit.field.quickAdd", text: $quickAmountText, keyboard: .decimalPad, suffix: unitSelection.displayText)
                                 } else if showsTimesPerDay {
                                     RowDivider()
                                     Stepper(value: timesTargetBinding, in: 1...30) {
@@ -235,11 +233,20 @@ struct AddEditHabitView: View {
                     }
                     LabeledSection("tapAction.title") {
                         VStack(alignment: .leading, spacing: 8) {
-                            SegmentStrip(
-                                options: HabitWidgetAction.allCases,
-                                selection: $widgetAction.animation(),
-                                title: { $0.localizedName }
-                            )
+                            CardGroup {
+                                SegmentStrip(
+                                    options: HabitWidgetAction.allCases,
+                                    selection: $widgetAction.animation(),
+                                    title: { $0.localizedName }
+                                )
+                                .padding(.vertical, 9)
+                                // The quick-add step only means anything for "Check off" - "Complete"
+                                // finishes the target outright, and "Open habit" never logs at all.
+                                if isUnitHabit, widgetAction == .checkOff {
+                                    RowDivider()
+                                    TextFieldRow(label: "habit.field.quickAdd", text: $quickAmountText, keyboard: .decimalPad, suffix: unitSelection.displayText)
+                                }
+                            }
                             Text(widgetActionHint)
                                 .font(Theme.Typo.footnote)
                                 .foregroundStyle(Theme.textGhost)
