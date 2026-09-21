@@ -4,6 +4,7 @@
 //
 
 import HealthKit
+import SwiftData
 import os
 
 /// Mirrors a `.write`-linked habit or goal's own logged value into Health. The opposite direction
@@ -27,6 +28,7 @@ enum HealthKitWriteSync {
         Task { @MainActor in
             await deleteSamples(ids: existingIDs, metric: metric)
             entry.healthKitSampleIDs = []
+            entry.needsHealthKitWriteSync = false
             guard newAmount > 0 else { return }
             if let newID = await saveSample(metric: metric, appValue: newAmount, unitKey: unitKey, date: date) {
                 entry.healthKitSampleIDs = [newID]
@@ -49,9 +51,41 @@ enum HealthKitWriteSync {
         Task { @MainActor in
             await deleteSamples(ids: existingIDs, metric: metric)
             checkIn.healthKitSampleIDs = []
+            checkIn.needsHealthKitWriteSync = false
             if let newID = await saveSample(metric: metric, appValue: newValue, unitKey: unitKey, date: date) {
                 checkIn.healthKitSampleIDs = [newID]
             }
+        }
+    }
+
+    // MARK: - Catch-up
+
+    /// Every `.write`-linked entry/check-in flagged by `HabitLogger`/`ProgressLogger` because it
+    /// changed outside the app target (widget or watch), where there's no HealthKit access to mirror
+    /// it immediately. Called on app foreground so those changes still land in Health, without
+    /// needing the user to also tap the habit or goal again from inside the app.
+    @MainActor
+    static func reconcilePending(context: ModelContext) {
+        let pendingEntries = (try? context.fetch(FetchDescriptor<HabitEntry>(
+            predicate: #Predicate { $0.needsHealthKitWriteSync }
+        ))) ?? []
+        for entry in pendingEntries {
+            guard let habit = entry.habit, habit.healthKitDirection == .write else {
+                entry.needsHealthKitWriteSync = false
+                continue
+            }
+            mirror(habit: habit, entry: entry, delta: 0)
+        }
+
+        let pendingCheckIns = (try? context.fetch(FetchDescriptor<CheckIn>(
+            predicate: #Predicate { $0.needsHealthKitWriteSync }
+        ))) ?? []
+        for checkIn in pendingCheckIns {
+            guard let goal = checkIn.goal, goal.healthKitDirection == .write else {
+                checkIn.needsHealthKitWriteSync = false
+                continue
+            }
+            mirror(goal: goal, checkIn: checkIn, delta: 0)
         }
     }
 

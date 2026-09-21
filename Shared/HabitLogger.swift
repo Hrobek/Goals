@@ -19,7 +19,13 @@ enum HabitLogger {
 
     private static func mirrorHealthDelta(_ habit: Habit, entry: HabitEntry, delta: Double) {
         guard delta != 0, habit.healthKitDirection == .write, habit.healthKitMetric != nil else { return }
-        healthWriteHook?(habit, entry, delta)
+        guard let healthWriteHook else {
+            // Running in the widget or the watch app, neither of which has HealthKit wired up -
+            // flag the entry so the app target catches it up next time it's foregrounded.
+            entry.needsHealthKitWriteSync = true
+            return
+        }
+        healthWriteHook(habit, entry, delta)
     }
 
     /// One tap on a **checkbox** habit's control: toggles today's entry on or off.

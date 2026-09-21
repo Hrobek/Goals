@@ -10,10 +10,9 @@ import AppIntents
 
 // MARK: - Entry
 
-/// One full Home Screen page: today's goals and today's habits together, so there's no picking
-/// between the two single-purpose widgets. Built for iOS 27's extra-large portrait family - the
-/// first widget size with room to show both lists at once.
-@available(iOS 27.0, *)
+/// One page with today's goals and today's habits together, so there's no picking between the
+/// two single-purpose widgets. Sized down to fit `systemLarge`, and full-height on iOS 27's extra
+/// large portrait family - the first widget size with room to show both lists at once.
 struct TodayEntry: TimelineEntry {
     let date: Date
     let goals: [GoalSnapshot]
@@ -27,21 +26,14 @@ struct TodayEntry: TimelineEntry {
 
 // MARK: - Provider
 
-@available(iOS 27.0, *)
 struct TodayProvider: TimelineProvider {
-    /// Capped well short of the single-purpose widgets' own limits - this page splits its height
-    /// between two lists instead of giving either the whole page.
-    private static let goalsLimit = 5
-    /// Two full rows at 6 a row - see `habitColumnCount` on the entry view.
-    private static let habitsLimit = 12
-
     func placeholder(in context: Context) -> TodayEntry {
-        Self.sampleEntry
+        Self.sampleEntry(for: context.family)
     }
 
     @MainActor
     func getSnapshot(in context: Context, completion: @escaping (TodayEntry) -> Void) {
-        completion(context.isPreview ? Self.sampleEntry : Self.entry())
+        completion(context.isPreview ? Self.sampleEntry(for: context.family) : Self.entry(for: context.family))
     }
 
     @MainActor
@@ -52,11 +44,22 @@ struct TodayProvider: TimelineProvider {
             matching: DateComponents(hour: 0, minute: 1),
             matchingPolicy: .nextTime
         ) ?? Date().addingTimeInterval(3600)
-        completion(Timeline(entries: [Self.entry()], policy: .after(midnight)))
+        completion(Timeline(entries: [Self.entry(for: context.family)], policy: .after(midnight)))
+    }
+
+    /// The extra-large portrait page has room for a full page's worth of both lists; `systemLarge`
+    /// splits a much smaller page between them, so it gets a tighter cap on each.
+    private static func goalsLimit(for family: WidgetFamily) -> Int {
+        family == .systemLarge ? 3 : 5
+    }
+
+    /// Two rows worth for either size - see `habitColumnCount` on the entry view.
+    private static func habitsLimit(for family: WidgetFamily) -> Int {
+        family == .systemLarge ? 6 : 12
     }
 
     @MainActor
-    private static func entry() -> TodayEntry {
+    private static func entry(for family: WidgetFamily) -> TodayEntry {
         guard WidgetGoals.isSignedIn else {
             return TodayEntry(
                 date: .now, goals: [], habits: [],
@@ -71,8 +74,8 @@ struct TodayProvider: TimelineProvider {
 
         return TodayEntry(
             date: .now,
-            goals: goals.prefix(goalsLimit).map(GoalSnapshot.init(goal:)),
-            habits: habits.prefix(habitsLimit).map(HabitSnapshot.init(habit:)),
+            goals: goals.prefix(goalsLimit(for: family)).map(GoalSnapshot.init(goal:)),
+            habits: habits.prefix(habitsLimit(for: family)).map(HabitSnapshot.init(habit:)),
             goalsDoneToday: goals.filter { $0.hasCheckIn(on: .now) }.count,
             goalsTotalToday: goals.count,
             habitsDoneToday: habits.filter { $0.isDone(on: .now) }.count,
@@ -80,7 +83,7 @@ struct TodayProvider: TimelineProvider {
         )
     }
 
-    private static var sampleEntry: TodayEntry {
+    private static func sampleEntry(for family: WidgetFamily) -> TodayEntry {
         let goals = [
             GoalSnapshot(id: UUID(), title: "Uběhnout 100 km", emoji: "🏃", colorHex: "#54A0FF",
                          progress: 0.4, detail: "40/100 km", actionLabel: "+5", isDoneToday: false),
@@ -102,8 +105,8 @@ struct TodayProvider: TimelineProvider {
         ]
         return TodayEntry(
             date: .now,
-            goals: goals,
-            habits: habits,
+            goals: Array(goals.prefix(goalsLimit(for: family))),
+            habits: Array(habits.prefix(habitsLimit(for: family))),
             goalsDoneToday: 1,
             goalsTotalToday: goals.count,
             habitsDoneToday: 2,
@@ -114,14 +117,19 @@ struct TodayProvider: TimelineProvider {
 
 // MARK: - View
 
-@available(iOS 27.0, *)
 struct TodayWidgetEntryView: View {
+    @Environment(\.widgetFamily) private var family
     var entry: TodayEntry
 
-    private let habitColumnCount = 6
-    private let ringGap: CGFloat = 12
+    /// 6 across the full-height extra-large portrait page, 5 across the narrower `systemLarge` -
+    /// matching `HabitsWidget`'s own column counts for those widths.
+    private var habitColumnCount: Int { family == .systemLarge ? 5 : 6 }
+    private var ringGap: CGFloat { family == .systemLarge ? 10 : 12 }
+    private var sectionSpacing: CGFloat { family == .systemLarge ? 14 : 22 }
+    private var contentPadding: CGFloat { family == .systemLarge ? 16 : 20 }
+    private var headerFontSize: CGFloat { family == .systemLarge ? 17 : 22 }
     /// Floor for the ring size, matching `HabitsWidget`'s own floor - a comfortable tap target
-    /// even if a future, narrower extra-large size ever offered this family less width.
+    /// even if a future, narrower size ever offered this family less width.
     private let minRingDiameter: CGFloat = 44
 
     var body: some View {
@@ -130,7 +138,7 @@ struct TodayWidgetEntryView: View {
         } else if entry.goals.isEmpty && entry.habits.isEmpty {
             WidgetMessageView(message: "today.empty.title", systemImage: "checkmark.circle")
         } else {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: sectionSpacing) {
                 header
                 if !entry.goals.isEmpty {
                     goalsSection
@@ -140,13 +148,13 @@ struct TodayWidgetEntryView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(20)
+            .padding(contentPadding)
         }
     }
 
     private var header: some View {
         Text("tab.today")
-            .font(.system(size: 22, weight: .bold))
+            .font(.system(size: headerFontSize, weight: .bold))
             .foregroundStyle(Theme.text)
     }
 
@@ -168,10 +176,9 @@ struct TodayWidgetEntryView: View {
         VStack(alignment: .leading, spacing: 10) {
             sectionHeader("habits.title", count: "\(entry.habitsDoneToday)/\(entry.habitsTotalToday)")
             // Sized off the actual width this page gets rather than a guessed constant, the same
-            // way `HabitsWidget` does it - the extra-large portrait page is wide enough for 6
-            // rings a row, not the 5 the small/medium widgets fit. The reader is free to claim
-            // more height than the grid needs (it's the last thing before the trailing `Spacer`),
-            // which is harmless here since the ring size is set from the width, not the height.
+            // way `HabitsWidget` does it. The reader is free to claim more height than the grid
+            // needs (it's the last thing before the trailing `Spacer`), which is harmless here
+            // since the ring size is set from the width, not the height.
             GeometryReader { geo in
                 let columns = CGFloat(habitColumnCount)
                 let diameter = max(minRingDiameter, (geo.size.width - ringGap * (columns - 1)) / columns)
@@ -207,7 +214,6 @@ struct TodayWidgetEntryView: View {
 
 // MARK: - Widget
 
-@available(iOS 27.0, *)
 struct TodayWidget: Widget {
     let kind = "GoalsTodayWidget"
 
@@ -219,7 +225,18 @@ struct TodayWidget: Widget {
         }
         .configurationDisplayName("widget.today.displayName")
         .description("widget.today.description")
-        .supportedFamilies([.systemExtraLargePortrait])
+        .supportedFamilies(supportedFamilies)
         .contentMarginsDisabled()
+    }
+
+    /// `systemLarge` back to iOS 17, plus iOS 27's full-page extra-large portrait size where it
+    /// exists - a combined Today widget only makes full sense once that size can hold both lists
+    /// without the `systemLarge` squeeze.
+    private var supportedFamilies: [WidgetFamily] {
+        if #available(iOS 27.0, *) {
+            [.systemLarge, .systemExtraLargePortrait]
+        } else {
+            [.systemLarge]
+        }
     }
 }

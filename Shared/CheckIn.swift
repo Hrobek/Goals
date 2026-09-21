@@ -16,6 +16,9 @@ final class CheckIn {
     /// UUIDs (as strings) of the HealthKit samples this check-in wrote, for a `.write`-linked goal.
     /// Same purpose as `HabitEntry.healthKitSampleIDs` - lets an undo delete exactly these samples.
     private var storedHealthKitSampleIDs: [String]?
+    /// Same purpose as `HabitEntry.needsHealthKitWriteSync` - set when a `.write`-linked goal
+    /// changes this check-in from the widget, where `ProgressLogger.healthWriteHook` isn't wired up.
+    var needsHealthKitWriteSync: Bool = false
     var goal: Goal?
 
     init(id: UUID = UUID(), ownerId: UUID, date: Date = .now, note: String? = nil, valueSnapshot: Double? = nil, goal: Goal? = nil) {

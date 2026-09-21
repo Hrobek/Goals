@@ -21,6 +21,11 @@ final class HabitEntry {
     /// samples this entry wrote, for a `.write`-linked habit. Lets a later undo or edit delete
     /// exactly the samples this entry is responsible for, instead of guessing at Health's own data.
     private var storedHealthKitSampleIDs: [String]?
+    /// Set when a `.write`-linked habit changes this entry outside the app target (the widget or
+    /// the watch app), where `HabitLogger.healthWriteHook` is never wired up. Lets
+    /// `HealthKitWriteSync.reconcilePending` catch this entry up into Health next time the app
+    /// itself comes to the foreground, instead of the write silently never happening.
+    var needsHealthKitWriteSync: Bool = false
     var habit: Habit?
 
     init(id: UUID = UUID(), ownerId: UUID, date: Date = .now, amount: Double = 1, habit: Habit? = nil) {

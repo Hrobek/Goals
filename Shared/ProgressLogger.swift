@@ -175,7 +175,13 @@ enum ProgressLogger {
 
     private static func mirrorHealthDelta(_ goal: Goal, checkIn: CheckIn, delta: Double) {
         guard delta != 0, goal.healthKitDirection == .write, goal.healthKitMetric != nil else { return }
-        healthWriteHook?(goal, checkIn, delta)
+        guard let healthWriteHook else {
+            // Running in the widget extension, which has no HealthKit access - flag the check-in
+            // so the app target catches it up next time it's foregrounded.
+            checkIn.needsHealthKitWriteSync = true
+            return
+        }
+        healthWriteHook(goal, checkIn, delta)
     }
 
     /// Guarded, so a goal that's already done doesn't report finishing again — a later check-in on
