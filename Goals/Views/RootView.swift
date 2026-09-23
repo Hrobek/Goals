@@ -3,6 +3,7 @@
 //  Goals
 //
 
+import AppIntents
 import SwiftUI
 import SwiftData
 import WidgetKit
@@ -140,6 +141,9 @@ struct RootView: View {
                 // Catches up any `.write`-linked habit or goal changed from the widget or the watch
                 // app, neither of which can mirror into Health themselves.
                 HealthKitWriteSync.reconcilePending(context: modelContext)
+                // Siri and Spotlight learn habit and goal names from the shortcut entities' suggested
+                // values; refresh them so a new or renamed one can be spoken.
+                GoalsAppShortcuts.updateAppShortcutParameters()
                 // The rating prompt itself no longer lives here — it fires from the moment a goal
                 // is finished (see `GoalDetailView.requestReviewIfEarned`), right after the
                 // celebration overlay, rather than on any old app launch.
@@ -158,30 +162,43 @@ struct RootView: View {
             reconcileStreakFreezes()
         }
         .onOpenURL { url in
-            guard url.scheme == "goals" else { return }
-            switch url.host {
-            case "goal":
-                guard let id = UUID(uuidString: url.lastPathComponent) else { return }
-                selectedTab = .today
-                todayPath = NavigationPath()
-                todayPath.append(id)
-            case "habit":
-                selectedTab = .habits
-                // One assignment, not clear-then-append: two mutations in a tick make SwiftUI
-                // complain that navigation updated "multiple times per frame".
-                habitsPath = UUID(uuidString: url.lastPathComponent).map { [$0] } ?? []
-            case "habits":
-                selectedTab = .habits
-                habitsPath = []
-            case "pro":
-                paywallSource = .widget
-                isShowingPaywall = true
-            default:
-                break
-            }
+            handleDeepLink(url)
+        }
+        // An "open habit / goal" shortcut parks its link here; `initial` catches one set during a
+        // cold launch, before this view existed.
+        .onChange(of: ShortcutRouter.shared.pendingURL, initial: true) { _, url in
+            guard let url else { return }
+            ShortcutRouter.shared.pendingURL = nil
+            handleDeepLink(url)
         }
         .sheet(isPresented: $isShowingPaywall) {
             PaywallView(source: paywallSource)
+        }
+    }
+
+    /// Routes a `goals://` link - from a widget or a Siri / Shortcuts "open" intent -
+    /// to the screen it names.
+    private func handleDeepLink(_ url: URL) {
+        guard url.scheme == "goals" else { return }
+        switch url.host {
+        case "goal":
+            guard let id = UUID(uuidString: url.lastPathComponent) else { return }
+            selectedTab = .today
+            todayPath = NavigationPath()
+            todayPath.append(id)
+        case "habit":
+            selectedTab = .habits
+            // One assignment, not clear-then-append: two mutations in a tick make SwiftUI
+            // complain that navigation updated "multiple times per frame".
+            habitsPath = UUID(uuidString: url.lastPathComponent).map { [$0] } ?? []
+        case "habits":
+            selectedTab = .habits
+            habitsPath = []
+        case "pro":
+            paywallSource = .widget
+            isShowingPaywall = true
+        default:
+            break
         }
     }
 

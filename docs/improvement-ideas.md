@@ -38,7 +38,7 @@ Stav při vzniku: větev `feature/habits`, po commitu `31f0cba` (Today day strip
 - [ ] Haptika při check-inu a extra odezva při překročení milníku série.
 - [ ] Long-press na ikonu appky → Home Screen quick actions (rychlý check-in nejbližšího návyku, přidat cíl).
 - [ ] Lock Screen / StandBy accessory widgety (jen kruh + číslo).
-- [ ] Siri fráze nad rámec AppShortcuts ("zaloguj 5 km běh").
+- [x] Siri fráze nad rámec AppShortcuts ("zaloguj 5 km běh"). Hotovo: `HabitEntity`/`GoalEntity` + intenty "Zapsat návyk" a "Zapsat pokrok u cíle" (volba Splnit / Přidat množství), "Co dnes zbývá", "Otevřít návyk/cíl" v `Goals/Shortcuts/`. Zkratka "Refresh widgets" odstraněna. Další krok: výstupy pro automatizace, Control Center control, Spotlight indexace.
 - [ ] "Naplánuj zítřek" / večerní recap jako volitelná notifikace.
 - [ ] iPad: dvousloupcový layout místo roztažené iPhone verze.
 - [ ] Sample data v onboardingu, ať si člověk appku prohlédne, než něco založí.
