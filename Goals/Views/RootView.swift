@@ -4,6 +4,7 @@
 //
 
 import AppIntents
+import CoreSpotlight
 import SwiftUI
 import SwiftData
 import WidgetKit
@@ -144,6 +145,7 @@ struct RootView: View {
                 // Siri and Spotlight learn habit and goal names from the shortcut entities' suggested
                 // values; refresh them so a new or renamed one can be spoken.
                 GoalsAppShortcuts.updateAppShortcutParameters()
+                Task { await SpotlightIndexer.reindex() }
                 // The rating prompt itself no longer lives here — it fires from the moment a goal
                 // is finished (see `GoalDetailView.requestReviewIfEarned`), right after the
                 // celebration overlay, rather than on any old app launch.
@@ -154,6 +156,8 @@ struct RootView: View {
                 Analytics.endSession()
                 // Whatever changed in the app, the home screen should show it.
                 WidgetCenter.shared.reloadAllTimelines()
+                // Same for Spotlight: pick up anything added, renamed or deleted this session.
+                Task { await SpotlightIndexer.reindex() }
             default:
                 break
             }
@@ -169,6 +173,11 @@ struct RootView: View {
         .onChange(of: ShortcutRouter.shared.pendingURL, initial: true) { _, url in
             guard let url else { return }
             ShortcutRouter.shared.pendingURL = nil
+            handleDeepLink(url)
+        }
+        // A tapped Spotlight result carries the item's deep link as its identifier.
+        .onContinueUserActivity(CSSearchableItemActionType) { activity in
+            guard let url = SpotlightIndexer.deepLink(from: activity) else { return }
             handleDeepLink(url)
         }
         .sheet(isPresented: $isShowingPaywall) {

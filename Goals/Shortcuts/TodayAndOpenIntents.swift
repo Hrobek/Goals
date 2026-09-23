@@ -57,7 +57,7 @@ struct OpenHabitIntent: OpenIntent {
     var target: HabitEntity
 
     @MainActor func perform() async throws -> some IntentResult {
-        ShortcutRouter.shared.pendingURL = URL(string: "goals://habit/\(target.id.uuidString)")
+        ShortcutRouter.shared.pendingURL = GoalsDeepLink.habit(target.id)
         return .result()
     }
 }
@@ -72,7 +72,7 @@ struct OpenGoalIntent: OpenIntent {
     var target: GoalEntity
 
     @MainActor func perform() async throws -> some IntentResult {
-        ShortcutRouter.shared.pendingURL = URL(string: "goals://goal/\(target.id.uuidString)")
+        ShortcutRouter.shared.pendingURL = GoalsDeepLink.goal(target.id)
         return .result()
     }
 }
