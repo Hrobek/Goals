@@ -24,6 +24,12 @@ struct TodayView: View {
     /// check-off forgotten yesterday can still be logged on the right date. Never goes past today.
     @State private var selectedDate = Calendar.current.startOfDay(for: .now)
 
+    /// The calendar day the screen last saw as "today". When the app comes back on a later day,
+    /// the strip snaps to the new today instead of staying parked where it was left.
+    @State private var lastSeenDay = Calendar.current.startOfDay(for: .now)
+
+    @Environment(\.scenePhase) private var scenePhase
+
     /// How far back the day strip reaches. Enough to catch up after a trip, not so far it turns
     /// into a data-entry sheet.
     private let daysBack = 90
@@ -131,6 +137,13 @@ struct TodayView: View {
             .tabBarClearance()
             .screenGround()
             .toolbar(.hidden, for: .navigationBar)
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { rollOverIfNewDay() }
+            }
+            // Fires at midnight while the app is open, and after time zone or clock changes.
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
+                rollOverIfNewDay()
+            }
             .navigationDestination(for: UUID.self) { id in
                 if let goal = goals.first(where: { $0.id == id }) {
                     GoalDetailView(goal: goal)
@@ -176,6 +189,13 @@ struct TodayView: View {
                 backToTodayButton
             }
         }
+    }
+
+    private func rollOverIfNewDay() {
+        let today = calendar.startOfDay(for: .now)
+        guard today != lastSeenDay else { return }
+        lastSeenDay = today
+        selectedDate = today
     }
 
     /// Shown only while the strip is parked on an earlier day — the one tap back to the default.
