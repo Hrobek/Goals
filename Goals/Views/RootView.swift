@@ -4,6 +4,8 @@
 //
 
 import AppIntents
+import Combine
+import CoreData
 import CoreSpotlight
 import SwiftUI
 import SwiftData
@@ -139,6 +141,9 @@ struct RootView: View {
                 // Background delivery covers most of this already, but a foreground refresh is a
                 // cheap belt-and-braces pass for whatever arrived while the app wasn't running.
                 Task { await HealthKitSyncEngine.syncAll(context: modelContext) }
+                // Folds away any day the phone and the watch both logged before syncing - first, so
+                // the catch-up below writes the surviving row to Health, not the dropped one.
+                HabitEntryMerger.mergeDuplicates(in: modelContext)
                 // Catches up any `.write`-linked habit or goal changed from the widget or the watch
                 // app, neither of which can mirror into Health themselves.
                 HealthKitWriteSync.reconcilePending(context: modelContext)
@@ -164,6 +169,18 @@ struct RootView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .checkInDidChange)) { _ in
             reconcileStreakFreezes()
+        }
+        // A finished CloudKit import is when a watch-logged duplicate of a day actually lands here.
+        .onReceive(
+            NotificationCenter.default
+                .publisher(for: NSPersistentCloudKitContainer.eventChangedNotification)
+                .receive(on: RunLoop.main)
+        ) { note in
+            guard let event = note.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey]
+                    as? NSPersistentCloudKitContainer.Event,
+                  event.type == .import, event.endDate != nil, event.succeeded else { return }
+            HabitEntryMerger.mergeDuplicates(in: modelContext)
+            HealthKitWriteSync.reconcilePending(context: modelContext)
         }
         .onOpenURL { url in
             handleDeepLink(url)

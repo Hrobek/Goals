@@ -250,7 +250,22 @@ final class Habit {
 
     /// Today's entry, if there is one.
     func entry(on date: Date, calendar: Calendar = .current) -> HabitEntry? {
-        entries.first { calendar.isDate($0.date, inSameDayAs: date) }
+        entries
+            .filter { calendar.isDate($0.date, inSameDayAs: date) }
+            .min { HabitEntry.ranksAbove($0, $1) }
+    }
+
+    /// One entry per day, the one `HabitEntry.ranksAbove` picks. Same as `entries` unless a
+    /// phone/watch sync race left a day with two rows that `HabitEntryMerger` hasn't cleaned up yet;
+    /// anything that sums or counts days reads this so a duplicate never counts twice.
+    func dailyEntries(calendar: Calendar = .current) -> [HabitEntry] {
+        var best: [Date: HabitEntry] = [:]
+        for entry in entries {
+            let day = calendar.startOfDay(for: entry.date)
+            if let current = best[day], !HabitEntry.ranksAbove(entry, current) { continue }
+            best[day] = entry
+        }
+        return Array(best.values)
     }
 
     /// The value logged for `date` (0 if nothing).
@@ -270,7 +285,7 @@ final class Habit {
     /// more than one). Only meaningful when `isQuota`.
     func periodCount(on date: Date = .now, calendar: Calendar = .current) -> Int {
         guard let interval = quotaInterval(containing: date, calendar: calendar) else { return 0 }
-        return entries
+        return dailyEntries(calendar: calendar)
             .filter { interval.contains($0.date) }
             .reduce(0) { $0 + max(0, Int($1.amount.rounded())) }
     }
@@ -362,12 +377,12 @@ extension Habit: Scheduled {
             return cleanDayDates()
         }
         if isQuota {
-            return entries.flatMap { entry in
+            return dailyEntries().flatMap { entry in
                 Array(repeating: entry.date, count: max(0, Int(entry.amount.rounded())))
             }
         }
         let target = effectiveTarget
-        return entries.filter { $0.amount >= target }.map(\.date)
+        return dailyEntries().filter { $0.amount >= target }.map(\.date)
     }
 
     /// Avoid habit only: the scheduled days between the start date and today with no slip on them.

@@ -89,6 +89,13 @@ enum HealthKitWriteSync {
         }
     }
 
+    /// Deletes samples an entry wrote that no longer stands for anything - a duplicate day row
+    /// `HabitEntryMerger` is about to remove.
+    static func discardSamples(ids: [String], metric: HealthKitMetric) {
+        guard metric.supportedDirections.contains(.write) else { return }
+        Task { await deleteSamples(ids: ids, metric: metric) }
+    }
+
     // MARK: - Private
 
     private static func saveSample(metric: HealthKitMetric, appValue: Double, unitKey: String, date: Date) async -> String? {

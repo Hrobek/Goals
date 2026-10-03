@@ -47,6 +47,16 @@ final class HabitEntry {
         }
     }
 
+    /// Which of two entries for the same day counts. Normally a day has just one, but a day
+    /// logged on the phone and the watch before either had synced the other's row ends up with
+    /// two. The higher amount wins; the later write and then the id break ties, so every device
+    /// picks the same one and they never disagree about the day.
+    static func ranksAbove(_ lhs: HabitEntry, _ rhs: HabitEntry) -> Bool {
+        if lhs.amount != rhs.amount { return lhs.amount > rhs.amount }
+        if lhs.date != rhs.date { return lhs.date > rhs.date }
+        return lhs.id.uuidString > rhs.id.uuidString
+    }
+
     var healthKitSampleIDs: [String] {
         get { storedHealthKitSampleIDs ?? [] }
         set { storedHealthKitSampleIDs = newValue.isEmpty ? nil : newValue }
