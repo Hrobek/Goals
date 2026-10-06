@@ -8,6 +8,7 @@ import SwiftData
 
 @main
 struct GoalsWatchApp: App {
+    @WKApplicationDelegateAdaptor private var appDelegate: WatchAppDelegate
     private let modelContainer = SharedStore.container
 
     init() {

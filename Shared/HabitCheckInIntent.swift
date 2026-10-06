@@ -13,8 +13,9 @@ import os
 
 private let log = Logger(subsystem: "com.hrobek.goals", category: "HabitCheckIn")
 
-/// The habit widget's one-tap button. Runs in the widget-extension process, logs today's tick
-/// through the same code path the app uses, then asks WidgetKit to redraw.
+/// The habit widget's one-tap button. On iPhone it runs in the app's process (see
+/// `WidgetIntentSync`), on the watch in the complication's extension. Logs today's tick through
+/// the same code path the app uses, then asks WidgetKit to redraw.
 struct HabitCheckInIntent: AppIntent {
     static var title: LocalizedStringResource { "Check off habit" }
     static var description: IntentDescription { "Marks the habit done for today, or adds one tick." }
@@ -72,6 +73,9 @@ struct HabitCheckInIntent: AppIntent {
         }
 
         WidgetCenter.shared.reloadTimelines(ofKind: "GoalsHabitsWidget")
+        #if os(iOS)
+        WidgetIntentSync.flushToCloud()
+        #endif
         return .result()
     }
 }
