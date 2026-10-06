@@ -70,11 +70,6 @@ struct MainTabView: View {
     /// The four screens stay alive behind one another rather than being rebuilt on every switch,
     /// so scroll position and navigation state survive a trip to Settings and back.
     @State private var isTabBarHidden = false
-    /// The finger's live x while pressed on the bar, in the row's own coordinate space; `nil`
-    /// whenever nothing is being dragged. Drives the glass pill 1:1 with the touch instead of
-    /// only hopping between tab centers, and doubles as "is a drag in progress" for whether the
-    /// pill's move should animate (a tap's settle) or track instantly (an active drag).
-    @State private var pillDragX: CGFloat?
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -92,7 +87,7 @@ struct MainTabView: View {
             }
 
             if !isTabBarHidden {
-                tabBar
+                FloatingTabBar(selection: $selection)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -108,8 +103,21 @@ struct MainTabView: View {
             .allowsHitTesting(selection == tab)
             .accessibilityHidden(selection != tab)
     }
+}
 
-    private var tabBar: some View {
+/// The floating bar, kept in its own view so the drag state it updates on every touch sample only
+/// redraws the bar. While it lived in `MainTabView`, each finger move re-ran that body and with it
+/// all five screens behind it, which is what made switching tabs feel sticky.
+private struct FloatingTabBar: View {
+    @Binding var selection: MainTab
+
+    /// The finger's live x while pressed on the bar, in the row's own coordinate space; `nil`
+    /// whenever nothing is being dragged. Drives the glass pill 1:1 with the touch instead of
+    /// only hopping between tab centers, and doubles as "is a drag in progress" for whether the
+    /// pill's move should animate (a tap's settle) or track instantly (an active drag).
+    @State private var pillDragX: CGFloat?
+
+    var body: some View {
         tabBarBackground
             .padding(.horizontal, 14)
             .padding(.bottom, 4)

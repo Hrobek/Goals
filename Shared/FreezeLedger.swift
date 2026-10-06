@@ -18,7 +18,7 @@ import SwiftData
 ///   device-local (it can drift by one across devices until the next reconcile settles it); the
 ///   `StreakFreeze` rows it spends are what actually sync.
 nonisolated enum FreezeLedger {
-    private static var defaults: UserDefaults? { UserDefaults(suiteName: SharedStore.appGroupID) }
+    private static var defaults: UserDefaults? { SharedStore.defaults }
 
     private static func cacheKey(_ userId: UUID) -> String {
         "Goals.streakFreeze.days.\(userId.uuidString)"
@@ -83,7 +83,7 @@ struct FreezeBank: Equatable {
 
     // MARK: - Persistence
 
-    private static var defaults: UserDefaults? { UserDefaults(suiteName: SharedStore.appGroupID) }
+    private static var defaults: UserDefaults? { SharedStore.defaults }
 
     private static func key(_ part: String, _ userId: UUID) -> String {
         "Goals.streakFreeze.\(part).\(userId.uuidString)"

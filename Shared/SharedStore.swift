@@ -26,6 +26,10 @@ nonisolated enum SharedStore {
     private static let log = Logger(subsystem: "com.hrobek.goals", category: "SharedStore")
     private static let cloudSyncKey = "Goals.cloudSyncEnabled"
 
+    /// The App Group defaults, opened once. Streaks, vacation and freeze lookups read it many times
+    /// per render, and building a fresh suite instance on every read was a measurable cost there.
+    static let defaults = UserDefaults(suiteName: appGroupID)
+
     /// Whether the store syncs through CloudKit. Read once, at `container`'s first access — flipping
     /// it from Settings takes effect on the next launch, not live (swapping a running container's
     /// `cloudKitDatabase` would invalidate every `@Query` and context bound to it).

@@ -21,108 +21,107 @@ struct StatsView: View {
         _allCheckIns = Query(filter: #Predicate<CheckIn> { $0.ownerId == userId }, sort: \CheckIn.date)
     }
 
-    private var trackedHabits: [Habit] {
-        habits.filter { !$0.isArchived && !$0.isUpcoming() }
-    }
+    /// Everything the screen shows, worked out once per render. Each of these used to be its own
+    /// computed property, and the body read most of them several times over - every read re-ran
+    /// the streak walk across every goal and habit.
+    private struct Snapshot {
+        let trackedGoals: [Goal]
+        let trackedHabits: [Habit]
+        let trackedCheckIns: [CheckIn]
+        /// Every active goal with its streak, longest first - so the list and the tile agree.
+        let streaks: [(goal: Goal, streak: Int)]
+        /// Every active habit with its streak, longest first.
+        let habitStreaks: [(habit: Habit, streak: Int)]
+        /// Every check-in and habit-done date across the board - the raw material for the Pro
+        /// cards that look at the whole picture instead of one goal at a time.
+        let allDoneDates: [Date]
 
-    /// Every active habit with its streak, longest first.
-    private var habitStreaks: [(habit: Habit, streak: Int)] {
-        trackedHabits
-            .map { ($0, $0.currentStreak) }
-            .sorted { lhs, rhs in
-                lhs.1 == rhs.1
-                    ? lhs.0.title.localizedCaseInsensitiveCompare(rhs.0.title) == .orderedAscending
-                    : lhs.1 > rhs.1
-            }
-    }
+        var completedCount: Int { trackedGoals.filter(\.isCompleted).count }
 
-    /// Archived goals are off the board — they'd only pad the stats with frozen streaks. A goal
-    /// that hasn't reached its start date isn't running yet, so it stays out too.
-    private var trackedGoals: [Goal] {
-        goals.filter { !$0.isArchived && !$0.isUpcoming() }
-    }
-
-    private var trackedCheckIns: [CheckIn] {
-        allCheckIns.filter { !($0.goal?.isArchived ?? false) }
-    }
-
-    private var completedCount: Int {
-        trackedGoals.filter(\.isCompleted).count
-    }
-
-    /// Only active goals get a row — completed ones are already summed up in the tile above, and
-    /// a finished goal's frozen streak doesn't need to keep taking up space in the list.
-    private var activeGoals: [Goal] {
-        trackedGoals.filter { $0.status == .active }
-    }
-
-    /// Every active goal with its streak, longest first — computed once so the list and the tile agree.
-    private var streaks: [(goal: Goal, streak: Int)] {
-        activeGoals
-            .map { ($0, StreakCalculator.currentStreak(for: $0)) }
-            .sorted { lhs, rhs in
-                lhs.1 == rhs.1
-                    ? lhs.0.title.localizedCaseInsensitiveCompare(rhs.0.title) == .orderedAscending
-                    : lhs.1 > rhs.1
-            }
-    }
-
-    /// The longest run going right now across both goals and habits — a missed day on either
-    /// costs it, so the tile should reflect both.
-    private var currentStreak: Int {
-        max(streaks.first?.streak ?? 0, habitStreaks.first?.streak ?? 0)
-    }
-
-    /// Every day a habit was done, for the weekly summary.
-    private var habitDoneDates: [Date] {
-        trackedHabits.flatMap(\.scheduleDates)
-    }
-
-    /// Every check-in and habit-done date across the board - the raw material for the Pro cards
-    /// that look at the whole picture instead of one goal at a time.
-    private var allDoneDates: [Date] {
-        trackedCheckIns.map(\.date) + habitDoneDates
-    }
-
-    /// The longest run any goal or habit has ever had, not just the one still going. Completed
-    /// goals are included here (unlike `activeGoals`) - a finished goal's frozen streak can still
-    /// be the record.
-    private var longestStreakEver: Int {
-        let goalBest = trackedGoals.map { StreakCalculator.longestStreak(for: $0) }.max() ?? 0
-        let habitBest = trackedHabits.map { StreakCalculator.longestStreak(for: $0) }.max() ?? 0
-        return max(goalBest, habitBest)
-    }
-
-    /// The most check-ins and habit entries that ever landed in a single calendar week.
-    private var bestWeekCount: Int {
-        let calendar = Calendar.current
-        var counts: [Date: Int] = [:]
-        for date in allDoneDates {
-            guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: date)?.start else { continue }
-            counts[weekStart, default: 0] += 1
+        /// The longest run going right now across both goals and habits - a missed day on either
+        /// costs it, so the tile should reflect both.
+        var currentStreak: Int {
+            max(streaks.first?.streak ?? 0, habitStreaks.first?.streak ?? 0)
         }
-        return counts.values.max() ?? 0
+
+        /// The longest run any goal or habit has ever had, not just the one still going. Completed
+        /// goals are included here (unlike the active-only streak list) - a finished goal's frozen
+        /// streak can still be the record.
+        var longestStreakEver: Int {
+            let goalBest = trackedGoals.map { StreakCalculator.longestStreak(for: $0) }.max() ?? 0
+            let habitBest = trackedHabits.map { StreakCalculator.longestStreak(for: $0) }.max() ?? 0
+            return max(goalBest, habitBest)
+        }
+
+        /// The most check-ins and habit entries that ever landed in a single calendar week.
+        var bestWeekCount: Int {
+            let calendar = Calendar.current
+            var counts: [Date: Int] = [:]
+            for date in allDoneDates {
+                guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: date)?.start else { continue }
+                counts[weekStart, default: 0] += 1
+            }
+            return counts.values.max() ?? 0
+        }
+    }
+
+    private func makeSnapshot() -> Snapshot {
+        // Archived goals are off the board - they'd only pad the stats with frozen streaks. One
+        // that hasn't reached its start date isn't running yet, so it stays out too.
+        let trackedGoals = goals.filter { !$0.isArchived && !$0.isUpcoming() }
+        let trackedHabits = habits.filter { !$0.isArchived && !$0.isUpcoming() }
+        let trackedCheckIns = allCheckIns.filter { !($0.goal?.isArchived ?? false) }
+
+        // Only active goals get a row - completed ones are already summed up in the tile, and a
+        // finished goal's frozen streak doesn't need to keep taking up space in the list.
+        let activeGoals = trackedGoals.filter { $0.status == .active }
+        let streaks: [(goal: Goal, streak: Int)] = activeGoals
+            .map { goal in (goal: goal, streak: StreakCalculator.currentStreak(for: goal)) }
+            .sorted { lhs, rhs in
+                Self.longestFirst(lhs.streak, lhs.goal.title, rhs.streak, rhs.goal.title)
+            }
+        let habitStreaks: [(habit: Habit, streak: Int)] = trackedHabits
+            .map { habit in (habit: habit, streak: habit.currentStreak) }
+            .sorted { lhs, rhs in
+                Self.longestFirst(lhs.streak, lhs.habit.title, rhs.streak, rhs.habit.title)
+            }
+
+        return Snapshot(
+            trackedGoals: trackedGoals,
+            trackedHabits: trackedHabits,
+            trackedCheckIns: trackedCheckIns,
+            streaks: streaks,
+            habitStreaks: habitStreaks,
+            allDoneDates: trackedCheckIns.map(\.date) + trackedHabits.flatMap(\.scheduleDates)
+        )
+    }
+
+    /// Longest streak first; ties fall back to the title, alphabetically.
+    private static func longestFirst(_ lhsStreak: Int, _ lhsTitle: String, _ rhsStreak: Int, _ rhsTitle: String) -> Bool {
+        if lhsStreak != rhsStreak { return lhsStreak > rhsStreak }
+        return lhsTitle.localizedCaseInsensitiveCompare(rhsTitle) == .orderedAscending
     }
 
     var body: some View {
+        let snapshot = makeSnapshot()
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.section) {
                     ScreenTitle("stats.title")
 
                     VStack(alignment: .leading, spacing: Theme.Space.section) {
-                        tiles
-                        weeklySummary
+                        tiles(snapshot)
+                        weeklySummary(snapshot)
 
-                        if !streaks.isEmpty {
-                            streakSection
+                        if !snapshot.streaks.isEmpty {
+                            streakSection(snapshot)
                         }
 
-                        if !habitStreaks.isEmpty {
-                            habitStreakSection
+                        if !snapshot.habitStreaks.isEmpty {
+                            habitStreakSection(snapshot)
                         }
 
-                        trendsSection
+                        trendsSection(snapshot)
                     }
                     .padding(.horizontal, Theme.Space.screen)
                 }
@@ -147,27 +146,27 @@ struct StatsView: View {
 
     /// The three numbers worth a glance. The streak takes the accent — it's the one that's lost
     /// by doing nothing.
-    private var tiles: some View {
+    private func tiles(_ snapshot: Snapshot) -> some View {
         HStack(spacing: Theme.Space.card) {
-            StatTile(value: "\(trackedGoals.count + trackedHabits.count)", label: "stats.tracking")
-            StatTile(value: "\(completedCount)", label: "stats.completedGoals")
-            StatTile(value: "\(currentStreak)", label: "stats.currentStreak", accent: true)
+            StatTile(value: "\(snapshot.trackedGoals.count + snapshot.trackedHabits.count)", label: "stats.tracking")
+            StatTile(value: "\(snapshot.completedCount)", label: "stats.completedGoals")
+            StatTile(value: "\(snapshot.currentStreak)", label: "stats.currentStreak", accent: true)
         }
     }
 
-    private var weeklySummary: some View {
+    private func weeklySummary(_ snapshot: Snapshot) -> some View {
         NavigationLink {
             WeekReviewView(userId: userId)
         } label: {
-            WeeklySummaryCard(checkInDates: trackedCheckIns.map(\.date) + habitDoneDates)
+            WeeklySummaryCard(checkInDates: snapshot.allDoneDates)
         }
         .buttonStyle(.plain)
     }
 
-    private var streakSection: some View {
+    private func streakSection(_ snapshot: Snapshot) -> some View {
         LabeledSection("stats.streaks.goals") {
             CardGroup {
-                ForEach(Array(streaks.enumerated()), id: \.element.goal.id) { index, entry in
+                ForEach(Array(snapshot.streaks.enumerated()), id: \.element.goal.id) { index, entry in
                     if index > 0 { RowDivider() }
                     NavigationLink(value: entry.goal.id) {
                         GoalStreakRow(goal: entry.goal, streak: entry.streak)
@@ -178,10 +177,10 @@ struct StatsView: View {
         }
     }
 
-    private var habitStreakSection: some View {
+    private func habitStreakSection(_ snapshot: Snapshot) -> some View {
         LabeledSection("stats.streaks.habits") {
             CardGroup {
-                ForEach(Array(habitStreaks.enumerated()), id: \.element.habit.id) { index, entry in
+                ForEach(Array(snapshot.habitStreaks.enumerated()), id: \.element.habit.id) { index, entry in
                     if index > 0 { RowDivider() }
                     NavigationLink(value: HabitDestination(id: entry.habit.id)) {
                         HabitStreakRow(habit: entry.habit, streak: entry.streak)
@@ -196,17 +195,17 @@ struct StatsView: View {
     /// records, the weekday pattern, and the week-over-week trend chart. One Pro pill covers the
     /// whole stack rather than repeating it on every card.
     @ViewBuilder
-    private var trendsSection: some View {
+    private func trendsSection(_ snapshot: Snapshot) -> some View {
         // "Pro" is the tier's name, not a word to translate.
         LabeledSection("stats.pro.title") {
             AccentPill(text: "Pro")
         } content: {
             if purchaseManager.isProUnlocked {
                 VStack(spacing: Theme.Space.card) {
-                    YearInPixelsCard(doneDates: allDoneDates)
-                    PersonalRecordsCard(longestStreak: longestStreakEver, bestWeek: bestWeekCount, totalCheckIns: allDoneDates.count)
-                    WeekdayPatternCard(doneDates: allDoneDates)
-                    TrendsSection(checkIns: trackedCheckIns)
+                    YearInPixelsCard(doneDates: snapshot.allDoneDates)
+                    PersonalRecordsCard(longestStreak: snapshot.longestStreakEver, bestWeek: snapshot.bestWeekCount, totalCheckIns: snapshot.allDoneDates.count)
+                    WeekdayPatternCard(doneDates: snapshot.allDoneDates)
+                    TrendsSection(checkIns: snapshot.trackedCheckIns)
                 }
             } else {
                 ProLockedCard(

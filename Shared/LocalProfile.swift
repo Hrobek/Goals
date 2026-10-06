@@ -32,7 +32,7 @@ nonisolated enum LocalProfile {
     /// data keeps it instead of starting empty under a fresh id.
     private static let legacyAccountKey = "Goals.currentUser"
 
-    private static var defaults: UserDefaults? { UserDefaults(suiteName: SharedStore.appGroupID) }
+    private static var defaults: UserDefaults? { SharedStore.defaults }
 
     /// The stored id, or `nil` if the app has never run since this shipped. The widget treats
     /// `nil` as "open the app once" rather than "no goals".

@@ -22,7 +22,7 @@ struct Vacation: Equatable {
 
     // MARK: - Persistence
 
-    private static var defaults: UserDefaults? { UserDefaults(suiteName: SharedStore.appGroupID) }
+    private static var defaults: UserDefaults? { SharedStore.defaults }
 
     private static func key(_ part: String, _ userId: UUID) -> String {
         "Goals.vacation.\(part).\(userId.uuidString)"

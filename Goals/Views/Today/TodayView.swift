@@ -48,7 +48,8 @@ struct TodayView: View {
     private var vacation: Vacation { Vacation.current() }
 
     private var todaysGoals: [Goal] {
-        goals
+        let vacation = vacation
+        return goals
             .filter { $0.status == .active && $0.isScheduledToday(date: selectedDate) && !vacation.pauses($0.id, on: selectedDate) }
             .sorted { lhs, rhs in
                 let lhsDone = lhs.hasCheckIn(on: selectedDate)
@@ -60,7 +61,8 @@ struct TodayView: View {
     }
 
     private var todaysHabits: [Habit] {
-        habits
+        let vacation = vacation
+        return habits
             .filter { !$0.isArchived && $0.isScheduledToday(date: selectedDate) && !vacation.pauses($0.id, on: selectedDate) }
             .sorted { lhs, rhs in
                 let lhsDone = lhs.isDone(on: selectedDate)
