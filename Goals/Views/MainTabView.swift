@@ -75,12 +75,16 @@ struct MainTabView: View {
         ZStack(alignment: .bottom) {
             Theme.ground.ignoresSafeArea()
 
+            // This body never reads `selection` itself - only each `TabPage` does. So a switch
+            // re-runs five tiny wrappers instead of this body, and the screens inside them (whose
+            // bodies work out streaks for every goal and habit) aren't rebuilt just because a
+            // different one is now on top.
             ZStack {
-                screen(.today) { TodayView(userId: userId, path: $todayPath) }
-                screen(.goals) { GoalsListView(userId: userId, addGoalTrigger: $addGoalTrigger) }
-                screen(.habits) { HabitsView(userId: userId, path: $habitsPath) }
-                screen(.stats) { StatsView(userId: userId) }
-                screen(.settings) { SettingsView() }
+                TabPage(tab: .today, selection: $selection, content: TodayView(userId: userId, path: $todayPath))
+                TabPage(tab: .goals, selection: $selection, content: GoalsListView(userId: userId, addGoalTrigger: $addGoalTrigger))
+                TabPage(tab: .habits, selection: $selection, content: HabitsView(userId: userId, path: $habitsPath))
+                TabPage(tab: .stats, selection: $selection, content: StatsView(userId: userId))
+                TabPage(tab: .settings, selection: $selection, content: SettingsView())
             }
             .onPreferenceChange(TabBarHiddenKey.self) { isHidden in
                 isTabBarHidden = isHidden
@@ -94,15 +98,38 @@ struct MainTabView: View {
         .animation(.snappy(duration: 0.22), value: isTabBarHidden)
         .tint(Theme.accent)
     }
+}
 
-    @ViewBuilder
-    private func screen<Content: View>(_ tab: MainTab, @ViewBuilder content: () -> Content) -> some View {
-        content()
-            .opacity(selection == tab ? 1 : 0)
+/// One screen in the stack, shown only while its tab is selected.
+private struct TabPage<Content: View>: View {
+    let tab: MainTab
+    @Binding var selection: MainTab
+    let content: Content
+
+    var body: some View {
+        let isActive = selection == tab
+        StableScreen(tab: tab, content: content)
+            .equatable()
+            .opacity(isActive ? 1 : 0)
             // A hidden tab that still answers taps would swallow them through the visible one.
-            .allowsHitTesting(selection == tab)
-            .accessibilityHidden(selection != tab)
+            .allowsHitTesting(isActive)
+            .accessibilityHidden(!isActive)
     }
+}
+
+/// Tells SwiftUI a screen hasn't changed just because the tab switched. A screen holds `@Query`s
+/// and bindings SwiftUI can't compare, so without this it re-ran every screen's body on each
+/// switch to be safe - and those bodies work out streaks for every goal and habit. Each screen
+/// still updates on its own: its queries, environment and the state behind its bindings are
+/// tracked separately from this comparison. Its other inputs (the profile id) never change while
+/// the view lives; a language change rebuilds the whole tree through `RootView`'s `.id`.
+private struct StableScreen<Content: View>: View, Equatable {
+    let tab: MainTab
+    let content: Content
+
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.tab == rhs.tab }
+
+    var body: some View { content }
 }
 
 /// The floating bar, kept in its own view so the drag state it updates on every touch sample only
