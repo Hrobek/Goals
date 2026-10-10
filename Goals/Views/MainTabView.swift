@@ -100,20 +100,32 @@ struct MainTabView: View {
     }
 }
 
-/// One screen in the stack, shown only while its tab is selected.
+/// One screen in the stack, shown only while its tab is selected. Built the first time its tab
+/// is opened rather than at launch - all five at once (Stats working out every streak among them)
+/// was a good part of what made the app slow to start - and kept alive from then on, so scroll
+/// position and navigation still survive a trip to another tab.
 private struct TabPage<Content: View>: View {
     let tab: MainTab
     @Binding var selection: MainTab
     let content: Content
 
+    @State private var isLoaded = false
+
     var body: some View {
         let isActive = selection == tab
-        StableScreen(tab: tab, content: content)
-            .equatable()
-            .opacity(isActive ? 1 : 0)
-            // A hidden tab that still answers taps would swallow them through the visible one.
-            .allowsHitTesting(isActive)
-            .accessibilityHidden(!isActive)
+        ZStack {
+            if isActive || isLoaded {
+                StableScreen(tab: tab, content: content)
+                    .equatable()
+            }
+        }
+        .opacity(isActive ? 1 : 0)
+        // A hidden tab that still answers taps would swallow them through the visible one.
+        .allowsHitTesting(isActive)
+        .accessibilityHidden(!isActive)
+        .onChange(of: isActive, initial: true) { _, active in
+            if active { isLoaded = true }
+        }
     }
 }
 
