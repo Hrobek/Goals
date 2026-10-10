@@ -40,6 +40,10 @@ struct RootView: View {
     @State private var onboardingAdd: OnboardingAdd?
     /// Kept only to satisfy `MainTabView`'s binding; no longer driven from here.
     @State private var addGoalTrigger = false
+    /// The housekeeping a foreground kicks off, held so going back to the background cancels it.
+    @State private var foregroundWork: Task<Void, Never>?
+    /// The pending pass after a CloudKit import; replaced by each new import in a burst.
+    @State private var importWork: Task<Void, Never>?
 
     enum OnboardingAdd: Identifiable {
         case goal(GoalTemplate?)
@@ -136,23 +140,16 @@ struct RootView: View {
                 Analytics.beginSession()
                 AppReviewPrompt.recordFirstLaunchIfNeeded()
                 pushIdentityToWatch()
-                reconcileStreakFreezes()
-                Task { await NotificationScheduler.syncAll(context: modelContext, userId: profile.id) }
-                // Background delivery covers most of this already, but a foreground refresh is a
-                // cheap belt-and-braces pass for whatever arrived while the app wasn't running.
-                Task { await HealthKitSyncEngine.syncAll(context: modelContext) }
-                // Folds away any day the phone and the watch both logged before syncing - first, so
-                // the catch-up below writes the surviving row to Health, not the dropped one.
-                HabitEntryMerger.mergeDuplicates(in: modelContext)
-                // Catches up any `.write`-linked habit or goal changed from the widget or the watch
-                // app, neither of which can mirror into Health themselves.
-                HealthKitWriteSync.reconcilePending(context: modelContext)
-                // One-time: rewrites the Health totals build 57 piled up from widget taps.
-                HealthKitWriteSync.repairDuplicatedWrites(context: modelContext)
-                // Siri and Spotlight learn habit and goal names from the shortcut entities' suggested
-                // values; refresh them so a new or renamed one can be spoken.
-                GoalsAppShortcuts.updateAppShortcutParameters()
-                Task { await SpotlightIndexer.reindex() }
+                // None of this is needed for the first frames, and all of it runs on the main
+                // actor - done straight away it competed with the app drawing itself and with the
+                // CloudKit import that lands right after opening, and the app felt stuck. A short
+                // wait lets the UI settle first.
+                foregroundWork?.cancel()
+                foregroundWork = Task {
+                    try? await Task.sleep(for: .seconds(1.5))
+                    guard !Task.isCancelled else { return }
+                    runForegroundHousekeeping()
+                }
                 // The rating prompt itself no longer lives here — it fires from the moment a goal
                 // is finished (see `GoalDetailView.requestReviewIfEarned`), right after the
                 // celebration overlay, rather than on any old app launch.
@@ -160,6 +157,7 @@ struct RootView: View {
                     await showProPromoIfEarned()
                 }
             case .background:
+                foregroundWork?.cancel()
                 Analytics.endSession()
                 // Whatever changed in the app, the home screen should show it.
                 WidgetCenter.shared.reloadAllTimelines()
@@ -181,8 +179,15 @@ struct RootView: View {
             guard let event = note.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey]
                     as? NSPersistentCloudKitContainer.Event,
                   event.type == .import, event.endDate != nil, event.succeeded else { return }
-            HabitEntryMerger.mergeDuplicates(in: modelContext)
-            HealthKitWriteSync.reconcilePending(context: modelContext)
+            // Imports come in bursts, especially right after opening; one pass once the burst has
+            // settled does the same job as one per import.
+            importWork?.cancel()
+            importWork = Task {
+                try? await Task.sleep(for: .seconds(2))
+                guard !Task.isCancelled else { return }
+                HabitEntryMerger.mergeDuplicates(in: modelContext)
+                HealthKitWriteSync.reconcilePending(context: modelContext)
+            }
         }
         .onOpenURL { url in
             handleDeepLink(url)
@@ -202,6 +207,27 @@ struct RootView: View {
         .sheet(isPresented: $isShowingPaywall) {
             PaywallView(source: paywallSource)
         }
+    }
+
+    /// What every foreground catches up on, in order.
+    private func runForegroundHousekeeping() {
+        reconcileStreakFreezes()
+        Task { await NotificationScheduler.syncAll(context: modelContext, userId: profile.id) }
+        // Background delivery covers most of this already, but a foreground refresh is a
+        // cheap belt-and-braces pass for whatever arrived while the app wasn't running.
+        Task { await HealthKitSyncEngine.syncAll(context: modelContext) }
+        // Folds away any day the phone and the watch both logged before syncing - first, so
+        // the catch-up below writes the surviving row to Health, not the dropped one.
+        HabitEntryMerger.mergeDuplicates(in: modelContext)
+        // Catches up any `.write`-linked habit or goal changed from the widget or the watch
+        // app, neither of which can mirror into Health themselves.
+        HealthKitWriteSync.reconcilePending(context: modelContext)
+        // One-time: rewrites the Health totals build 57 piled up from widget taps.
+        HealthKitWriteSync.repairDuplicatedWrites(context: modelContext)
+        // Siri and Spotlight learn habit and goal names from the shortcut entities' suggested
+        // values; refresh them so a new or renamed one can be spoken.
+        GoalsAppShortcuts.updateAppShortcutParameters()
+        Task { await SpotlightIndexer.reindex() }
     }
 
     /// Routes a `goals://` link - from a widget or a Siri / Shortcuts "open" intent -

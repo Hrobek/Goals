@@ -99,10 +99,12 @@ enum HealthKitWriteSync {
         let byMetric = Dictionary(grouping: habits) { $0.healthKitMetric! }
 
         for (metric, metricHabits) in byMetric {
+            // A type the app can't write to has nothing of ours in Health to repair. Skipped rather
+            // than retried on every launch - the repair walks weeks of entries and was part of
+            // what made the app sluggish right after opening.
             guard let sampleType = sampleType(for: metric),
                   HealthKitAuthManager.healthStore.authorizationStatus(for: sampleType) == .sharingAuthorized else {
-                // Can't write this type (yet) - try again on a later launch rather than marking it done.
-                return
+                continue
             }
             let entries = metricHabits.flatMap { habit in
                 habit.entries.filter { $0.date >= windowStart }.map { (habit, $0) }
@@ -136,9 +138,9 @@ enum HealthKitWriteSync {
             }
         }
 
+        UserDefaults.standard.set(true, forKey: repairKey)
         do {
             try context.save()
-            UserDefaults.standard.set(true, forKey: repairKey)
             logger.notice("repaired Health writes for \(habits.count, privacy: .public) habits")
         } catch {
             logger.error("repair save failed: \(error, privacy: .public)")

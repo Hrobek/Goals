@@ -18,28 +18,38 @@ import os
 enum HabitEntryMerger {
     private static let log = Logger(subsystem: "com.hrobek.goals", category: "HabitEntryMerger")
 
+    /// How far back a pass looks. Duplicates come from the phone and the watch logging the same
+    /// day before syncing, so they're always recent; the history before this was cleaned up by the
+    /// first full pass. Walking every entry of every habit on each CloudKit import is what made
+    /// the app stutter while a sync was coming in.
+    static let lookbackDays = 14
+
     @MainActor
     static func mergeDuplicates(in context: ModelContext, calendar: Calendar = .current) {
-        let habits = (try? context.fetch(FetchDescriptor<Habit>())) ?? []
+        let floor = calendar.date(byAdding: .day, value: -lookbackDays, to: calendar.startOfDay(for: .now)) ?? .distantPast
+        let recent = (try? context.fetch(FetchDescriptor<HabitEntry>(
+            predicate: #Predicate { $0.date >= floor }
+        ))) ?? []
         var removed = 0
 
-        for habit in habits {
-            let byDay = Dictionary(grouping: habit.entries) { calendar.startOfDay(for: $0.date) }
-            for (_, dayEntries) in byDay where dayEntries.count > 1 {
-                let ranked = dayEntries.sorted(by: HabitEntry.ranksAbove)
-                let winner = ranked[0]
-                for loser in ranked.dropFirst() {
-                    if !loser.healthKitSampleIDs.isEmpty, let metric = habit.healthKitMetric {
-                        HealthKitWriteSync.discardSamples(ids: loser.healthKitSampleIDs, metric: metric)
-                        // The day's Health total came from the losing row; have the winner write
-                        // its own amount instead on the next catch-up.
-                        if winner.healthKitSampleIDs.isEmpty, habit.healthKitDirection == .write {
-                            winner.needsHealthKitWriteSync = true
-                        }
+        let byHabitDay = Dictionary(grouping: recent.filter { $0.habit != nil }) { entry in
+            HabitDayKey(habitID: entry.habit!.persistentModelID, day: calendar.startOfDay(for: entry.date))
+        }
+        for (_, dayEntries) in byHabitDay where dayEntries.count > 1 {
+            guard let habit = dayEntries[0].habit else { continue }
+            let ranked = dayEntries.sorted(by: HabitEntry.ranksAbove)
+            let winner = ranked[0]
+            for loser in ranked.dropFirst() {
+                if !loser.healthKitSampleIDs.isEmpty, let metric = habit.healthKitMetric {
+                    HealthKitWriteSync.discardSamples(ids: loser.healthKitSampleIDs, metric: metric)
+                    // The day's Health total came from the losing row; have the winner write
+                    // its own amount instead on the next catch-up.
+                    if winner.healthKitSampleIDs.isEmpty, habit.healthKitDirection == .write {
+                        winner.needsHealthKitWriteSync = true
                     }
-                    context.delete(loser)
-                    removed += 1
                 }
+                context.delete(loser)
+                removed += 1
             }
         }
 
@@ -52,4 +62,9 @@ enum HabitEntryMerger {
         }
         NotificationCenter.default.post(name: .checkInDidChange, object: nil)
     }
+}
+
+private struct HabitDayKey: Hashable {
+    let habitID: PersistentIdentifier
+    let day: Date
 }
