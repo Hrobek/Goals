@@ -147,6 +147,8 @@ struct RootView: View {
                 // Catches up any `.write`-linked habit or goal changed from the widget or the watch
                 // app, neither of which can mirror into Health themselves.
                 HealthKitWriteSync.reconcilePending(context: modelContext)
+                // One-time: rewrites the Health totals build 57 piled up from widget taps.
+                HealthKitWriteSync.repairDuplicatedWrites(context: modelContext)
                 // Siri and Spotlight learn habit and goal names from the shortcut entities' suggested
                 // values; refresh them so a new or renamed one can be spoken.
                 GoalsAppShortcuts.updateAppShortcutParameters()
