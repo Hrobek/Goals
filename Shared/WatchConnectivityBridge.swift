@@ -19,6 +19,7 @@
 //  `UserDefaults`, which is thread-safe — so `@unchecked Sendable` is honest.
 //
 
+import CoreData
 import Foundation
 import WatchConnectivity
 import WidgetKit
@@ -54,6 +55,9 @@ nonisolated enum WatchContextKey {
     static let requestContext = "requestContext"
     /// A change notification — the sender logged something.
     static let poke = "poke"
+    /// Sent by the watch app when it comes to the screen: asks the phone to push anything still
+    /// waiting to go up to iCloud.
+    static let syncRequest = "syncRequest"
 }
 
 nonisolated final class WatchConnectivityBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
@@ -133,6 +137,17 @@ nonisolated final class WatchConnectivityBridge: NSObject, WCSessionDelegate, @u
         }
     }
 
+    /// Wake the phone so it uploads what's pending. iPhone widget taps are written by the widget
+    /// extension, which can't reach CloudKit; they only go up once the phone app runs. A live
+    /// `sendMessage` from the watch launches the iOS app in the background, which is enough for
+    /// its synced store to export them - and CloudKit then pushes them here.
+    func requestPhoneSync() {
+        guard let session, session.activationState == .activated, session.isReachable else { return }
+        session.sendMessage([WatchContextKey.syncRequest: true], replyHandler: nil) { error in
+            Self.log.debug("sync request failed (non-fatal): \(error, privacy: .public)")
+        }
+    }
+
     // MARK: - Helpers
 
     private func send(context: [String: Any]) {
@@ -149,6 +164,25 @@ nonisolated final class WatchConnectivityBridge: NSObject, WCSessionDelegate, @u
             .dictionary(forKey: Self.lastContextKey) else { return }
         send(context: context)
     }
+
+    #if os(iOS)
+    /// Opens the synced store, which exports whatever the widget extension left in the local
+    /// history, and keeps the app awake until that export finishes (or a timeout, when there was
+    /// nothing to send).
+    private static func uploadPendingChanges() {
+        guard SharedStore.isCloudSyncEnabled else { return }
+        ProcessInfo.processInfo.performExpiringActivity(withReason: "Upload pending changes for the watch") { expired in
+            guard !expired else { return }
+            _ = SharedStore.container
+            let done = DispatchSemaphore(value: 0)
+            Task.detached {
+                await CloudKitSyncWaiter.waitForNext(.export, includingInFlight: true, timeout: .seconds(20))
+                done.signal()
+            }
+            done.wait()
+        }
+    }
+    #endif
 
     private static func notifyChange(applyingContext context: [String: Any]? = nil) {
         #if os(watchOS)
@@ -205,6 +239,12 @@ nonisolated final class WatchConnectivityBridge: NSObject, WCSessionDelegate, @u
     }
 
     private func handleIncoming(_ payload: [String: Any]) {
+        if payload[WatchContextKey.syncRequest] != nil {
+            #if os(iOS)
+            Self.uploadPendingChanges()
+            #endif
+            return
+        }
         if payload[WatchContextKey.requestContext] != nil {
             #if os(iOS)
             resendLastContext()

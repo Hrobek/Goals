@@ -43,6 +43,9 @@ struct WatchRootView: View {
     private func refresh() {
         languageRaw = AppLanguage.current.rawValue
         resolveIdentity()
+        // Anything logged from the iPhone widgets is still sitting on the phone until its app runs;
+        // wake it so those reach this screen within seconds of opening it.
+        WatchConnectivityBridge.shared.requestPhoneSync()
         // The complication only reloads on a check-in poke or a fresh identity push - if it went
         // stale for some other reason (an ownership migration reassigning rows after a phone
         // reinstall, say), the watch face keeps showing the old snapshot even once the app itself

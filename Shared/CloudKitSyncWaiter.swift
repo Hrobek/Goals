@@ -8,16 +8,17 @@ import Foundation
 
 /// Waits for the synced store to finish its next CloudKit export or import.
 ///
-/// Used where the process would otherwise be suspended before the sync ran: a widget tap the
-/// system launched the app in the background for (export), and the watch woken by a CloudKit
-/// push (import). Without it the change sat in the local store until the phone app or the
-/// watch app happened to be opened.
+/// Used where the process would otherwise be suspended before the sync ran: the phone woken by
+/// the watch to upload what its widgets logged (export), and the watch woken by a CloudKit push
+/// (import).
 nonisolated enum CloudKitSyncWaiter {
     /// Returns once an event of `type` that started after the call has finished, or after
-    /// `timeout`, whichever comes first. Returns whether it saw the event finish.
+    /// `timeout`, whichever comes first. With `includingInFlight`, one already running when the
+    /// call was made counts too. Returns whether it saw the event finish.
     @discardableResult
     static func waitForNext(
         _ type: NSPersistentCloudKitContainer.EventType,
+        includingInFlight: Bool = false,
         timeout: Duration = .seconds(20)
     ) async -> Bool {
         let started = Date()
@@ -30,7 +31,7 @@ nonisolated enum CloudKitSyncWaiter {
                     guard let event = note.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey]
                             as? NSPersistentCloudKitContainer.Event,
                           event.type == type,
-                          event.startDate >= started.addingTimeInterval(-1),
+                          includingInFlight || event.startDate >= started.addingTimeInterval(-1),
                           event.endDate != nil else { continue }
                     return true
                 }

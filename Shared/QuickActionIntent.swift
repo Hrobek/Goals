@@ -13,8 +13,8 @@ import os
 
 private let log = Logger(subsystem: "com.hrobek.goals", category: "QuickAction")
 
-/// The Goals widget's one-tap button. Runs in the app's process (see `WidgetIntentSync`), writes
-/// into the shared store through the same code path the app uses, then asks WidgetKit to redraw.
+/// The Goals widget's one-tap button. Runs in the widget-extension process, writes straight into
+/// the shared store through the same code path the app uses, then asks WidgetKit to redraw.
 struct QuickActionIntent: AppIntent {
     static var title: LocalizedStringResource { "Log progress" }
     static var description: IntentDescription { "Adds the goal's quick amount, or ticks off its next subtask." }
@@ -48,7 +48,6 @@ struct QuickActionIntent: AppIntent {
         }
 
         WidgetCenter.shared.reloadAllTimelines()
-        WidgetIntentSync.flushToCloud()
         return .result()
     }
 }
