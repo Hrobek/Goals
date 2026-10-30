@@ -30,3 +30,33 @@ protocol Scheduled {
 extension Scheduled {
     var isAvoid: Bool { false }
 }
+
+/// A plain copy of a schedule, taken once before a day-by-day walk. Every property read on a
+/// `Goal` or `Habit` goes through SwiftData's backing store, and `scheduleDates` itself is real
+/// work (a habit dedupes its entries, an avoid habit walks every day since it started) - so the
+/// streak walks, which read these on every day they step over, read them from here instead.
+struct ScheduleSnapshot: Scheduled {
+    let id: UUID
+    let recurrenceType: RecurrenceType
+    let recurrenceWeekdays: [Int]
+    let recurrenceDaysOfMonth: [Int]
+    let recurrenceCount: Int
+    let startDate: Date
+    let scheduleDates: [Date]
+    let isAvoid: Bool
+
+    init(_ schedule: some Scheduled) {
+        if let snapshot = schedule as? ScheduleSnapshot {
+            self = snapshot
+            return
+        }
+        id = schedule.id
+        recurrenceType = schedule.recurrenceType
+        recurrenceWeekdays = schedule.recurrenceWeekdays
+        recurrenceDaysOfMonth = schedule.recurrenceDaysOfMonth
+        recurrenceCount = schedule.recurrenceCount
+        startDate = schedule.startDate
+        scheduleDates = schedule.scheduleDates
+        isAvoid = schedule.isAvoid
+    }
+}

@@ -15,6 +15,7 @@ enum StreakCalculator {
     /// Days the item was ticked off on vacation still count — but a day the user marked as away
     /// (in the active `Vacation`) is skipped like an unscheduled day rather than breaking the run.
     static func currentStreak(for schedule: some Scheduled, calendar: Calendar = .current, referenceDate: Date = .now) -> Int {
+        let schedule = ScheduleSnapshot(schedule)
         let vacation = Vacation.current()
         switch schedule.recurrenceType {
         case .daily, .specificWeekdays, .specificDaysOfMonth:
@@ -31,6 +32,7 @@ enum StreakCalculator {
     /// `currentStreak`, just walked forward from `startDate` instead of back from today so every
     /// past run gets a chance to be the max.
     static func longestStreak(for schedule: some Scheduled, calendar: Calendar = .current, referenceDate: Date = .now) -> Int {
+        let schedule = ScheduleSnapshot(schedule)
         let vacation = Vacation.current()
         switch schedule.recurrenceType {
         case .daily, .specificWeekdays, .specificDaysOfMonth:
@@ -184,6 +186,7 @@ enum StreakCalculator {
             return nil
         }
 
+        let schedule = ScheduleSnapshot(schedule)
         let vacation = Vacation.current()
         let doneDays = Set(schedule.scheduleDates.map { calendar.startOfDay(for: $0) })
         let frozenDays = FreezeLedger.frozenDays(for: schedule.id)

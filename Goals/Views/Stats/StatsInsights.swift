@@ -19,29 +19,39 @@ struct YearInPixelsCard: View {
 
     private let calendar = Calendar.current
 
-    private var counts: [Date: Int] {
-        var result: [Date: Int] = [:]
-        for date in doneDates {
-            result[calendar.startOfDay(for: date), default: 0] += 1
+    /// The grid's numbers, worked out once per render. These used to be computed properties the
+    /// grid read once per cell - every one of the ~300 squares re-counted every check-in ever
+    /// made, which is most of what made Stats so slow to open.
+    private struct Layout {
+        let days: [Date]
+        let counts: [Date: Int]
+        let leadingBlanks: Int
+
+        var activeDayCount: Int {
+            days.count { (counts[$0] ?? 0) > 0 }
         }
-        return result
     }
 
-    private var days: [Date] {
-        guard let yearStart = calendar.dateInterval(of: .year, for: .now)?.start else { return [] }
-        let today = calendar.startOfDay(for: .now)
-        let count = (calendar.dateComponents([.day], from: yearStart, to: today).day ?? 0) + 1
-        return (0..<count).compactMap { calendar.date(byAdding: .day, value: $0, to: yearStart) }
-    }
+    private func makeLayout() -> Layout {
+        var counts: [Date: Int] = [:]
+        for date in doneDates {
+            counts[calendar.startOfDay(for: date), default: 0] += 1
+        }
 
-    private var activeDayCount: Int {
-        days.count { (counts[$0] ?? 0) > 0 }
-    }
+        var days: [Date] = []
+        if let yearStart = calendar.dateInterval(of: .year, for: .now)?.start {
+            let today = calendar.startOfDay(for: .now)
+            let count = (calendar.dateComponents([.day], from: yearStart, to: today).day ?? 0) + 1
+            days = (0..<count).compactMap { calendar.date(byAdding: .day, value: $0, to: yearStart) }
+        }
 
-    private var leadingBlanks: Int {
-        guard let firstDay = days.first else { return 0 }
-        let weekday = calendar.component(.weekday, from: firstDay)
-        return (weekday - calendar.firstWeekday + 7) % 7
+        var leadingBlanks = 0
+        if let firstDay = days.first {
+            let weekday = calendar.component(.weekday, from: firstDay)
+            leadingBlanks = (weekday - calendar.firstWeekday + 7) % 7
+        }
+
+        return Layout(days: days, counts: counts, leadingBlanks: leadingBlanks)
     }
 
     /// Distinct type from `Date` so the grid's leading blanks never collide with a real day under
@@ -49,31 +59,33 @@ struct YearInPixelsCard: View {
     private struct BlankDay: Hashable { let index: Int }
 
     var body: some View {
+        let layout = makeLayout()
+        let activeDayCount = layout.activeDayCount
         VStack(alignment: .leading, spacing: 10) {
             Text("stats.yearInPixels.title")
                 .font(Theme.Typo.footnote)
                 .foregroundStyle(Theme.textFaint)
 
-            grid
+            grid(layout, activeDayCount: activeDayCount)
 
-            Text("stats.yearInPixels.summary \(activeDayCount) \(days.count)")
+            Text("stats.yearInPixels.summary \(activeDayCount) \(layout.days.count)")
                 .font(Theme.Typo.caption)
                 .foregroundStyle(Theme.textFaint)
         }
         .cardSurface(padding: 16)
     }
 
-    private var grid: some View {
+    private func grid(_ layout: Layout, activeDayCount: Int) -> some View {
         let cellSize: CGFloat = 11
         let spacing: CGFloat = 3
         return ScrollView(.horizontal, showsIndicators: false) {
             LazyHGrid(rows: Array(repeating: GridItem(.fixed(cellSize), spacing: spacing), count: 7), spacing: spacing) {
-                ForEach((0..<leadingBlanks).map(BlankDay.init), id: \.self) { _ in
+                ForEach((0..<layout.leadingBlanks).map(BlankDay.init), id: \.self) { _ in
                     Color.clear.frame(width: cellSize, height: cellSize)
                 }
-                ForEach(days, id: \.self) { day in
+                ForEach(layout.days, id: \.self) { day in
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(fill(for: day))
+                        .fill(fill(for: layout.counts[day] ?? 0))
                         .frame(width: cellSize, height: cellSize)
                 }
             }
@@ -84,11 +96,11 @@ struct YearInPixelsCard: View {
         // 250-some labelled squares is no way to learn how a year went; answer the actual
         // question - how much happened - in one element instead.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("stats.yearInPixels.summary \(activeDayCount) \(days.count)"))
+        .accessibilityLabel(Text("stats.yearInPixels.summary \(activeDayCount) \(layout.days.count)"))
     }
 
-    private func fill(for day: Date) -> Color {
-        switch counts[day] ?? 0 {
+    private func fill(for count: Int) -> Color {
+        switch count {
         case 0: Theme.cellBlocked
         case 1: Theme.accent.opacity(0.35)
         case 2: Theme.accent.opacity(0.6)
@@ -130,7 +142,9 @@ struct WeekdayPatternCard: View {
 
     private let calendar = Calendar.current
 
-    private var weekdayCounts: [Int: Int] {
+    /// Counted once per render and handed to the chart - as a computed property it was redone for
+    /// every bar, twice (once for its height, once to find the busiest day).
+    private func makeWeekdayCounts() -> [Int: Int] {
         var result: [Int: Int] = [:]
         for date in doneDates {
             result[calendar.component(.weekday, from: date), default: 0] += 1
@@ -142,11 +156,9 @@ struct WeekdayPatternCard: View {
         (0..<7).map { (calendar.firstWeekday - 1 + $0) % 7 + 1 }
     }
 
-    private var strongestWeekday: Int? {
-        weekdayCounts.max(by: { $0.value < $1.value })?.key
-    }
-
     var body: some View {
+        let weekdayCounts = makeWeekdayCounts()
+        let strongestWeekday = weekdayCounts.max(by: { $0.value < $1.value })?.key
         VStack(alignment: .leading, spacing: 10) {
             Text("stats.patterns.title")
                 .font(Theme.Typo.footnote)

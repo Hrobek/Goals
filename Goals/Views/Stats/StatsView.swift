@@ -35,6 +35,10 @@ struct StatsView: View {
         /// Every check-in and habit-done date across the board - the raw material for the Pro
         /// cards that look at the whole picture instead of one goal at a time.
         let allDoneDates: [Date]
+        /// `trackedGoals` and `trackedHabits` copied out once, so the all-time record below walks
+        /// plain values instead of working each habit's done days out a second time.
+        let goalSchedules: [ScheduleSnapshot]
+        let habitSchedules: [ScheduleSnapshot]
 
         var completedCount: Int { trackedGoals.filter(\.isCompleted).count }
 
@@ -48,8 +52,8 @@ struct StatsView: View {
         /// goals are included here (unlike the active-only streak list) - a finished goal's frozen
         /// streak can still be the record.
         var longestStreakEver: Int {
-            let goalBest = trackedGoals.map { StreakCalculator.longestStreak(for: $0) }.max() ?? 0
-            let habitBest = trackedHabits.map { StreakCalculator.longestStreak(for: $0) }.max() ?? 0
+            let goalBest = goalSchedules.map { StreakCalculator.longestStreak(for: $0) }.max() ?? 0
+            let habitBest = habitSchedules.map { StreakCalculator.longestStreak(for: $0) }.max() ?? 0
             return max(goalBest, habitBest)
         }
 
@@ -72,16 +76,22 @@ struct StatsView: View {
         let trackedHabits = habits.filter { !$0.isArchived && !$0.isUpcoming() }
         let trackedCheckIns = allCheckIns.filter { !($0.goal?.isArchived ?? false) }
 
+        // A habit's done days take real work to list (deduping entries, or walking every clean
+        // day of an avoid habit), and the streak, the record and the Pro cards all need them -
+        // so each goal and habit is read once here and everything below shares that copy.
+        let goalSchedules = trackedGoals.map(ScheduleSnapshot.init)
+        let habitSchedules = trackedHabits.map(ScheduleSnapshot.init)
+
         // Only active goals get a row - completed ones are already summed up in the tile, and a
         // finished goal's frozen streak doesn't need to keep taking up space in the list.
-        let activeGoals = trackedGoals.filter { $0.status == .active }
-        let streaks: [(goal: Goal, streak: Int)] = activeGoals
-            .map { goal in (goal: goal, streak: StreakCalculator.currentStreak(for: goal)) }
+        let streaks: [(goal: Goal, streak: Int)] = zip(trackedGoals, goalSchedules)
+            .filter { goal, _ in goal.status == .active }
+            .map { goal, schedule in (goal: goal, streak: StreakCalculator.currentStreak(for: schedule)) }
             .sorted { lhs, rhs in
                 Self.longestFirst(lhs.streak, lhs.goal.title, rhs.streak, rhs.goal.title)
             }
-        let habitStreaks: [(habit: Habit, streak: Int)] = trackedHabits
-            .map { habit in (habit: habit, streak: habit.currentStreak) }
+        let habitStreaks: [(habit: Habit, streak: Int)] = zip(trackedHabits, habitSchedules)
+            .map { habit, schedule in (habit: habit, streak: StreakCalculator.currentStreak(for: schedule)) }
             .sorted { lhs, rhs in
                 Self.longestFirst(lhs.streak, lhs.habit.title, rhs.streak, rhs.habit.title)
             }
@@ -92,7 +102,9 @@ struct StatsView: View {
             trackedCheckIns: trackedCheckIns,
             streaks: streaks,
             habitStreaks: habitStreaks,
-            allDoneDates: trackedCheckIns.map(\.date) + trackedHabits.flatMap(\.scheduleDates)
+            allDoneDates: trackedCheckIns.map(\.date) + habitSchedules.flatMap(\.scheduleDates),
+            goalSchedules: goalSchedules,
+            habitSchedules: habitSchedules
         )
     }
 
