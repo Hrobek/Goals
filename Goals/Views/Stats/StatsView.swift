@@ -138,6 +138,7 @@ struct StatsView: View {
                     .padding(.horizontal, Theme.Space.screen)
                 }
                 .padding(.bottom, 24)
+                .readableWidth()
             }
             .scrollIndicators(.hidden)
             .tabBarClearance()

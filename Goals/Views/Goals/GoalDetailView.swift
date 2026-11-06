@@ -12,6 +12,8 @@ struct GoalDetailView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    /// Shown beside its list on the open iPhone Duo, where there's no page to go back from.
+    @Environment(\.isDetailPane) private var isDetailPane
     @Environment(\.requestReview) private var requestReview
     @Environment(PurchaseManager.self) private var purchaseManager
 
@@ -128,6 +130,7 @@ struct GoalDetailView: View {
             }
             .padding(.horizontal, Theme.Space.screen)
             .padding(.bottom, 40)
+            .readableWidth()
         }
         .scrollIndicators(.hidden)
         .screenGround()
@@ -179,15 +182,17 @@ struct GoalDetailView: View {
     /// a translucent grey seam appearing over the dark surface.
     private var navBar: some View {
         HStack {
-            Button { dismiss() } label: {
-                Image(systemName: "arrow.left")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(Theme.textStrong)
-                    .frame(width: 40, height: 40)
-                    .contentShape(.rect)
+            if !isDetailPane {
+                Button { dismiss() } label: {
+                    Image(systemName: "arrow.left")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(Theme.textStrong)
+                        .frame(width: 40, height: 40)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("action.cancel"))
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("action.cancel"))
 
             Spacer()
 

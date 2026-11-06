@@ -29,6 +29,8 @@ struct TodayView: View {
     @State private var lastSeenDay = Calendar.current.startOfDay(for: .now)
 
     @Environment(\.scenePhase) private var scenePhase
+    /// Regular on an unfolded iPhone Duo or an iPad, where goals and habits sit side by side.
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     /// How far back the day strip reaches. Enough to catch up after a trip, not so far it turns
     /// into a data-entry sheet.
@@ -113,27 +115,20 @@ struct TodayView: View {
                         .padding(.top, 70)
                     } else {
                         summary
-                        if !todaysGoals.isEmpty {
-                            section(title: "tab.goals") {
-                                // The heading mirrors the tab bar, where Goals carries the app's
-                                // own mark rather than an SF Symbol.
-                                GoalsMark(size: 13, tone: .mono, color: Theme.textFaint)
-                            } content: {
-                                goalList
+                        if sizeClass == .regular {
+                            wideSections
+                        } else {
+                            if !todaysGoals.isEmpty {
+                                goalSection { goalList(todaysGoals) }
                             }
-                        }
-                        if !todaysHabits.isEmpty {
-                            section(title: "tab.habits") {
-                                Image(systemName: "repeat")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(Theme.textFaint)
-                            } content: {
-                                habitList
+                            if !todaysHabits.isEmpty {
+                                habitSection { habitList(todaysHabits) }
                             }
                         }
                     }
                 }
                 .padding(.bottom, 24)
+                .readableWidth(sizeClass == .regular ? Theme.wideReadableWidth : Theme.readableWidth)
             }
             .scrollIndicators(.hidden)
             .tabBarClearance()
@@ -157,6 +152,60 @@ struct TodayView: View {
                 }
             }
         }
+    }
+
+    /// Wrapped in a stack so a column frames the heading and its cards as one block.
+    private func goalSection<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            section(title: "tab.goals") {
+                // The heading mirrors the tab bar, where Goals carries the app's own mark rather
+                // than an SF Symbol.
+                GoalsMark(size: 13, tone: .mono, color: Theme.textFaint)
+            } content: {
+                content()
+            }
+        }
+    }
+
+    private func habitSection<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            section(title: "tab.habits") {
+                Image(systemName: "repeat")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.textFaint)
+            } content: {
+                content()
+            }
+        }
+    }
+
+    /// Goals in one column and habits in the other. With only one kind due, that kind's cards
+    /// fill both columns instead of leaving half the screen empty.
+    @ViewBuilder
+    private var wideSections: some View {
+        if !todaysGoals.isEmpty && !todaysHabits.isEmpty {
+            HingeAwareColumns {
+                goalSection { goalList(todaysGoals) }
+            } trailing: {
+                habitSection { habitList(todaysHabits) }
+            }
+        } else if !todaysGoals.isEmpty {
+            let (first, second) = halves(todaysGoals)
+            goalSection {
+                HingeAwareColumns { goalList(first) } trailing: { goalList(second) }
+            }
+        } else {
+            let (first, second) = halves(todaysHabits)
+            habitSection {
+                HingeAwareColumns { habitList(first) } trailing: { habitList(second) }
+            }
+        }
+    }
+
+    /// Down the first column, then the second, so the order still reads top to bottom.
+    private func halves<Item>(_ items: [Item]) -> ([Item], [Item]) {
+        let middle = (items.count + 1) / 2
+        return (Array(items[..<middle]), Array(items[middle...]))
     }
 
     /// A group heading — the one visual cue that separates "goals due today" from "habits due
@@ -266,9 +315,9 @@ struct TodayView: View {
         .accessibilityLabel(Text("today.progress \(doneCount) \(totalCount)"))
     }
 
-    private var goalList: some View {
+    private func goalList(_ goals: [Goal]) -> some View {
         LazyVStack(spacing: Theme.Space.card) {
-            ForEach(todaysGoals) { goal in
+            ForEach(goals) { goal in
                 NavigationLink(value: goal.id) {
                     GoalRow(goal: goal, showsTodayState: true, referenceDate: selectedDate)
                 }
@@ -279,9 +328,9 @@ struct TodayView: View {
         .padding(.top, 14)
     }
 
-    private var habitList: some View {
+    private func habitList(_ habits: [Habit]) -> some View {
         LazyVStack(spacing: Theme.Space.card) {
-            ForEach(todaysHabits) { habit in
+            ForEach(habits) { habit in
                 NavigationLink(value: HabitDestination(id: habit.id)) {
                     HabitRow(habit: habit, referenceDate: selectedDate)
                 }

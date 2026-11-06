@@ -55,7 +55,8 @@ struct FirstRunWelcomeView: View {
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 28)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .frame(maxWidth: Theme.readableWidth, maxHeight: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
         .screenGround()
     }
 

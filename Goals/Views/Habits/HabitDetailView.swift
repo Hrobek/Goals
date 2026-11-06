@@ -11,6 +11,8 @@ struct HabitDetailView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    /// Shown beside its list on the open iPhone Duo, where there's no page to go back from.
+    @Environment(\.isDetailPane) private var isDetailPane
     @Environment(PurchaseManager.self) private var purchaseManager
 
     @State private var isShowingEdit = false
@@ -89,6 +91,7 @@ struct HabitDetailView: View {
             }
             .padding(.horizontal, Theme.Space.screen)
             .padding(.bottom, 40)
+            .readableWidth()
         }
         .scrollIndicators(.hidden)
         .screenGround()
@@ -129,12 +132,14 @@ struct HabitDetailView: View {
 
     private var navBar: some View {
         HStack {
-            Button { dismiss() } label: {
-                Image(systemName: "arrow.left")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(Theme.textStrong)
-                    .frame(width: 40, height: 40)
-                    .contentShape(.rect)
+            if !isDetailPane {
+                Button { dismiss() } label: {
+                    Image(systemName: "arrow.left")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(Theme.textStrong)
+                        .frame(width: 40, height: 40)
+                        .contentShape(.rect)
+                }
             }
 
             Spacer()

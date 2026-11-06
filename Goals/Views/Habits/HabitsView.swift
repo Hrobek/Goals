@@ -26,6 +26,17 @@ struct HabitsView: View {
     @State private var pendingAdd: PendingAdd?
     @State private var addHabitConfig: AddHabitConfig?
 
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    /// The screen's width, which decides whether the selected habit opens beside the list.
+    @State private var availableWidth: CGFloat = 0
+    /// The habit showing in the pane beside the list, while the screen is split.
+    @State private var selectedHabitID: UUID?
+
+    /// The open iPhone Duo held sideways: the list on one side, the selected habit on the other.
+    private var isSplit: Bool {
+        MainTabView.usesRail(sizeClass) && availableWidth >= Theme.listDetailMinWidth
+    }
+
     private enum PendingAdd {
         case blank
         case template(HabitTemplate)
@@ -51,15 +62,34 @@ struct HabitsView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            VStack(alignment: .leading, spacing: 0) {
-                ScreenTitle("habits.title") {
-                    IconButton(systemImage: "plus") { addHabitTapped() }
-                        .accessibilityLabel(Text("a11y.addHabit"))
+            Group {
+                if isSplit {
+                    ListDetailSplit { listColumn } detail: { habitPane }
+                } else {
+                    listColumn.readableWidth()
                 }
-
-                content
             }
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
             .screenGround()
+            // Folding the phone shut, or turning it upright, carries the open habit over as a
+            // pushed page - and opening it back up, or a habit widget's tap, lands it in the pane.
+            .onChange(of: isSplit) { _, split in
+                if split {
+                    if let id = path.last {
+                        selectedHabitID = id
+                        path = []
+                    }
+                } else if let id = selectedHabitID {
+                    path = [id]
+                    selectedHabitID = nil
+                }
+            }
+            .onChange(of: path) { _, newPath in
+                if isSplit, let id = newPath.last {
+                    selectedHabitID = id
+                    path = []
+                }
+            }
             .toolbar(.hidden, for: .navigationBar)
             .environment(\.editMode, $editMode)
             .navigationDestination(for: UUID.self) { id in
@@ -93,6 +123,32 @@ struct HabitsView: View {
         }
     }
 
+    private var listColumn: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ScreenTitle("habits.title") {
+                IconButton(systemImage: "plus") { addHabitTapped() }
+                    .accessibilityLabel(Text("a11y.addHabit"))
+            }
+
+            content
+        }
+    }
+
+    /// Only a habit the list is showing, so archiving or deleting the open one empties the pane
+    /// instead of leaving it behind.
+    @ViewBuilder
+    private var habitPane: some View {
+        if let id = selectedHabitID, let habit = activeHabits.first(where: { $0.id == id }) {
+            HabitDetailView(habit: habit)
+                .id(habit.id)
+        } else {
+            EmptyStateView(systemImage: "repeat", title: "split.habit.placeholder")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .screenGround()
+                .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+
     @ViewBuilder
     private var content: some View {
         if activeHabits.isEmpty {
@@ -117,9 +173,14 @@ struct HabitsView: View {
             List {
                 ForEach(activeHabits) { habit in
                     Button {
-                        path.append(habit.id)
+                        if isSplit {
+                            selectedHabitID = habit.id
+                        } else {
+                            path.append(habit.id)
+                        }
                     } label: {
                         HabitRow(habit: habit)
+                            .selectedRowOutline(isSplit && selectedHabitID == habit.id)
                     }
                     .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(top: 5, leading: Theme.Space.screen, bottom: 5, trailing: Theme.Space.screen))

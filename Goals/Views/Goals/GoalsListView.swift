@@ -36,6 +36,17 @@ struct GoalsListView: View {
     /// the presentation payload — captured once, and safe from a stray dismiss clearing them.
     @State private var addGoalConfig: AddGoalConfig?
 
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    /// The screen's width, which decides whether the selected goal opens beside the list.
+    @State private var availableWidth: CGFloat = 0
+    /// The goal showing in the pane beside the list, while the screen is split.
+    @State private var selectedGoalID: UUID?
+
+    /// The open iPhone Duo held sideways: the list on one side, the selected goal on the other.
+    private var isSplit: Bool {
+        MainTabView.usesRail(sizeClass) && availableWidth >= Theme.listDetailMinWidth
+    }
+
     private enum PendingAdd {
         case blank
         case template(GoalTemplate)
@@ -63,23 +74,34 @@ struct GoalsListView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            VStack(alignment: .leading, spacing: 0) {
-                ScreenTitle("goals.title") {
-                    IconButton(systemImage: "plus") { addGoalTapped() }
-                        .accessibilityLabel(Text("a11y.addGoal"))
+            Group {
+                if isSplit {
+                    ListDetailSplit { listColumn } detail: { goalPane }
+                } else {
+                    listColumn.readableWidth()
                 }
-
-                SegmentStrip(
-                    options: GoalStatus.allCases,
-                    selection: $filter,
-                    title: { $0.localizedName }
-                )
-                .padding(.horizontal, Theme.Space.screen)
-                .padding(.top, 18)
-
-                goalsContent
             }
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
             .screenGround()
+            // Folding the phone shut, or turning it upright, carries the open goal over as a
+            // pushed page - and opening it back up moves a pushed goal into the pane.
+            .onChange(of: isSplit) { _, split in
+                if split {
+                    if let id = path.last {
+                        selectedGoalID = id
+                        path = []
+                    }
+                } else if let id = selectedGoalID {
+                    path = [id]
+                    selectedGoalID = nil
+                }
+            }
+            .onChange(of: path) { _, newPath in
+                if isSplit, let id = newPath.last {
+                    selectedGoalID = id
+                    path = []
+                }
+            }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: UUID.self) { id in
                 if let goal = goals.first(where: { $0.id == id }) {
@@ -112,6 +134,48 @@ struct GoalsListView: View {
         }
     }
 
+    private var listColumn: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ScreenTitle("goals.title") {
+                IconButton(systemImage: "plus") { addGoalTapped() }
+                    .accessibilityLabel(Text("a11y.addGoal"))
+            }
+
+            SegmentStrip(
+                options: GoalStatus.allCases,
+                selection: $filter,
+                title: { $0.localizedName }
+            )
+            .padding(.horizontal, Theme.Space.screen)
+            .padding(.top, 18)
+
+            goalsContent
+        }
+    }
+
+    /// Only a goal the list is showing, so archiving or deleting the open one empties the pane
+    /// instead of leaving it behind.
+    @ViewBuilder
+    private var goalPane: some View {
+        if let id = selectedGoalID, let goal = visibleGoals.first(where: { $0.id == id }) {
+            GoalDetailView(goal: goal)
+                .id(goal.id)
+        } else {
+            EmptyStateView(title: "split.goal.placeholder")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .screenGround()
+                .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+
+    private func open(_ goal: Goal) {
+        if isSplit {
+            selectedGoalID = goal.id
+        } else {
+            path.append(goal.id)
+        }
+    }
+
     @ViewBuilder
     private var goalsContent: some View {
         if visibleGoals.isEmpty {
@@ -140,9 +204,10 @@ struct GoalsListView: View {
             List {
                 ForEach(visibleGoals) { goal in
                     Button {
-                        path.append(goal.id)
+                        open(goal)
                     } label: {
                         GoalRow(goal: goal)
+                            .selectedRowOutline(isSplit && selectedGoalID == goal.id)
                     }
                     .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(top: 5, leading: Theme.Space.screen, bottom: 5, trailing: Theme.Space.screen))

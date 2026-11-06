@@ -19,8 +19,8 @@ enum MainTab: String, Hashable, CaseIterable {
         }
     }
 
-    /// Outline when resting, filled when current — the pair the design leans on to mark the tab
-    /// you're on, since the accent alone is easy to miss at 10pt.
+    /// Outline when resting, filled when current. The system bar fills the symbol on its own;
+    /// the iPad's floating bar uses the pair below.
     var symbol: String {
         switch self {
         case .today: "sun.max"
@@ -42,8 +42,15 @@ enum MainTab: String, Hashable, CaseIterable {
     }
 }
 
-/// A pushed screen asks for the floating bar to step aside — a goal's detail is a place you went
-/// to, not one of the four places you switch between.
+extension View {
+    /// A pushed screen hides the tab bar - a goal's detail is a place you went to, not one of the
+    /// places you switch between. The detail pane beside a list leaves it be.
+    func hidesTabBar() -> some View {
+        modifier(HidesTabBar())
+    }
+}
+
+/// How a pushed screen asks the iPad's floating bar to step aside.
 struct TabBarHiddenKey: PreferenceKey {
     static let defaultValue = false
     static func reduce(value: inout Bool, nextValue: () -> Bool) {
@@ -51,13 +58,110 @@ struct TabBarHiddenKey: PreferenceKey {
     }
 }
 
-extension View {
-    func hidesTabBar() -> some View {
-        preference(key: TabBarHiddenKey.self, value: true)
+private struct HidesTabBar: ViewModifier {
+    @Environment(\.isDetailPane) private var isDetailPane
+
+    func body(content: Content) -> some View {
+        content
+            .toolbar(isDetailPane ? .automatic : .hidden, for: .tabBar)
+            .preference(key: TabBarHiddenKey.self, value: !isDetailPane)
     }
 }
 
 struct MainTabView: View {
+    let userId: UUID
+    /// Owned by `RootView` so the tab survives the rebuild that applies a language change.
+    @Binding var selection: MainTab
+    @Binding var todayPath: NavigationPath
+    /// Owned by `RootView` too, so a habit-widget tap can push a habit's detail onto this stack.
+    @Binding var habitsPath: [UUID]
+    /// Owned by `RootView`, flipped to drop a brand-new user straight into Add Goal.
+    @Binding var addGoalTrigger: Bool
+
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    /// The unfolded iPhone Duo: wide enough for a list and its detail side by side. An iPad
+    /// reports the same size class, so it's told apart by its idiom.
+    static func usesRail(_ sizeClass: UserInterfaceSizeClass?) -> Bool {
+        sizeClass == .regular && UIDevice.current.userInterfaceIdiom == .phone
+    }
+
+    /// An iPad keeps the app's own bar floating along the bottom: the system one sits at the top
+    /// there, and the bottom is where people reach for it on this app.
+    static var usesFloatingBar: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+
+    var body: some View {
+        if Self.usesFloatingBar {
+            FloatingTabShell(userId: userId, selection: $selection, todayPath: $todayPath, habitsPath: $habitsPath, addGoalTrigger: $addGoalTrigger)
+        } else {
+            systemTabView
+        }
+    }
+
+    private var systemTabView: some View {
+        // The system tab bar: Liquid Glass on 26+, and it adapts to an unfolded phone on its own.
+        // The same TabView in every layout, so folding or unfolding keeps each tab's scroll
+        // position and navigation stack.
+        TabView(selection: $selection) {
+            screen(.today, TodayView(userId: userId, path: $todayPath))
+            screen(.goals, GoalsListView(userId: userId, addGoalTrigger: $addGoalTrigger))
+            screen(.habits, HabitsView(userId: userId, path: $habitsPath))
+            screen(.stats, StatsView(userId: userId))
+            screen(.settings, SettingsView())
+        }
+        .adaptiveTabBar(isUnfoldedPhone: Self.usesRail(sizeClass))
+        .sensoryFeedback(.selection, trigger: selection)
+        .tint(Theme.accent)
+    }
+
+    private func screen(_ tab: MainTab, _ content: some View) -> some View {
+        StableScreen(tab: tab, content: content)
+            .equatable()
+            .tabItem {
+                Label(tab.title, systemImage: tab.symbol)
+            }
+            .tag(tab)
+    }
+}
+
+private extension View {
+    /// On 18+ the bar can be swapped for a sidebar. The unfolded Duo (27+) starts with the bar,
+    /// which the system stands up as a rail in the bottom trailing corner: the sidebar would take
+    /// the width the list and its detail need to sit side by side.
+    @ViewBuilder
+    func adaptiveTabBar(isUnfoldedPhone: Bool) -> some View {
+        if #available(iOS 27.0, *) {
+            tabViewStyle(.sidebarAdaptable)
+                .defaultTabBarPlacement(isUnfoldedPhone ? .tabBar : .automatic)
+                .tabBarMinimizeBehavior(.onScrollDown)
+        } else if #available(iOS 26.0, *) {
+            tabViewStyle(.sidebarAdaptable)
+                .tabBarMinimizeBehavior(.onScrollDown)
+        } else if #available(iOS 18.0, *) {
+            tabViewStyle(.sidebarAdaptable)
+        } else {
+            self
+        }
+    }
+}
+
+/// Tells SwiftUI a screen hasn't changed just because the tab switched. A screen holds `@Query`s
+/// and bindings SwiftUI can't compare, so without this it re-ran every screen's body on each
+/// switch to be safe - and those bodies work out streaks for every goal and habit. Each screen
+/// still updates on its own: its queries, environment and the state behind its bindings are
+/// tracked separately from this comparison. Its other inputs (the profile id) never change while
+/// the view lives; a language change rebuilds the whole tree through `RootView`'s `.id`.
+private struct StableScreen<Content: View>: View, Equatable {
+    let tab: MainTab
+    let content: Content
+
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.tab == rhs.tab }
+
+    var body: some View { content }
+}
+
+/// The iPad's tab shell: the screens stacked behind the app's own floating bar.
+private struct FloatingTabShell: View {
     let userId: UUID
     /// Owned by `RootView` so the tab survives the rebuild that applies a language change.
     @Binding var selection: MainTab
@@ -129,20 +233,6 @@ private struct TabPage<Content: View>: View {
     }
 }
 
-/// Tells SwiftUI a screen hasn't changed just because the tab switched. A screen holds `@Query`s
-/// and bindings SwiftUI can't compare, so without this it re-ran every screen's body on each
-/// switch to be safe - and those bodies work out streaks for every goal and habit. Each screen
-/// still updates on its own: its queries, environment and the state behind its bindings are
-/// tracked separately from this comparison. Its other inputs (the profile id) never change while
-/// the view lives; a language change rebuilds the whole tree through `RootView`'s `.id`.
-private struct StableScreen<Content: View>: View, Equatable {
-    let tab: MainTab
-    let content: Content
-
-    static func == (lhs: Self, rhs: Self) -> Bool { lhs.tab == rhs.tab }
-
-    var body: some View { content }
-}
 
 /// The floating bar, kept in its own view so the drag state it updates on every touch sample only
 /// redraws the bar. While it lived in `MainTabView`, each finger move re-ran that body and with it
@@ -262,7 +352,7 @@ private struct FloatingTabBar: View {
                 // in light) instead of a hardcoded white that would vanish in light mode.
                 let restingColor = Color.primary
                 VStack(spacing: 3) {
-                    // Goals keeps the app's own mark rather than a symbol — it's the tab the
+                    // Goals keeps the app's own mark rather than a symbol - it's the tab the
                     // whole app is named after. Habits sits right next to it as an equal.
                     if tab == .goals {
                         GoalsMark(

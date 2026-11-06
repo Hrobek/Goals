@@ -25,9 +25,17 @@ extension View {
         modifier(CardSurface(muted: muted, radius: radius, padding: padding))
     }
 
-    /// Keeps scrolling content clear of the floating tab bar.
+    /// Keeps scrolling content clear of the iPad's floating tab bar. The system tab bar used
+    /// everywhere else insets the content on its own.
     func tabBarClearance() -> some View {
-        safeAreaPadding(.bottom, Theme.tabBarClearance)
+        safeAreaPadding(.bottom, MainTabView.usesFloatingBar ? Theme.tabBarClearance : 0)
+    }
+
+    /// Caps a screen's content at a comfortable width and centers it, so it doesn't stretch edge to
+    /// edge on a wide screen (an unfolded iPhone Duo, an iPad). Leaves a phone's layout alone.
+    func readableWidth(_ width: CGFloat = Theme.readableWidth) -> some View {
+        frame(maxWidth: width, alignment: .leading)
+            .frame(maxWidth: .infinity)
     }
 
     /// For the handful of secondary sheets still built on a system `Form`/`List`: puts them on the
@@ -37,6 +45,101 @@ extension View {
             .scrollContentBackground(.hidden)
             .background(Theme.ground.ignoresSafeArea())
             .toolbarBackground(Theme.ground, for: .navigationBar)
+    }
+}
+
+/// Two columns side by side, for a screen with room for them. On a screen that folds (the iPhone
+/// Duo's inner display) the gap between them lands on the fold when there's room for both columns
+/// either side of it, so no card is bent across the hinge; anywhere else they split evenly.
+struct HingeAwareColumns<Leading: View, Trailing: View>: View {
+    @ViewBuilder var leading: Leading
+    @ViewBuilder var trailing: Trailing
+
+    /// `nil` until the first layout pass has measured the row.
+    @State private var split: ColumnSplit?
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            leading
+                .frame(width: split?.leading, alignment: .top)
+                .frame(maxWidth: split == nil ? .infinity : nil)
+            Color.clear
+                .frame(width: split?.gap ?? 0, height: 0)
+            trailing
+                .frame(width: split?.trailing, alignment: .top)
+                .frame(maxWidth: split == nil ? .infinity : nil)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onGeometryChange(for: ColumnSplit.self) { proxy in
+            ColumnSplit(proxy)
+        } action: { newSplit in
+            split = newSplit
+        }
+    }
+}
+
+extension EnvironmentValues {
+    /// True inside the detail side of a `ListDetailSplit`, where a detail screen is a pane next to
+    /// its list rather than a page pushed over it - so it has nothing to go back from.
+    @Entry var isDetailPane = false
+}
+
+/// A list with the selected item's detail beside it, for the unfolded iPhone Duo held sideways.
+/// The detail gets its own navigation stack so its sheets and menus behave as they do when pushed,
+/// and it can't hide the tab bar the way a pushed detail does.
+struct ListDetailSplit<Primary: View, Detail: View>: View {
+    @ViewBuilder var list: Primary
+    @ViewBuilder var detail: Detail
+
+    var body: some View {
+        HingeAwareColumns {
+            list
+        } trailing: {
+            NavigationStack {
+                detail
+                    .environment(\.isDetailPane, true)
+            }
+        }
+    }
+}
+
+/// The highlight on the row whose detail is showing in the pane next to the list.
+extension View {
+    func selectedRowOutline(_ isSelected: Bool) -> some View {
+        overlay {
+            if isSelected {
+                RoundedRectangle(cornerRadius: Theme.Radius.card)
+                    .strokeBorder(Theme.accent, lineWidth: 1.5)
+            }
+        }
+    }
+}
+
+private nonisolated struct ColumnSplit: Equatable, Sendable {
+    var leading: CGFloat
+    var gap: CGFloat
+    var trailing: CGFloat
+
+    /// Narrower than this and a goal or habit card starts truncating, so the columns would rather
+    /// split evenly over the fold than squeeze one side.
+    private static let minimumColumn: CGFloat = 250
+
+    init(_ proxy: GeometryProxy) {
+        let width = proxy.size.width
+        if #available(iOS 27.1, *),
+           let fold = proxy.reservedRegions(kind: .division)
+               .map(\.frame)
+               .first(where: { $0.height > $0.width && $0.minX > 0 && $0.maxX < width }),
+           fold.minX >= Self.minimumColumn,
+           width - fold.maxX >= Self.minimumColumn {
+            leading = fold.minX
+            gap = fold.width
+            trailing = width - fold.maxX
+        } else {
+            leading = (width / 2).rounded(.down)
+            gap = 0
+            trailing = width - leading
+        }
     }
 }
 

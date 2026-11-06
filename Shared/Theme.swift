@@ -131,8 +131,18 @@ enum Theme {
         static let section: CGFloat = 22
     }
 
-    /// How much room the floating tab bar needs at the bottom of a scrolling screen.
+    /// How much room the iPad's floating tab bar needs at the bottom of a scrolling screen.
     static let tabBarClearance: CGFloat = 96
+
+    /// The widest a single column of content gets on a wide screen, so rows and cards don't
+    /// stretch edge to edge.
+    static let readableWidth: CGFloat = 640
+    /// The same for a screen that splits into two columns on a wide screen.
+    static let wideReadableWidth: CGFloat = 900
+    /// Wide enough for a list and the selected item's detail side by side, each still close to a
+    /// folded phone's width. The open iPhone Duo held sideways clears it beside the tab rail;
+    /// upright it doesn't, and keeps the one-column list.
+    static let listDetailMinWidth: CGFloat = 640
 
     // MARK: Shadows
 
