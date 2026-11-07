@@ -19,8 +19,8 @@ enum MainTab: String, Hashable, CaseIterable {
         }
     }
 
-    /// Outline when resting, filled when current. The system bar fills the symbol on its own;
-    /// the iPad's floating bar uses the pair below.
+    /// Outline when resting, filled when current, in both the system bar and the iPad's floating
+    /// bar.
     var symbol: String {
         switch self {
         case .today: "sun.max"
@@ -118,10 +118,34 @@ struct MainTabView: View {
         StableScreen(tab: tab, content: content)
             .equatable()
             .tabItem {
-                Label(tab.title, systemImage: tab.symbol)
+                Label {
+                    Text(tab.title)
+                } icon: {
+                    tabIcon(tab)
+                }
+                // The system bar fills every symbol on its own, which reads heavier than the
+                // app's outline set. Keep the outline at rest and fill only the current tab.
+                .environment(\.symbolVariants, .none)
             }
             .tag(tab)
     }
+
+    private func tabIcon(_ tab: MainTab) -> Image {
+        if tab == .goals {
+            Image(uiImage: Self.goalsMarkImage)
+        } else {
+            Image(systemName: selection == tab ? tab.selectedSymbol : tab.symbol)
+        }
+    }
+
+    /// The system bar only takes an image, so Goals' own mark is drawn once into a template the
+    /// bar can tint like the symbols beside it.
+    @MainActor private static let goalsMarkImage: UIImage = {
+        let renderer = ImageRenderer(content: GoalsMark(size: 21, tone: .mono, color: .black))
+        renderer.scale = 3
+        return (renderer.uiImage ?? UIImage(systemName: MainTab.goals.symbol)!)
+            .withRenderingMode(.alwaysTemplate)
+    }()
 }
 
 private extension View {
