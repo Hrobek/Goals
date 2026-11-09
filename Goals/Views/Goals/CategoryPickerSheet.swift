@@ -6,7 +6,7 @@
 import SwiftUI
 import SwiftData
 
-/// Full-height picker presented from the goal form: a plain list of categories with
+/// Full-height picker presented from the goal and habit forms: a plain list of categories with
 /// "Add Category" as the last entry.
 struct CategoryPickerSheet: View {
     @Binding var selection: Category?

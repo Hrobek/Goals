@@ -36,3 +36,7 @@ Pods/
 # downloaded plist into Goals/ (see comment in Goals/Auth/GoogleAuthConfiguration.swift).
 Goals/client_*.apps.googleusercontent.com.plist
 Goals/GoogleService-Info.plist
+
+# Local notes and App Store export material, not part of the app
+app-store-export/
+docs/featuring-nomination-1.1.md

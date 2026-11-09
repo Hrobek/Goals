@@ -23,6 +23,10 @@ final class Category {
     @Relationship(deleteRule: .nullify, inverse: \Goal.category)
     private var goals: [Goal]?
 
+    /// Same for `Habit.category`.
+    @Relationship(deleteRule: .nullify, inverse: \Habit.category)
+    private var habits: [Habit]?
+
     init(id: UUID = UUID(), ownerId: UUID, name: String, createdAt: Date = .now, defaultKey: String? = nil) {
         self.id = id
         self.ownerId = ownerId

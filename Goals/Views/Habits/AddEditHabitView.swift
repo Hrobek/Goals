@@ -20,6 +20,7 @@ struct AddEditHabitView: View {
     @State private var title: String
     @State private var isAvoid: Bool
     @State private var emoji: String?
+    @State private var category: Category?
     @State private var colorHex: String
     @State private var customColor: Color
     @State private var startDate: Date
@@ -44,8 +45,9 @@ struct AddEditHabitView: View {
     @State private var isShowingPermissionAlert = false
     @State private var isShowingEmojiPicker = false
     @State private var isShowingUnitPicker = false
+    @State private var isShowingCategoryPicker = false
 
-    init(habit: Habit?, userId: UUID, template: HabitTemplate? = nil) {
+    init(habit: Habit?, userId: UUID, template: HabitTemplate? = nil, presetCategory: Category? = nil) {
         self.habit = habit
         self.userId = habit?.ownerId ?? userId
         // A template only seeds a *new* habit; an edit sheet is never reshaped by a stale value.
@@ -53,6 +55,7 @@ struct AddEditHabitView: View {
         _title = State(initialValue: habit?.title ?? template?.localizedTitle ?? "")
         _isAvoid = State(initialValue: habit?.isAvoid ?? template?.isAvoid ?? false)
         _emoji = State(initialValue: habit?.emoji ?? template?.emoji)
+        _category = State(initialValue: habit?.category ?? presetCategory)
         let hex = habit?.colorHex ?? template?.colorHex ?? ColorPalette.defaultHex
         _colorHex = State(initialValue: hex)
         _customColor = State(initialValue: Color(hex: hex))
@@ -171,6 +174,10 @@ struct AddEditHabitView: View {
                     }
                     colorRow
                     CardGroup {
+                        DisclosureRow(label: "goal.field.category", value: category?.displayName) {
+                            isShowingCategoryPicker = true
+                        }
+                        RowDivider()
                         HStack {
                             Text("field.startDate")
                                 .font(Theme.Typo.row)
@@ -369,6 +376,9 @@ struct AddEditHabitView: View {
             .sheet(isPresented: $isShowingUnitPicker) {
                 UnitPickerSheet(selection: $unitSelection, userId: userId)
             }
+            .sheet(isPresented: $isShowingCategoryPicker) {
+                CategoryPickerSheet(selection: $category, userId: userId)
+            }
         }
     }
 
@@ -493,6 +503,7 @@ struct AddEditHabitView: View {
             habit.title = trimmedTitle
             habit.emoji = emoji
             habit.colorHex = colorHex
+            habit.category = category
             habit.startDate = startDate
             habit.deadline = hasDeadline ? deadline : nil
             habit.unitKey = effectiveUnitKey
@@ -528,6 +539,7 @@ struct AddEditHabitView: View {
                 startDate: startDate
             )
             modelContext.insert(newHabit)
+            newHabit.category = category
             saved = newHabit
             Analytics.send(.habitCreated)
         }

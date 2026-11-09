@@ -20,6 +20,8 @@ struct HabitsView: View {
     @Binding private var path: [UUID]
 
     @State private var editMode: EditMode = .inactive
+    /// The categories the list is narrowed to. Empty is all of them.
+    @State private var categoryFilter: Set<CategoryFilter> = []
     @State private var isShowingLimitAlert = false
     @State private var isShowingPaywall = false
     @State private var isShowingTemplatePicker = false
@@ -45,6 +47,7 @@ struct HabitsView: View {
     private struct AddHabitConfig: Identifiable {
         let id = UUID()
         var template: HabitTemplate?
+        var category: Category?
     }
 
     init(userId: UUID, path: Binding<[UUID]> = .constant([])) {
@@ -58,6 +61,10 @@ struct HabitsView: View {
 
     private var activeHabits: [Habit] {
         habits.filter { !$0.isArchived }
+    }
+
+    private var categoryFiltering: CategoryFiltering<Habit> {
+        CategoryFiltering(items: activeHabits, selection: categoryFilter, category: \.category)
     }
 
     var body: some View {
@@ -98,7 +105,7 @@ struct HabitsView: View {
                 }
             }
             .sheet(item: $addHabitConfig) { config in
-                AddEditHabitView(habit: nil, userId: userId, template: config.template)
+                AddEditHabitView(habit: nil, userId: userId, template: config.template, presetCategory: config.category)
             }
             .sheet(isPresented: $isShowingTemplatePicker, onDismiss: presentPendingAdd) {
                 TemplatePickerView(mode: .habitsOnly) { selection in
@@ -126,8 +133,18 @@ struct HabitsView: View {
     private var listColumn: some View {
         VStack(alignment: .leading, spacing: 0) {
             ScreenTitle("habits.title") {
-                IconButton(systemImage: "plus") { addHabitTapped() }
-                    .accessibilityLabel(Text("a11y.addHabit"))
+                HStack(spacing: 8) {
+                    if categoryFiltering.isShowingFilter {
+                        CategoryFilterMenu(options: categoryFiltering.options, active: categoryFiltering.active, selection: $categoryFilter)
+                    }
+                    IconButton(systemImage: "plus") { addHabitTapped() }
+                        .accessibilityLabel(Text("a11y.addHabit"))
+                }
+            }
+
+            if !categoryFiltering.active.isEmpty {
+                CategoryFilterPills(options: categoryFiltering.shownOptions, selection: $categoryFilter)
+                    .padding(.top, 12)
             }
 
             content
@@ -138,7 +155,7 @@ struct HabitsView: View {
     /// instead of leaving it behind.
     @ViewBuilder
     private var habitPane: some View {
-        if let id = selectedHabitID, let habit = activeHabits.first(where: { $0.id == id }) {
+        if let id = selectedHabitID, let habit = categoryFiltering.visibleItems.first(where: { $0.id == id }) {
             HabitDetailView(habit: habit)
                 .id(habit.id)
         } else {
@@ -171,38 +188,17 @@ struct HabitsView: View {
             .tabBarClearance()
         } else {
             List {
-                ForEach(activeHabits) { habit in
-                    Button {
-                        if isSplit {
-                            selectedHabitID = habit.id
-                        } else {
-                            path.append(habit.id)
-                        }
-                    } label: {
-                        HabitRow(habit: habit)
-                            .selectedRowOutline(isSplit && selectedHabitID == habit.id)
+                ForEach(Array(categoryFiltering.groups.enumerated()), id: \.element.id) { index, group in
+                    if let title = group.title {
+                        CategoryGroupHeader(title: title, isFirst: index == 0)
+                            .moveDisabled(true)
+                            .deleteDisabled(true)
                     }
-                    .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets(top: 5, leading: Theme.Space.screen, bottom: 5, trailing: Theme.Space.screen))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            modelContext.delete(habit)
-                            syncReminders()
-                        } label: {
-                            Label("action.delete", systemImage: "trash")
-                        }
-                        Button {
-                            habit.isArchived.toggle()
-                            syncReminders()
-                        } label: {
-                            Label("action.archive", systemImage: "archivebox")
-                        }
-                        .tint(Theme.control)
+                    ForEach(group.items) { habit in
+                        habitRow(habit)
                     }
+                    .onMove { move(group.items, from: $0, to: $1) }
                 }
-                .onMove(perform: move)
 
                 if !purchaseManager.isProUnlocked {
                     ProLockedCard(title: "habits.pro.title", message: "habits.pro.locked")
@@ -214,6 +210,8 @@ struct HabitsView: View {
                 }
             }
             .listStyle(.plain)
+            // Otherwise a category header is padded out to a full 44 pt row.
+            .environment(\.defaultMinListRowHeight, 0)
             .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
             .contentMargins(.top, 18, for: .scrollContent)
@@ -221,10 +219,47 @@ struct HabitsView: View {
         }
     }
 
-    /// Rewrites `sortIndex` across every active habit so the new order sticks and stays dense.
-    private func move(from source: IndexSet, to destination: Int) {
-        var reordered = activeHabits
-        reordered.move(fromOffsets: source, toOffset: destination)
+    private func habitRow(_ habit: Habit) -> some View {
+        Button {
+            if isSplit {
+                selectedHabitID = habit.id
+            } else {
+                path.append(habit.id)
+            }
+        } label: {
+            HabitRow(habit: habit)
+                .selectedRowOutline(isSplit && selectedHabitID == habit.id)
+        }
+        .buttonStyle(.plain)
+        .listRowInsets(EdgeInsets(top: 5, leading: Theme.Space.screen, bottom: 5, trailing: Theme.Space.screen))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                modelContext.delete(habit)
+                syncReminders()
+            } label: {
+                Label("action.delete", systemImage: "trash")
+            }
+            Button {
+                habit.isArchived.toggle()
+                syncReminders()
+            } label: {
+                Label("action.archive", systemImage: "archivebox")
+            }
+            .tint(Theme.control)
+        }
+    }
+
+    /// Reorders within one category's run, then rewrites `sortIndex` across every active habit so
+    /// the new order sticks and stays dense. The moved run takes back the same slots in the full
+    /// order, so habits in other categories, or hidden by the filter, keep their places.
+    private func move(_ group: [Habit], from source: IndexSet, to destination: Int) {
+        var moved = group
+        moved.move(fromOffsets: source, toOffset: destination)
+        let slots = Set(group.map(\.id))
+        var next = moved.makeIterator()
+        let reordered = activeHabits.map { slots.contains($0.id) ? (next.next() ?? $0) : $0 }
         for (index, habit) in reordered.enumerated() {
             habit.sortIndex = index
         }
@@ -246,7 +281,8 @@ struct HabitsView: View {
         self.pendingAdd = nil
         switch pendingAdd {
         case .blank:
-            addHabitConfig = AddHabitConfig()
+            // A habit added while the list is narrowed to one category most likely belongs in it.
+            addHabitConfig = AddHabitConfig(category: categoryFiltering.selectedCategory)
         case .template(let template):
             addHabitConfig = AddHabitConfig(template: template)
         }

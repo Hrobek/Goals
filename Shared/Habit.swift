@@ -31,6 +31,9 @@ final class Habit {
     /// plain checkbox with no quantity.
     var unitKey: String = GoalUnit.times.rawValue
     var customUnitText: String?
+    /// The same life-area categories goals use, so "Health" can hold both a target and the daily
+    /// habits behind it.
+    var category: Category?
 
     var recurrenceType: RecurrenceType = RecurrenceType.daily
     var recurrenceWeekdays: [Int] = []

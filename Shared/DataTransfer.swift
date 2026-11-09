@@ -144,6 +144,7 @@ enum DataTransfer {
         for dto in doc.habits {
             let habit = dto.makeModel(ownerId: userId)
             context.insert(habit)
+            if let categoryID = dto.categoryID { habit.category = categoriesByID[categoryID] }
             for entryDTO in dto.entries {
                 let entry = entryDTO.makeModel(ownerId: userId)
                 entry.habit = habit
@@ -353,6 +354,8 @@ struct HabitDTO: Codable {
     var targetAmount: Double
     var unitKey: String
     var customUnitText: String?
+    /// Optional so a backup written before habits had categories still decodes.
+    var categoryID: UUID?
     var recurrenceTypeRaw: String
     var recurrenceWeekdays: [Int]
     var recurrenceDaysOfMonth: [Int]
@@ -378,6 +381,7 @@ struct HabitDTO: Codable {
         targetAmount = model.targetAmount
         unitKey = model.unitKey
         customUnitText = model.customUnitText
+        categoryID = model.category?.id
         recurrenceTypeRaw = model.recurrenceType.rawValue
         recurrenceWeekdays = model.recurrenceWeekdays
         recurrenceDaysOfMonth = model.recurrenceDaysOfMonth
