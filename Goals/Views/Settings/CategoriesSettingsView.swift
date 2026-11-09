@@ -29,37 +29,50 @@ struct CategoriesSettingsView: View {
     }
 
     var body: some View {
+        // A plain list of cards, as in the goal and habit lists. A grouped list would clip the
+        // first and last card with its own section corners, and a row lifted for reordering out of
+        // one grouped card carries that card's corner cut out over black.
         List {
-            Section {
-                ForEach(categories) { category in
-                    Button {
-                        renameText = category.displayName
-                        renaming = category
-                    } label: {
-                        row(for: category)
-                    }
-                    .buttonStyle(.plain)
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            requestDelete(category)
-                        } label: {
-                            Label("action.delete", systemImage: "trash")
-                        }
-                    }
-                }
-                .onMove(perform: move)
-            } footer: {
-                Text("category.manage.footer")
-            }
-
-            Section {
+            ForEach(categories) { category in
                 Button {
-                    isShowingAddCategory = true
+                    renameText = category.displayName
+                    renaming = category
                 } label: {
-                    Label("category.add", systemImage: "plus.circle")
+                    row(for: category)
+                }
+                .buttonStyle(.plain)
+                .cardListRow()
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) {
+                        requestDelete(category)
+                    } label: {
+                        Label("action.delete", systemImage: "trash")
+                    }
                 }
             }
+            .onMove(perform: move)
+
+            Text("category.manage.footer")
+                .font(Theme.Typo.footnote)
+                .foregroundStyle(Theme.textFaint)
+                // Lines up with the text inside the cards.
+                .padding(.horizontal, 14)
+                .cardListRow(top: 6, bottom: 18)
+
+            Button {
+                isShowingAddCategory = true
+            } label: {
+                Label("category.add", systemImage: "plus.circle")
+                    .foregroundStyle(Theme.accent)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .cardSurface()
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .cardListRow()
         }
+        .listStyle(.plain)
+        .contentMargins(.top, 18, for: .scrollContent)
         .themedList()
         .navigationTitle("settings.categories.title")
         .navigationBarTitleDisplayMode(.inline)
@@ -90,9 +103,10 @@ struct CategoriesSettingsView: View {
                 .font(Theme.Typo.footnote)
                 .foregroundStyle(Theme.textFaint)
         }
-        .padding(.vertical, 2)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .cardSurface()
         .contentShape(.rect)
+        .contentShape(.dragPreview, .rect(cornerRadius: Theme.Radius.card))
     }
 
     /// "3 goals · 2 habits", leaving out whichever is zero, so it's clear what a delete touches.
@@ -154,6 +168,15 @@ struct CategoriesSettingsView: View {
     private var deleteTitle: String {
         let name = pendingDelete?.displayName ?? ""
         return String(localized: "category.delete.title \(name)", bundle: AppLanguage.currentBundle, locale: AppLanguage.current.locale)
+    }
+}
+
+private extension View {
+    /// A card's row in the plain list: no system background or separator, the screen's own gutters.
+    func cardListRow(top: CGFloat = 4, bottom: CGFloat = 4) -> some View {
+        listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: top, leading: Theme.Space.screen, bottom: bottom, trailing: Theme.Space.screen))
     }
 }
 
