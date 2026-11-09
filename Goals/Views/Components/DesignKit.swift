@@ -200,22 +200,28 @@ extension ScreenTitle where Trailing == EmptyView {
 
 /// The uppercase label that names a section.
 struct SectionLabel: View {
-    let key: LocalizedStringKey
+    let text: Text
     var trailing: AnyView?
 
     init(_ key: LocalizedStringKey) {
-        self.key = key
+        self.text = Text(key)
+        self.trailing = nil
+    }
+
+    /// For a label the user named themselves, like a category - never looked up as a key.
+    init(verbatim label: String) {
+        self.text = Text(verbatim: label)
         self.trailing = nil
     }
 
     init<T: View>(_ key: LocalizedStringKey, @ViewBuilder trailing: () -> T) {
-        self.key = key
+        self.text = Text(key)
         self.trailing = AnyView(trailing())
     }
 
     var body: some View {
         HStack {
-            Text(key)
+            text
                 .font(Theme.Typo.sectionLabel)
                 .tracking(Theme.Typo.sectionLabelTracking)
                 .textCase(.uppercase)
@@ -684,17 +690,64 @@ struct IconButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 17, weight: .medium))
-                .frame(width: 38, height: 38)
-                .foregroundStyle(accent ? Theme.accentText : Theme.textStrong)
-                .overlay {
-                    RoundedRectangle(cornerRadius: Theme.Radius.control)
-                        .strokeBorder(accent ? Theme.accent : Theme.hairline, lineWidth: 1)
-                }
-                .contentShape(.rect)
+            IconButtonLabel(systemImage: systemImage, accent: accent)
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// `IconButton`'s face on its own, for a `Menu` that has to look like one.
+struct IconButtonLabel<Glyph: View>: View {
+    let glyph: Glyph
+    var accent = true
+
+    init(accent: Bool = true, @ViewBuilder glyph: () -> Glyph) {
+        self.glyph = glyph()
+        self.accent = accent
+    }
+
+    var body: some View {
+        glyph
+            .font(.system(size: 17, weight: .medium))
+            .frame(width: 38, height: 38)
+            .foregroundStyle(accent ? Theme.accentText : Theme.textStrong)
+            .overlay {
+                RoundedRectangle(cornerRadius: Theme.Radius.control)
+                    .strokeBorder(accent ? Theme.accent : Theme.hairline, lineWidth: 1)
+            }
+            .contentShape(.rect)
+    }
+}
+
+extension IconButtonLabel where Glyph == Image {
+    init(systemImage: String, accent: Bool = true) {
+        self.init(accent: accent) { Image(systemName: systemImage) }
+    }
+}
+
+/// A plain funnel. SF Symbols' own "filter" is three shrinking lines, which next to a "+" reads as
+/// a "more" menu rather than a filter. Drawn at the weight of a 17 pt medium symbol.
+struct FunnelGlyph: View {
+    var body: some View {
+        FunnelShape()
+            .stroke(style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
+            .frame(width: 18, height: 18)
+    }
+}
+
+private struct FunnelShape: Shape {
+    /// Drawn on a 24×24 grid, like an SF Symbol's template.
+    func path(in rect: CGRect) -> Path {
+        let unit = min(rect.width, rect.height) / 24
+        let points: [CGPoint] = [
+            CGPoint(x: 3, y: 4.5), CGPoint(x: 21, y: 4.5),
+            CGPoint(x: 14, y: 12.5), CGPoint(x: 14, y: 19),
+            CGPoint(x: 10, y: 21), CGPoint(x: 10, y: 12.5),
+        ]
+        var path = Path()
+        path.addLines(points.map { CGPoint(x: $0.x * unit, y: $0.y * unit) })
+        path.closeSubpath()
+        return path
     }
 }
 
