@@ -41,6 +41,7 @@ struct AddCategorySheet: View {
 
     private func save() {
         let category = Category(ownerId: userId, name: name.trimmingCharacters(in: .whitespacesAndNewlines))
+        category.sortIndex = Category.nextSortIndex(context: modelContext, for: userId)
         modelContext.insert(category)
         onCreate(category)
         dismiss()

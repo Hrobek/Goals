@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct SettingsView: View {
     @Environment(Profile.self) private var profile
@@ -22,6 +23,13 @@ struct SettingsView: View {
     @State private var vacation = Vacation()
     // Same idea as `vacation`: owned here so the toggle + balance line stay live.
     @State private var freezeBank = FreezeBank()
+    /// Every account's categories; narrowed to the signed-in profile in `categoryCount`, since the
+    /// profile isn't known yet when the query is built.
+    @Query private var categories: [Category]
+
+    private var categoryCount: Int {
+        categories.count { $0.ownerId == profile.id }
+    }
 
     private var appearanceMode: Binding<AppearanceMode> {
         Binding(
@@ -47,7 +55,7 @@ struct SettingsView: View {
                         profileSection
                         proSection
                         appearanceSection
-                        breaksSection
+                        trackingSection
                         generalSection
                         supportSection
                     }
@@ -172,9 +180,17 @@ struct SettingsView: View {
         }
     }
 
-    private var breaksSection: some View {
-        LabeledSection("settings.breaks.title") {
+    /// What shapes how goals and habits are kept: their categories, and the breaks that pause them.
+    private var trackingSection: some View {
+        LabeledSection("settings.tracking.title") {
             CardGroup {
+                NavigationLink {
+                    CategoriesSettingsView(userId: profile.id)
+                } label: {
+                    statusRow(icon: "tag", label: "settings.categories.title", value: "\(categoryCount)")
+                }
+                .buttonStyle(.plain)
+                RowDivider()
                 NavigationLink {
                     VacationSettingsView(userId: profile.id, vacation: $vacation)
                 } label: {

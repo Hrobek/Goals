@@ -21,7 +21,7 @@ struct CategoryPickerSheet: View {
     init(selection: Binding<Category?>, userId: UUID) {
         self._selection = selection
         self.userId = userId
-        _categories = Query(filter: #Predicate<Category> { $0.ownerId == userId }, sort: \Category.createdAt)
+        _categories = Query(filter: #Predicate<Category> { $0.ownerId == userId }, sort: Category.sortOrder)
     }
 
     var body: some View {

@@ -7,7 +7,7 @@ import SwiftUI
 import SwiftData
 
 /// The streak-freeze switch and how many freezes are banked. Pushed from its own row in the
-/// Settings "Breaks" section, next to Vacation.
+/// Settings "Goals & habits" section, next to Vacation.
 struct StreakFreezeSettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(PurchaseManager.self) private var purchaseManager

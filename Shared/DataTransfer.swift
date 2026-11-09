@@ -163,16 +163,21 @@ struct CategoryDTO: Codable {
     var name: String
     var createdAt: Date
     var defaultKey: String?
+    /// Optional so a backup written before categories had a manual order still decodes.
+    var sortIndex: Int?
 
     init(_ model: Category) {
         id = model.id
         name = model.name
         createdAt = model.createdAt
         defaultKey = model.defaultKey
+        sortIndex = model.sortIndex
     }
 
     func makeModel(ownerId: UUID) -> Category {
-        Category(id: id, ownerId: ownerId, name: name, createdAt: createdAt, defaultKey: defaultKey)
+        let category = Category(id: id, ownerId: ownerId, name: name, createdAt: createdAt, defaultKey: defaultKey)
+        category.sortIndex = sortIndex ?? 0
+        return category
     }
 }
 

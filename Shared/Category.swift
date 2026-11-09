@@ -17,6 +17,9 @@ final class Category {
     /// `displayName` re-resolves from this key so the label follows later language changes. Nil for
     /// user-created categories, whose `name` is the only source of truth.
     var defaultKey: String?
+    /// Manual order, lowest first, set from the Categories screen in Settings. 0 for every
+    /// category from before it existed; ties fall back to `createdAt`.
+    var sortIndex: Int = 0
 
     /// Exists only to give `Goal.category` the inverse CloudKit requires — the app reads the link
     /// from the goal's side, never from here.
@@ -44,6 +47,23 @@ final class Category {
         "finance": ["Finance", "Finanzen", "Finanzas", "Finances", "Finanças"],
         "relationships": ["Relationships", "Vztahy", "Beziehungen", "Relaciones", "Relations", "Relacionamentos"],
     ]
+
+    /// The order every category list shows: the manual order, then oldest first.
+    static let sortOrder = [SortDescriptor(\Category.sortIndex), SortDescriptor(\Category.createdAt)]
+
+    static func ordered(_ lhs: Category, _ rhs: Category) -> Bool {
+        (lhs.sortIndex, lhs.createdAt) < (rhs.sortIndex, rhs.createdAt)
+    }
+
+    /// The `sortIndex` that puts a new category after this user's existing ones.
+    static func nextSortIndex(context: ModelContext, for userId: UUID) -> Int {
+        var descriptor = FetchDescriptor<Category>(
+            predicate: #Predicate { $0.ownerId == userId },
+            sortBy: [SortDescriptor(\Category.sortIndex, order: .reverse)]
+        )
+        descriptor.fetchLimit = 1
+        return ((try? context.fetch(descriptor).first?.sortIndex) ?? -1) + 1
+    }
 
     var displayName: String {
         guard let defaultKey else { return name }
@@ -77,8 +97,10 @@ final class Category {
         let existingCount = (try? context.fetchCount(descriptor)) ?? 0
         guard existingCount == 0 else { return }
 
-        for key in ["health", "career", "finance", "relationships"] {
-            context.insert(Category(ownerId: userId, name: localizedDefaultName(for: key) ?? key, defaultKey: key))
+        for (index, key) in ["health", "career", "finance", "relationships"].enumerated() {
+            let category = Category(ownerId: userId, name: localizedDefaultName(for: key) ?? key, defaultKey: key)
+            category.sortIndex = index
+            context.insert(category)
         }
     }
 

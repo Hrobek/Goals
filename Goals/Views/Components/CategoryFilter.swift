@@ -52,7 +52,7 @@ struct CategoryFiltering<Item: Identifiable> {
             }
         }
         var options = categories
-            .sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+            .sorted(by: Category.ordered)
             .map { CategoryFilterOption(filter: .category($0.id), title: $0.displayName) }
         if !options.isEmpty && items.contains(where: { category($0) == nil }) {
             options.append(CategoryFilterOption(
