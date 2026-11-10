@@ -33,6 +33,16 @@ Stav při vzniku: větev `feature/habits`, po commitu `31f0cba` (Today day strip
 ### Sync
 - [ ] Vacation mode synchronizovat přes iCloud (teď se nastaví na telefonu a iPad o něm neví - v kódu okomentované jako known limitation).
 
+### Kategorie (oblasti života)
+Hotovo: filtr, sdílené kategorie cílů a návyků, správa v Nastavení, kategorie v detailu návyku.
+- [ ] Statistiky po kategoriích: plnění návyků a postup cílů po oblastech, kde se daří nejvíc a nejmíň. Nejsilnější důvod kategorie mít.
+- [ ] Detail kategorie: klepnutí na nadpis skupiny otevře oblast se všemi cíli i návyky a společnou aktivitou.
+- [ ] Filtr podle kategorie v Týdenním přehledu ("jak mi jde zdraví tento týden").
+- [ ] Zapamatovat poslední zvolený filtr.
+- [ ] Parametr kategorie v Zkratkách (intenty).
+- [ ] Widget nastavitelný na jednu kategorii.
+- [ ] Volitelně seskupit Dnes podle oblastí místo dělení na cíle a návyky (jen jako volba).
+
 ## Rychlé výhry
 
 - [ ] Haptika při check-inu a extra odezva při překročení milníku série.
