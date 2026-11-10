@@ -215,7 +215,9 @@ struct HabitDetailView: View {
     }
 
     private var subtitleText: String {
-        var parts = [Recurrence.localizedSummary(for: habit)]
+        var parts: [String] = []
+        if let categoryName = habit.category?.displayName { parts.append(categoryName) }
+        parts.append(Recurrence.localizedSummary(for: habit))
         if let deadline = habit.deadline {
             parts.append(deadline.formatted(date: .abbreviated, time: .omitted))
         }
