@@ -42,6 +42,11 @@ struct GoalsApp: App {
         ProgressLogger.healthWriteHook = { goal, checkIn, delta in
             HealthKitWriteSync.mirror(goal: goal, checkIn: checkIn, delta: delta)
         }
+        ProgressLogger.healthDiscardHook = { goal, sampleIDs in
+            if let metric = goal.healthKitMetric {
+                HealthKitWriteSync.discardSamples(ids: sampleIDs, metric: metric)
+            }
+        }
         HealthKitSyncEngine.startObserving(context: modelContainer.mainContext)
     }
 

@@ -43,6 +43,19 @@ struct GoalDetailView: View {
     /// an amount that's neither the last chip nor the widget's own step.
     @State private var isShowingSubtractPrompt = false
     @State private var subtractAmountText = ""
+    /// The history sheet: a check-in to edit, or none to log a missed day.
+    @State private var historyEdit: HistoryEdit?
+    @State private var isShowingFullHistory = false
+
+    private struct HistoryEdit: Identifiable {
+        let id = UUID()
+        var checkIn: CheckIn?
+    }
+
+    /// Health owns a `.read`-linked goal's values, so its history can't be rewritten here either.
+    private var canEditHistory: Bool {
+        goal.healthKitDirection != .read
+    }
 
     /// Runs a check-in mutation and raises the celebration overlay if it finished the goal or hit
     /// a streak milestone. The snapshot has to be taken before `action` runs.
@@ -124,7 +137,7 @@ struct GoalDetailView: View {
                     milestonesSection
                 }
 
-                if !sortedCheckIns.isEmpty {
+                if !sortedCheckIns.isEmpty || canEditHistory {
                     historySection
                 }
             }
@@ -154,6 +167,13 @@ struct GoalDetailView: View {
         .animation(.easeInOut(duration: 0.25), value: celebration)
         .sheet(isPresented: $isShowingEdit) {
             AddEditGoalView(goal: goal, userId: goal.ownerId)
+        }
+        .sheet(item: $historyEdit) { edit in
+            CheckInHistorySheet(goal: goal, checkIn: edit.checkIn) {
+                logTick += 1
+                // A rewritten past makes the last chip's amount meaningless to undo.
+                lastLoggedDelta = nil
+            }
         }
         .sheet(isPresented: $isShowingCheckIn, onDismiss: { checkInSheetSnapshot = nil }) {
             CheckInSheetView(goal: goal) {
@@ -570,15 +590,58 @@ struct GoalDetailView: View {
     }
 
     private var historySection: some View {
-        LabeledSection("goalDetail.history") {
-            CardGroup {
-                ForEach(Array(sortedCheckIns.prefix(20).enumerated()), id: \.element.id) { index, checkIn in
-                    if index > 0 { RowDivider() }
-                    CheckInRow(checkIn: checkIn)
+        let checkIns = sortedCheckIns
+        let shown = isShowingFullHistory ? checkIns : Array(checkIns.prefix(Self.historyPreviewCount))
+        return LabeledSection("goalDetail.history") {
+            if canEditHistory {
+                Button { historyEdit = HistoryEdit() } label: {
+                    Label("history.add", systemImage: "plus")
+                        .labelStyle(.titleAndIcon)
+                        .font(Theme.Typo.caption)
+                        .foregroundStyle(Theme.accentText)
+                }
+                .buttonStyle(.plain)
+            }
+        } content: {
+            if checkIns.isEmpty {
+                Text("history.empty")
+                    .font(Theme.Typo.caption)
+                    .foregroundStyle(Theme.textFaint)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .cardSurface()
+            } else {
+                CardGroup {
+                    ForEach(Array(shown.enumerated()), id: \.element.id) { index, checkIn in
+                        if index > 0 { RowDivider() }
+                        if canEditHistory {
+                            Button { historyEdit = HistoryEdit(checkIn: checkIn) } label: {
+                                CheckInRow(checkIn: checkIn, goal: goal, isEditable: true)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            CheckInRow(checkIn: checkIn, goal: goal, isEditable: false)
+                        }
+                    }
+                    if checkIns.count > Self.historyPreviewCount {
+                        RowDivider()
+                        Button {
+                            withAnimation(.snappy(duration: 0.2)) { isShowingFullHistory.toggle() }
+                        } label: {
+                            Text(isShowingFullHistory ? "history.showLess" : "history.showAll \(checkIns.count)")
+                                .font(Theme.Typo.body)
+                                .foregroundStyle(Theme.accentText)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 12)
+                                .contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
         }
     }
+
+    private static let historyPreviewCount = 20
 
     /// One-tap increments, pointing down for goals where lower is better. Stop once the target's
     /// reached - the goal is done, so there's nothing left to add - while the undo `−` stays live
@@ -818,19 +881,35 @@ private struct MilestoneRow: View {
 
 private struct CheckInRow: View {
     let checkIn: CheckIn
+    let goal: Goal
+    let isEditable: Bool
+
+    /// What the day logged, as it was typed in: "+5" towards a running total, the reading itself
+    /// for a lower-is-better goal.
+    private var valueText: String? {
+        guard let value = ProgressLogger.loggedValue(of: checkIn, on: goal) else { return nil }
+        let formatted = abs(value).formatted(.number.precision(.fractionLength(0...2)))
+        if goal.isLowerBetter { return goal.valueWithUnit(value, formattedValue: formatted) }
+        return (value < 0 ? "-" : "+") + goal.valueWithUnit(abs(value), formattedValue: formatted)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            HStack {
+            HStack(spacing: 8) {
                 Text(checkIn.date, style: .date)
                     .font(Theme.Typo.body)
                     .foregroundStyle(Theme.text)
-                if let value = checkIn.valueSnapshot {
-                    Spacer()
-                    Text(value.formatted(.number.precision(.fractionLength(0...2))))
+                Spacer()
+                if let valueText {
+                    Text(valueText)
                         .font(Theme.Typo.body)
                         .monospacedDigit()
                         .foregroundStyle(Theme.textFaint)
+                }
+                if isEditable {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.textGhost)
                 }
             }
             if let note = checkIn.note, !note.isEmpty {
@@ -841,6 +920,7 @@ private struct CheckInRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 12)
+        .contentShape(.rect)
     }
 }
 
